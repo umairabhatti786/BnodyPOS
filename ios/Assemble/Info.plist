@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyB-KsaN0xavVz_goI6TJ-rTd43B8Oz4glc</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Assemble</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.153444834280-lfs7alll1ltv8ehhr4j7d9uv9c509to1</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FacebookAppID</key>
+	<string>371059782002541</string>
+	<key>FacebookDisplayName</key>
+	<string>Loyalty</string>
+	<key>FirebaseDynamicLinksCustomDomains</key>
+	<array>
+		<string>https://assemble.page.link/jfVL</string>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
+		<string>fbauth2</string>
+		<string>fbshareextension</string>
+	</array>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>YOUR TEXT</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This app requires access to the calendar</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>YOUR TEXT</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This App need to access your Camera</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app requires access to the Location</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app requires access to the Location</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<string>This app requires access to the Location</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires access to the Location</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Your message to user when the microsphone is accessed for the first time</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Your message to user when the photo library is accessed for the first time</string>
+	<key>NSRemoteNotificationUsageDescription</key>
+	<string>Stay informed about your pets' activities and events with push notifications from Pawspact.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>SF-Compact-Display-Black.ttf</string>
+		<string>SF-Compact-Display-Bold.ttf</string>
+		<string>SF-Compact-Display-Heavy.ttf</string>
+		<string>SF-Compact-Display-Light.ttf</string>
+		<string>SF-Compact-Display-Medium.ttf</string>
+		<string>SF-Compact-Display-Regular.ttf</string>
+		<string>SF-Compact-Display-Semibold.ttf</string>
+		<string>SF-Compact-Display-Thin.ttf</string>
+		<string>SF-Compact-Display-Ultralight.ttf</string>
+		<string>SF-Compact-Italic.ttf</string>
+		<string>SF-Compact-Rounded-Black.ttf</string>
+		<string>SF-Compact-Rounded-Bold.ttf</string>
+		<string>SF-Compact-Rounded-Heavy.ttf</string>
+		<string>SF-Compact-Rounded-Light.ttf</string>
+		<string>SF-Compact-Rounded-Medium.ttf</string>
+		<string>SF-Compact-Rounded-Regular.ttf</string>
+		<string>SF-Compact-Rounded-Semibold.ttf</string>
+		<string>SF-Compact-Rounded-Thin.ttf</string>
+		<string>SF-Compact-Rounded-Ultralight.ttf</string>
+		<string>SF-Compact-Text-Black.ttf</string>
+		<string>SF-Compact-Text-BlackItalic.ttf</string>
+		<string>SF-Compact-Text-Bold.ttf</string>
+		<string>SF-Compact-Text-BoldItalic.ttf</string>
+		<string>SF-Compact-Text-Heavy.ttf</string>
+		<string>SF-Compact-Text-HeavyItalic.ttf</string>
+		<string>SF-Compact-Text-Light.ttf</string>
+		<string>SF-Compact-Text-LightItalic.ttf</string>
+		<string>SF-Compact-Text-Medium.ttf</string>
+		<string>SF-Compact-Text-MediumItalic.ttf</string>
+		<string>SF-Compact-Text-Regular.ttf</string>
+		<string>SF-Compact-Text-RegularItalic.ttf</string>
+		<string>SF-Compact-Text-Semibold.ttf</string>
+		<string>SF-Compact-Text-SemiboldItalic.ttf</string>
+		<string>SF-Compact-Text-Thin.ttf</string>
+		<string>SF-Compact-Text-ThinItalic.ttf</string>
+		<string>SF-Compact-Text-Ultralight.ttf</string>
+		<string>SF-Compact-Text-UltralightItalic.ttf</string>
+		<string>SF-Compact.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+</dict>
+</plist>
