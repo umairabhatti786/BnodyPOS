@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">assemble</string>
+    
+<string name="facebook_app_id">163846043389218</string>
+<string name="fb_login_protocol_scheme">fb1234</string>
+<string name="facebook_client_token">cbb2140fa74ea6f4f9c72c05fdb540c3</string>
+ <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyB-KsaN0xavVz_goI6TJ-rTd43B8Oz4glc</string>
+
+</resources>

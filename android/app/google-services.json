@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "153444834280",
+    "project_id": "assemble-408917",
+    "storage_bucket": "assemble-408917.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:153444834280:android:66c86f0de261842fa3625d",
+        "android_client_info": {
+          "package_name": "com.assemble"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "153444834280-be509i52m49jlt7l0ds0ic9ucbg5lh0l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDseU3ktAAq9klichmeXXQB0-0bGdldyTU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "153444834280-be509i52m49jlt7l0ds0ic9ucbg5lh0l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "153444834280-lfs7alll1ltv8ehhr4j7d9uv9c509to1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "assemble"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
