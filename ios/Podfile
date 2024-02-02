@@ -55,7 +55,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'Assemble' do
+target 'BnodyPOS' do
   config = use_native_modules!
   pod 'FirebaseCore', :modular_headers => true
   # Flags change depending on the env values.
@@ -79,7 +79,7 @@ target 'Assemble' do
   # pod 'Permission-Camera', :path => "#{permissions_path}/Camera"
   pod 'GoogleUtilities', :modular_headers => true;
 
-  target 'AssembleTests' do
+  target 'BnodyPOSTests' do
     inherit! :complete
     # Pods for testing
   end

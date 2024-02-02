@@ -7,7 +7,7 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-  self.moduleName = @"Assemble";
+  self.moduleName = @"BnodyPOS";
   if ([FIRApp defaultApp] == nil) {
     [FIRApp configure];
   }

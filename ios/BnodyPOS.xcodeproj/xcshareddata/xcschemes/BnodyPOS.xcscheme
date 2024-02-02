@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "Assemble.app"
-               BlueprintName = "Assemble"
-               ReferencedContainer = "container:Assemble.xcodeproj">
+               BuildableName = "BnodyPOS.app"
+               BlueprintName = "BnodyPOS"
+               ReferencedContainer = "container:BnodyPOS.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "AssembleTests.xctest"
-               BlueprintName = "AssembleTests"
-               ReferencedContainer = "container:Assemble.xcodeproj">
+               BuildableName = "BnodyPOSTests.xctest"
+               BlueprintName = "BnodyPOSTests"
+               ReferencedContainer = "container:BnodyPOS.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "Assemble.app"
-            BlueprintName = "Assemble"
-            ReferencedContainer = "container:Assemble.xcodeproj">
+            BuildableName = "BnodyPOS.app"
+            BlueprintName = "BnodyPOS"
+            ReferencedContainer = "container:BnodyPOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "Assemble.app"
-            BlueprintName = "Assemble"
-            ReferencedContainer = "container:Assemble.xcodeproj">
+            BuildableName = "BnodyPOS.app"
+            BlueprintName = "BnodyPOS"
+            ReferencedContainer = "container:BnodyPOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
