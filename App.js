@@ -1,32 +1,52 @@
 import "react-native-gesture-handler";
-// import { enableLatestRenderer } from "react-native-maps";
-// enableLatestRenderer();
-import { View, Text, LogBox, TouchableOpacity, Image } from "react-native";
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { StyleSheet, LogBox } from "react-native";
+import * as RNLocalize from "react-native-localize";
+import { NavigationContainer } from "@react-navigation/native";
+
+import AppRoutes from "./app/routes/AppRoutes";
 import { Provider } from "react-redux";
+import persist from "./app/redux/store/store";
+import { MenuProvider } from "react-native-popup-menu";
+import "./shim.js";
 
-import store from "./src/redux/store";
-import RootNavigator from "./src/routes";
-import firebase from "@react-native-firebase/app";
+const persistStore = persist();
+var localeInfo = RNLocalize.getLocales();
+var language = localeInfo[0].languageCode;
 
-LogBox.ignoreLogs(["VirtualizedLists", "Warning:..."]);
-LogBox.ignoreAllLogs();
-const firebaseConfig = {
-  apiKey: "AIzaSyA4Cysdi0IQEd9HgYtByH_pcsz4Ywfs6JU",
-  authDomain: "",
-  projectId: "assemble-408917",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "1:153444834280:android:66c86f0de261842fa3625d",
-  // databaseURL: '',
-};
-firebase.initializeApp(firebaseConfig);
+LogBox.ignoreLogs(["Warning: ..."]);
+
+// setI18nConfig('en');
 const App = () => {
   return (
-    <Provider store={store}>
-      <RootNavigator />
-    </Provider>
+    <MenuProvider skipInstanceCheck={true} style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Provider store={persistStore.store}>
+          <AppRoutes />
+        </Provider>
+      </NavigationContainer>
+    </MenuProvider>
   );
 };
+
+const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: "600",
+  },
+  sectionDescription: {
+    marginTop: 8,
+    fontSize: 18,
+    fontWeight: "400",
+  },
+  highlight: {
+    fontWeight: "700",
+  },
+});
 
 export default App;

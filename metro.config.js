@@ -1,8 +1,4 @@
-const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
-
-const {
- createSentryMetroSerializer
-} = require("@sentry/react-native/dist/js/tools/sentryMetroSerializer");
+const { getDefaultConfig, mergeConfig } = require("@react-native/metro-config");
 
 /**
  * Metro configuration
@@ -10,10 +6,5 @@ const {
  *
  * @type {import('metro-config').MetroConfig}
  */
-const config = {
- serializer: {
-  customSerializer: createSentryMetroSerializer()
- }
-};
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = mergeConfig(getDefaultConfig(__dirname));

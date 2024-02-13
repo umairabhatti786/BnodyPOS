@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="33" height="33" viewBox="0 0 30 28">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #1f7bed;
+        stroke-width: 1px;
+      }
+
+      .cls-2 {
+        fill: #1f7bed;
+      }
+    </style>
+  </defs>
+  <rect id="Rounded_Rectangle_2_copy_20" data-name="Rounded Rectangle 2 copy 20" class="cls-1" x="0.5" y="0.5" width="29" height="27" rx="13.5" ry="13.5"/>
+  <rect id="Rectangle_765_copy_2" data-name="Rectangle 765 copy 2" class="cls-2" x="14.5" y="8.5" width="1" height="13"/>
+  <rect id="Rectangle_765_copy_2-2" data-name="Rectangle 765 copy 2" class="cls-2" x="8.5" y="14.5" width="13" height="1"/>
+</svg>
