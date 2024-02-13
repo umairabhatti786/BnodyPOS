@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, {useState, useRef} from 'react';
 import {
   FlatList,
   Text,
@@ -8,29 +8,30 @@ import {
   ScrollView,
   Image,
   I18nManager,
-} from "react-native";
-import Carousel, { Pagination } from "react-native-snap-carousel";
-import i18n from "i18n-js";
-import * as Progress from "react-native-progress";
+} from 'react-native';
+import Carousel, {Pagination} from 'react-native-snap-carousel';
+import i18n from 'i18n-js';
+import * as Progress from 'react-native-progress';
 
-import Drawer from "../../assets/svg/drawer";
-import HelpIcon from "../../assets/svg/helpIcon";
-import LogoutIcon from "../../assets/svg/logoutIcon";
-import NewIcon from "../../assets/svg/newIcon";
-import RebootTerminalIcon from "../../assets/svg/rebootTerminalIcon";
-import Header from "../../components/Header";
-import sizeHelper from "../../helpers/sizeHelper";
-import styles from "./style";
-import AppColor from "../../constant/AppColor";
-import DrawerPopUp from "../../components/DrawerPopUP";
-import TerminalSetup from "../../components/TerminalSetup";
-import PairPrinterFamily from "../../components/PairPrinterFamily";
-import Loading from "../../components/Loading";
-import AlertModel from "../../components/AlertModel";
-import SaleAgentsList from "../../components/SaleAgentsList";
-import DrawerPrint from "../../components/DrawerPrint";
-import GlobalTaxList from "../../components/GlobalTaxList";
-import BillingType from "../../components/BillingType";
+import Drawer from '../../assets/svg/drawer';
+import HelpIcon from '../../assets/svg/helpIcon';
+import LogoutIcon from '../../assets/svg/logoutIcon';
+import NewIcon from '../../assets/svg/newIcon';
+import RebootTerminalIcon from '../../assets/svg/rebootTerminalIcon';
+import Receipt from '../../assets/svg/receipt';
+import Header from '../../components/Header';
+import sizeHelper from '../../helpers/sizeHelper';
+import styles from './style';
+import AppColor from '../../constant/AppColor';
+import DrawerPopUp from '../../components/DrawerPopUP';
+import TerminalSetup from '../../components/TerminalSetup';
+import PairPrinterFamily from '../../components/PairPrinterFamily';
+import Loading from '../../components/Loading';
+import AlertModel from '../../components/AlertModel';
+import SaleAgentsList from '../../components/SaleAgentsList';
+import DrawerPrint from '../../components/DrawerPrint';
+import GlobalTaxList from '../../components/GlobalTaxList';
+import BillingType from '../../components/BillingType';
 
 const Design = ({
   onPressItem,
@@ -73,27 +74,27 @@ const Design = ({
   // console.log('drawerSetupArr', drawerSetupArr);
   const carouselArray = [
     {
-      id: "totalSales",
-      title: I18nManager.isRTL ? "إجمالي المبيعات" : "Total Sales",
+      id: 'totalSales',
+      title: I18nManager.isRTL ? 'إجمالي المبيعات' : 'Total Sales',
       icon: <NewIcon />,
-      color: "#7e9a49",
+      color: '#7e9a49',
       value:
         Number(drawerSetupArr.CashSales) +
         Number(drawerSetupArr.creditSales) +
         Number(drawerSetupArr.cardSale),
     },
     {
-      id: "cashInDrawer",
-      title: I18nManager.isRTL ? "نقد في الدرج" : "Cash in Drawer",
+      id: 'cashInDrawer',
+      title: I18nManager.isRTL ? 'نقد في الدرج' : 'Cash in Drawer',
       icon: <Drawer />,
-      color: "#ba569c",
+      color: '#ba569c',
       value: Number(drawerSetupArr.estimatedAmountinDrawer),
     },
     {
-      id: "totalReturns",
-      title: I18nManager.isRTL ? "العوائد الإجمالية" : "Total Returns",
+      id: 'totalReturns',
+      title: I18nManager.isRTL ? 'العوائد الإجمالية' : 'Total Returns',
       icon: <RebootTerminalIcon />,
-      color: "#d99359",
+      color: '#d99359',
       value:
         Number(drawerSetupArr.creditRefunds) +
         Number(drawerSetupArr.cardReturn) +
@@ -105,29 +106,29 @@ const Design = ({
   });
   const BottomArray = [
     {
-      id: "new",
+      id: 'new',
       title: StringsList?._4,
       icon: <NewIcon />,
       color: AppColor.green1,
       disable: false,
     },
     {
-      id: "drawer",
+      id: 'drawer',
       title: StringsList?._45,
       icon: <Drawer />,
       color: AppColor.pink,
       disable: false,
     },
     {
-      id: "rebootTerminal",
+      id: 'rebootTerminal',
       title: StringsList?._307,
       icon: <RebootTerminalIcon />,
       color: AppColor.green1,
       disable: false,
     },
     {
-      id: "saleAgents",
-      title: I18nManager.isRTL ? "وكلاء البيع" : "Sale Agents",
+      id: 'saleAgents',
+      title: I18nManager.isRTL ? 'وكلاء البيع' : 'Sale Agents',
       icon: (
         <HelpIcon
           color={
@@ -144,7 +145,7 @@ const Design = ({
           : AppColor.disableColor,
     },
     {
-      id: "postBills",
+      id: 'postBills',
       title: StringsList?._308,
       icon: (
         <Image
@@ -155,14 +156,14 @@ const Design = ({
               ? AppColor.orange2
               : AppColor.disableColor,
           }}
-          source={require("../../assets/images/receipt.png")}
+          source={require('../../assets/images/receipt.png')}
         />
       ),
       disable: !isBillNeedPost,
       color: isBillNeedPost ? AppColor.orange2 : AppColor.disableColor,
     },
     {
-      id: "logout",
+      id: 'logout',
       title: StringsList?._326,
       icon: <LogoutIcon />,
       color: AppColor.yellow1,
@@ -182,7 +183,7 @@ const Design = ({
     );
   };
 
-  const renderItems = ({ item, index }) => {
+  const renderItems = ({item, index}) => {
     //console.log('isBillNeedPost..', isBillNeedPost);
     return (
       <View
@@ -190,10 +191,9 @@ const Design = ({
           styles.renderItemContainer,
           {
             margin: sizeHelper.calWp(20),
-            opacity: item.id === "postBills" && !isBillNeedPost ? 0.4 : 1,
+            opacity: item.id === 'postBills' && !isBillNeedPost ? 0.4 : 1,
           },
-        ]}
-      >
+        ]}>
         <View
           style={[
             styles.divider,
@@ -210,21 +210,19 @@ const Design = ({
           disabled={item.disable}
           style={[
             styles.renderItemContainer,
-            { justifyContent: "space-between" },
+            {justifyContent: 'space-between'},
           ]}
           onPress={() => {
             onPressItem(item.id);
-          }}
-        >
+          }}>
           {item.icon}
           <Text
             style={[
               styles.itemTittle,
-              { color: item.disable ? AppColor.gray1 : AppColor.white },
+              {color: item.disable ? AppColor.gray1 : AppColor.white},
             ]}
             adjustsFontSizeToFit={true}
-            numberOfLines={1}
-          >
+            numberOfLines={1}>
             {item.title}
           </Text>
           <View
@@ -240,23 +238,21 @@ const Design = ({
     );
   };
 
-  const carouselRenderItems = ({ item, index }) => {
+  const carouselRenderItems = ({item, index}) => {
     return (
-      <View style={{ alignItems: "center" }}>
+      <View style={{alignItems: 'center'}}>
         <View
           style={
             activeSlide.activeSlide === index
               ? styles.carouselItemsContainer
               : styles.carouselItemsContainerV2
-          }
-        >
+          }>
           {activeSlide.activeSlide === index && (
             <View
               style={{
-                position: "absolute",
-                alignItems: "center",
-              }}
-            >
+                position: 'absolute',
+                alignItems: 'center',
+              }}>
               <Progress.CircleSnail
                 duration={3000}
                 spinDuration={5000}
@@ -277,8 +273,7 @@ const Design = ({
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}
-              style={styles.carouselItemCount}
-            >
+              style={styles.carouselItemCount}>
               {item.value.toFixed(TerminalConfiguration.DecimalsInAmount)}
             </Text>
           </View>
@@ -303,7 +298,7 @@ const Design = ({
           : TerminalConfiguration.SalesAgentName}
       </Text>
       <Text style={styles.pointOfSale}>
-        {I18nManager.isRTL ? "نقطة البيع" : "Point Of Sale"}
+        {I18nManager.isRTL ? 'نقطة البيع' : 'Point Of Sale'}
       </Text>
       <View style={styles.topContainer}>
         <View>
@@ -313,7 +308,7 @@ const Design = ({
             renderItem={carouselRenderItems}
             sliderWidth={sizeHelper.screenWidth}
             itemWidth={sizeHelper.calWp(250)}
-            onSnapToItem={(index) =>
+            onSnapToItem={index =>
               setActiveSlide({
                 activeSlide: I18nManager.isRTL
                   ? carouselArray.length - (1 + index)
@@ -331,13 +326,13 @@ const Design = ({
             backgroundColor: AppColor.blue,
           }}
           columnWrapperStyle={{
-            justifyContent: "space-around",
+            justifyContent: 'space-around',
           }}
-          contentContainerStyle={{ paddingVertical: sizeHelper.calHp(100) }}
+          contentContainerStyle={{paddingVertical: sizeHelper.calHp(100)}}
           data={BottomArray}
           renderItem={renderItems}
-          keyExtractor={(item) => item.id}
-          key={(item) => item.id}
+          keyExtractor={item => item.id}
+          key={item => item.id}
         />
       </View>
 
@@ -399,7 +394,7 @@ const Design = ({
             data={billingTypeData}
             StringsList={StringsList}
             isLoading={isLoading}
-            type={"dashboard"}
+            type={'dashboard'}
           />
         </View>
       )}
@@ -422,12 +417,12 @@ const Design = ({
         setisPromptAlert={() => {}}
         isPromptAlert={false}
         message={message}
-        value={""}
+        value={''}
         isConfirmation={isRequriedLogin}
         onChangeText={() => {}}
         reacallFunc={reacallFunc}
-        placeholderText={""}
-        type={"invoiceNumber"}
+        placeholderText={''}
+        type={'invoiceNumber'}
       />
     </View>
   );

@@ -1,4 +1,6 @@
 import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+// Screens
 import LoginScreen from '../screens/login';
 import SplashScreen from '../screens/splash';
 import DashBoardScreen from '../screens/dashboard';
@@ -10,8 +12,7 @@ import PrinterTesting from '../screens/PrinterTesting';
 import BarCodeGenerator from "../components/BarCodeGenerator"
 import PrivacyPolicy from '../components/PrivacyPolicy';
 
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 
 const MainStack = () => {
     return (

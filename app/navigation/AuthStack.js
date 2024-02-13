@@ -1,7 +1,10 @@
 import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+// Screens
 import LoginScreen from '../screens/login';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-const Stack = createNativeStackNavigator();
+
+
+const Stack = createStackNavigator();
 
 const AuthStack = () => {
   return (
