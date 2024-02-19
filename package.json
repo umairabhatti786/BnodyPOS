@@ -1,11 +1,11 @@
 {
-  "name": "bnodypos",
+  "name": "bnodyrestaurantpos",
   "version": "0.0.1",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
     "set-permissions": "npx react-native setup-ios-permissions && npx pod-install",
-    "apk": "cd android &&./gradlew clean && ./gradlew bnodyposRelease && cd ..",
+    "apk": "cd android &&./gradlew clean && ./gradlew bnodyrestaurantposRelease && cd ..",
     "bundle": "cd android && ./gradlew clean && ./gradlew bundleRelease && cd ..",
     "ios": "react-native run-ios",
     "lint": "eslint .",

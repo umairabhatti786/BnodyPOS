@@ -37,7 +37,7 @@ if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
   use_frameworks! :linkage => linkage.to_sym
 end
-target 'BnodyPOS' do
+target 'BnodyRestaurantPOS' do
   config = use_native_modules!
   flags = get_default_flags()
   use_react_native!(
@@ -47,7 +47,7 @@ target 'BnodyPOS' do
     :flipper_configuration => flipper_config,
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
-  target 'BnodyPOSTests' do
+  target 'BnodyRestaurantPOSTests' do
     inherit! :complete
   end
   post_install do |installer|

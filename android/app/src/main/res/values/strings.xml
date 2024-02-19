@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BnodyPOS</string>
+    <string name="app_name">BnodyRestaurantPOS</string>
     <string name="UPC_A">UPC-A</string>
     <string name="UPC_E">UPC-E</string>
     <string name="EAN13">EAN13</string>
