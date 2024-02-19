@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, { useState, useRef } from "react";
 import {
   FlatList,
   Text,
@@ -8,97 +8,56 @@ import {
   ScrollView,
   Image,
   I18nManager,
-} from 'react-native';
-import Carousel, {Pagination} from 'react-native-snap-carousel';
-import i18n from 'i18n-js';
-import * as Progress from 'react-native-progress';
+} from "react-native";
+import Carousel, { Pagination } from "react-native-snap-carousel";
+import * as Progress from "react-native-progress";
+import Drawer from "../../assets/svg/drawer.svg";
+import HelpIcon from "../../assets/svg/helpIcon.svg";
+import LogoutIcon from "../../assets/svg/logoutIcon.svg";
+import NewIcon from "../../assets/svg/newIcon.svg";
+import RebootTerminalIcon from "../../assets/svg/rebootTerminalIcon.svg";
+import Header from "../../components/Header";
+import sizeHelper from "../../helpers/sizeHelper";
+import styles from "./style";
+import AppColor from "../../constant/AppColor";
+import DrawerPopUp from "../../components/DrawerPopUP";
+import TerminalSetup from "../../components/TerminalSetup";
+import PairPrinterFamily from "../../components/PairPrinterFamily";
+import Loading from "../../components/Loading";
+import AlertModel from "../../components/AlertModel";
+import SaleAgentsList from "../../components/SaleAgentsList";
+import DrawerPrint from "../../components/DrawerPrint";
+import BillingType from "../../components/BillingType";
 
-import Drawer from '../../assets/svg/drawer';
-import HelpIcon from '../../assets/svg/helpIcon';
-import LogoutIcon from '../../assets/svg/logoutIcon';
-import NewIcon from '../../assets/svg/newIcon';
-import RebootTerminalIcon from '../../assets/svg/rebootTerminalIcon';
-import Receipt from '../../assets/svg/receipt';
-import Header from '../../components/Header';
-import sizeHelper from '../../helpers/sizeHelper';
-import styles from './style';
-import AppColor from '../../constant/AppColor';
-import DrawerPopUp from '../../components/DrawerPopUP';
-import TerminalSetup from '../../components/TerminalSetup';
-import PairPrinterFamily from '../../components/PairPrinterFamily';
-import Loading from '../../components/Loading';
-import AlertModel from '../../components/AlertModel';
-import SaleAgentsList from '../../components/SaleAgentsList';
-import DrawerPrint from '../../components/DrawerPrint';
-import GlobalTaxList from '../../components/GlobalTaxList';
-import BillingType from '../../components/BillingType';
-
-const Design = ({
-  onPressItem,
-  isPopup,
-  viewref,
-  StringsList,
-  isTerminalSetup,
-  isPairPrinterFamily,
-  isLoading,
-  setTerminalSetup,
-  setPairPrinterFamily,
-  onClickSetting,
-  displayAlert,
-  setDisplayAlert,
-  message,
-  isBillNeedPost,
-  drawerSetupArr,
-  TerminalConfiguration,
-  isRequriedLogin,
-  reacallFunc,
-  isSaleAgents,
-  salesAgentsList,
-  setIsSaleAgents,
-  selectedSaleAgentsFun,
-  selectedAgent,
-  userConfiguration,
-  onClickPowerOff,
-  isLogout,
-  isBillingType,
-  setisBillingType,
-  billingTypeData,
-  selectBillingType,
-  isSaleBilType,
-  setSaleBilType,
-  saleBilData,
-  selectSaleBilType,
-  setIsSaleBilType,
-  saleBilType,
-}) => {
+const Design = (props) => {
   // console.log('drawerSetupArr', drawerSetupArr);
   const carouselArray = [
     {
-      id: 'totalSales',
-      title: I18nManager.isRTL ? 'إجمالي المبيعات' : 'Total Sales',
+      id: "totalSales",
+      title: I18nManager.isRTL ? "إجمالي المبيعات" : "Total Sales",
       icon: <NewIcon />,
-      color: '#7e9a49',
+      color: "#7e9a49",
       value:
-        Number(drawerSetupArr.CashSales) +
-        Number(drawerSetupArr.creditSales) +
-        Number(drawerSetupArr.cardSale),
+        Number(props.drawerSetupArr.CashSales) +
+        Number(props.drawerSetupArr.creditSales) +
+        Number(props.drawerSetupArr.cardSale),
     },
     {
-      id: 'cashInDrawer',
-      title: I18nManager.isRTL ? 'نقد في الدرج' : 'Cash in Drawer',
+      id: "cashInDrawer",
+      title: I18nManager.isRTL ? "نقد في الدرج" : "Cash in Drawer",
       icon: <Drawer />,
-      color: '#ba569c',
-      value: Number(drawerSetupArr.estimatedAmountinDrawer),
+      color: "#ba569c",
+      value: Number(props.drawerSetupArr.estimatedAmountinDrawer),
     },
     {
-      id: 'totalReturns',
-      title: I18nManager.isRTL ? 'العوائد الإجمالية' : 'Total Returns',
+      id: "totalReturns",
+      title: I18nManager.isRTL ? "العوائد الإجمالية" : "Total Returns",
       icon: <RebootTerminalIcon />,
-      color: '#d99359',
+      color: "#d99359",
       value:
-        Number(drawerSetupArr.creditRefunds) +
-        Number(drawerSetupArr.cardReturn) +
-        Number(drawerSetupArr.CashRefund),
+        Number(props.drawerSetupArr.creditRefunds) +
+        Number(props.drawerSetupArr.cardReturn) +
+        Number(props.drawerSetupArr.CashRefund),
     },
   ];
   const [activeSlide, setActiveSlide] = useState({
@@ -106,65 +65,65 @@ const Design = ({
   });
   const BottomArray = [
     {
-      id: 'new',
-      title: StringsList?._4,
+      id: "new",
+      title: props.StringsList?._4,
       icon: <NewIcon />,
       color: AppColor.green1,
       disable: false,
     },
     {
-      id: 'drawer',
-      title: StringsList?._45,
+      id: "drawer",
+      title: props.StringsList?._45,
       icon: <Drawer />,
       color: AppColor.pink,
       disable: false,
     },
     {
-      id: 'rebootTerminal',
-      title: StringsList?._307,
+      id: "rebootTerminal",
+      title: props.StringsList?._307,
       icon: <RebootTerminalIcon />,
       color: AppColor.green1,
       disable: false,
     },
     {
-      id: 'saleAgents',
-      title: I18nManager.isRTL ? 'وكلاء البيع' : 'Sale Agents',
+      id: "saleAgents",
+      title: I18nManager.isRTL ? "وكلاء البيع" : "Sale Agents",
       icon: (
         <HelpIcon
           color={
-            userConfiguration.AssignSalesAgentAgainstServices === 1
+            props.userConfiguration.AssignSalesAgentAgainstServices === 1
               ? AppColor.orange2
               : AppColor.disableColor
           }
         />
       ),
-      disable: userConfiguration.AssignSalesAgentAgainstServices === 0,
+      disable: props.userConfiguration.AssignSalesAgentAgainstServices === 0,
       color:
-        userConfiguration.AssignSalesAgentAgainstServices === 1
+        props.userConfiguration.AssignSalesAgentAgainstServices === 1
           ? AppColor.orange2
           : AppColor.disableColor,
     },
     {
-      id: 'postBills',
-      title: StringsList?._308,
+      id: "postBills",
+      title: props.StringsList?._308,
       icon: (
         <Image
           style={{
             height: 45,
             width: 30,
-            tintColor: isBillNeedPost
+            tintColor: props.isBillNeedPost
               ? AppColor.orange2
               : AppColor.disableColor,
           }}
-          source={require('../../assets/images/receipt.png')}
+          source={require("../../assets/images/receipt.png")}
         />
       ),
-      disable: !isBillNeedPost,
-      color: isBillNeedPost ? AppColor.orange2 : AppColor.disableColor,
+      disable: !props.isBillNeedPost,
+      color: props.isBillNeedPost ? AppColor.orange2 : AppColor.disableColor,
     },
     {
-      id: 'logout',
-      title: StringsList?._326,
+      id: "logout",
+      title: props.StringsList?._326,
       icon: <LogoutIcon />,
       color: AppColor.yellow1,
       disable: false,
@@ -183,7 +142,7 @@ const Design = ({
     );
   };
 
-  const renderItems = ({item, index}) => {
+  const renderItems = ({ item, index }) => {
     //console.log('isBillNeedPost..', isBillNeedPost);
     return (
       <View
@@ -191,9 +150,10 @@ const Design = ({
           styles.renderItemContainer,
           {
             margin: sizeHelper.calWp(20),
-            opacity: item.id === 'postBills' && !isBillNeedPost ? 0.4 : 1,
+            opacity: item.id === "postBills" && !props.isBillNeedPost ? 0.4 : 1,
           },
-        ]}>
+        ]}
+      >
         <View
           style={[
             styles.divider,
@@ -210,19 +170,21 @@ const Design = ({
           disabled={item.disable}
           style={[
             styles.renderItemContainer,
-            {justifyContent: 'space-between'},
+            { justifyContent: "space-between" },
           ]}
           onPress={() => {
-            onPressItem(item.id);
-          }}>
+            props.onPressItem(item.id);
+          }}
+        >
           {item.icon}
           <Text
             style={[
               styles.itemTittle,
-              {color: item.disable ? AppColor.gray1 : AppColor.white},
+              { color: item.disable ? AppColor.gray1 : AppColor.white },
             ]}
             adjustsFontSizeToFit={true}
-            numberOfLines={1}>
+            numberOfLines={1}
+          >
             {item.title}
           </Text>
           <View
@@ -238,21 +200,23 @@ const Design = ({
     );
   };
 
-  const carouselRenderItems = ({item, index}) => {
+  const carouselRenderItems = ({ item, index }) => {
     return (
-      <View style={{alignItems: 'center'}}>
+      <View style={{ alignItems: "center" }}>
         <View
           style={
             activeSlide.activeSlide === index
               ? styles.carouselItemsContainer
               : styles.carouselItemsContainerV2
-          }>
+          }
+        >
           {activeSlide.activeSlide === index && (
             <View
               style={{
-                position: 'absolute',
-                alignItems: 'center',
-              }}>
+                position: "absolute",
+                alignItems: "center",
+              }}
+            >
               <Progress.CircleSnail
                 duration={3000}
                 spinDuration={5000}
@@ -273,8 +237,9 @@ const Design = ({
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}
-              style={styles.carouselItemCount}>
-              {item.value.toFixed(TerminalConfiguration.DecimalsInAmount)}
+              style={styles.carouselItemCount}
+            >
+              {item.value.toFixed(props.TerminalConfiguration.DecimalsInAmount)}
             </Text>
           </View>
         </View>
@@ -286,19 +251,14 @@ const Design = ({
   return (
     <View style={styles.mainContainer}>
       <StatusBar hidden />
-      <Header
-        onClickPowerOff={onClickPowerOff}
-        StringsList={StringsList}
-        isDashboard
-        onClickSetting={onClickSetting}
-      />
+      <Header props={props} />
       <Text style={styles.aromatic}>
-        {selectedAgent?.SalesAgentName
-          ? selectedAgent?.SalesAgentName
-          : TerminalConfiguration.SalesAgentName}
+        {props.selectedAgent?.SalesAgentName
+          ? props.selectedAgent?.SalesAgentName
+          : props.TerminalConfiguration.SalesAgentName}
       </Text>
       <Text style={styles.pointOfSale}>
-        {I18nManager.isRTL ? 'نقطة البيع' : 'Point Of Sale'}
+        {I18nManager.isRTL ? "نقطة البيع" : "Point Of Sale"}
       </Text>
       <View style={styles.topContainer}>
         <View>
@@ -308,7 +268,7 @@ const Design = ({
             renderItem={carouselRenderItems}
             sliderWidth={sizeHelper.screenWidth}
             itemWidth={sizeHelper.calWp(250)}
-            onSnapToItem={index =>
+            onSnapToItem={(index) =>
               setActiveSlide({
                 activeSlide: I18nManager.isRTL
                   ? carouselArray.length - (1 + index)
@@ -326,103 +286,103 @@ const Design = ({
             backgroundColor: AppColor.blue,
           }}
           columnWrapperStyle={{
-            justifyContent: 'space-around',
+            justifyContent: "space-around",
           }}
-          contentContainerStyle={{paddingVertical: sizeHelper.calHp(100)}}
+          contentContainerStyle={{ paddingVertical: sizeHelper.calHp(100) }}
           data={BottomArray}
           renderItem={renderItems}
-          keyExtractor={item => item.id}
-          key={item => item.id}
+          keyExtractor={(item) => item.id}
+          key={(item) => item.id}
         />
       </View>
 
-      {isPopup && (
+      {props.isPopup && (
         <View style={styles.popupContainer}>
           <DrawerPopUp
-            StringsList={StringsList}
-            userConfiguration={userConfiguration}
-            TerminalConfiguration={TerminalConfiguration}
-            cancel={onPressItem}
-            viewref={viewref}
+            StringsList={props.StringsList}
+            userConfiguration={props.userConfiguration}
+            TerminalConfiguration={props.TerminalConfiguration}
+            cancel={props.onPressItem}
+            viewref={props.viewref}
             // onSave={() => props.setIsDrawar(!props.isDrawar)}
           />
         </View>
       )}
-      {isTerminalSetup && (
+      {props.isTerminalSetup && (
         <View style={styles.popupContainer}>
-          <TerminalSetup onPressCancel={() => setTerminalSetup(false)} />
+          <TerminalSetup onPressCancel={() => props.setTerminalSetup(false)} />
         </View>
       )}
-      {isPairPrinterFamily && (
+      {props.isPairPrinterFamily && (
         <View style={styles.popupContainer}>
           <PairPrinterFamily
-            onPressCancel={() => setPairPrinterFamily(false)}
+            onPressCancel={() => props.setPairPrinterFamily(false)}
           />
         </View>
       )}
-      {isSaleAgents && (
+      {props.isSaleAgents && (
         <View style={[styles.popupContainer]}>
           <SaleAgentsList
-            onPressCancel={() => setIsSaleAgents(false)}
-            reacallFunc={selectedSaleAgentsFun}
-            data={salesAgentsList}
-            StringsList={StringsList}
-            isLoading={isLoading}
+            onPressCancel={() => props.setIsSaleAgents(false)}
+            reacallFunc={props.selectedSaleAgentsFun}
+            data={props.salesAgentsList}
+            StringsList={props.StringsList}
+            isLoading={props.isLoading}
             isGlobal
           />
         </View>
       )}
-      {isLogout && (
+      {props.isLogout && (
         <View style={styles.popupContainer}>
           <DrawerPrint
-            StringsList={StringsList}
-            TerminalConfiguration={TerminalConfiguration}
+            StringsList={props.StringsList}
+            TerminalConfiguration={props.TerminalConfiguration}
           />
         </View>
       )}
-      {isLoading && (
+      {props.isLoading && (
         <View style={styles.popupContainer}>
           <Loading />
         </View>
       )}
-      {isBillingType && (
+      {props.isBillingType && (
         <View style={[styles.popupContainer]}>
           <BillingType
-            onPressCancel={() => setisBillingType(false)}
-            reacallFunc={reacallFunc}
-            selectBillingType={selectBillingType}
-            data={billingTypeData}
-            StringsList={StringsList}
-            isLoading={isLoading}
-            type={'dashboard'}
+            onPressCancel={() => props.setisBillingType(false)}
+            reacallFunc={props.reacallFunc}
+            selectBillingType={props.selectBillingType}
+            data={props.billingTypeData}
+            StringsList={props.StringsList}
+            isLoading={props.isLoading}
+            type={"dashboard"}
           />
         </View>
       )}
-      {isSaleBilType && (
+      {props.isSaleBilType && (
         <View style={[styles.popupContainer]}>
           <BillingType
-            onPressCancel={() => setIsSaleBilType(false)}
-            reacallFunc={reacallFunc}
-            data={saleBilData}
-            StringsList={StringsList}
-            isLoading={isLoading}
-            selectBillingType={selectSaleBilType}
+            onPressCancel={() => props.setIsSaleBilType(false)}
+            reacallFunc={props.reacallFunc}
+            data={props.saleBilData}
+            tringsList={props.StringsList}
+            isLoading={props.isLoading}
+            selectBillingType={props.selectSaleBilType}
           />
         </View>
       )}
       {/* <TerminalSetup displayAlert={false} /> */}
       <AlertModel
-        displayAlert={displayAlert}
-        onAlertShow={setDisplayAlert}
+        displayAlert={props.displayAlert}
+        onAlertShow={props.setDisplayAlert}
         setisPromptAlert={() => {}}
         isPromptAlert={false}
-        message={message}
-        value={''}
-        isConfirmation={isRequriedLogin}
+        message={props.message}
+        value={""}
+        isConfirmation={props.isRequriedLogin}
         onChangeText={() => {}}
-        reacallFunc={reacallFunc}
-        placeholderText={''}
-        type={'invoiceNumber'}
+        reacallFunc={props.reacallFunc}
+        placeholderText={""}
+        type={"invoiceNumber"}
       />
     </View>
   );

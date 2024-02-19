@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -10,23 +10,21 @@ import {
   Modal,
   Animated,
   ScrollView,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import DropDownPicker from 'react-native-dropdown-picker';
-import Menu, {MenuOptions, MenuOption, MenuTrigger} from 'react-native-menu';
-import RemaningQuantityBox from './RemaningQuantityBox';
-import sizeHelper from '../helpers/sizeHelper';
-import AppColor from '../constant/AppColor';
-import IncrementButton from '../assets/svg/incrementButtonMobile';
-import DecrementButton from '../assets/svg/decrementButtonMobile';
-import DecrementButtonDisable from '../assets/svg/decrementButtonDisableMobile';
-import AddIcon from '../assets/svg/AddIconMobile';
-import CloseAddonIcon from '../assets/svg/closeAddonIconMobile';
-import NetInfo from '@react-native-community/netinfo';
-import CustomModal from './CustomModal';
-import CustomButton from './CustomButton';
-import GroupProductsModal from './GroupProductsModal';
-import DescriptionBox from './DescriptionBox';
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import DropDownPicker from "react-native-dropdown-picker";
+import Menu, {
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from "react-native-popup-menu";
+import RemaningQuantityBox from "./RemaningQuantityBox";
+import sizeHelper from "../helpers/sizeHelper";
+import AppColor from "../constant/AppColor";
+import { PlusIcon, MinusIcon, CloseIcon, OpenIcon } from "../assets/svg/svg";
+import NetInfo from "@react-native-community/netinfo";
+import GroupProductsModal from "./GroupProductsModal";
+import DescriptionBox from "./DescriptionBox";
 const SelectedProductListItemMobile = ({
   item,
   onPressIncrementDecrement,
@@ -77,50 +75,50 @@ const SelectedProductListItemMobile = ({
   };
   setInterval(checkInternetConnectivity, 500);
 
-  const onClickSearchFunction = async type => {
-    if (type.id === 'dp') {
+  const onClickSearchFunction = async (type) => {
+    if (type.id === "dp") {
       item.PriceType = 3;
-    } else if (type.id === 'ws') {
+    } else if (type.id === "ws") {
       item.PriceType = 2;
-    } else if (type.id === 'rs') {
+    } else if (type.id === "rs") {
       item.PriceType = 1;
     }
     onChangePrice(item, type.value);
   };
   const onClickOtherFunction = async (type, item, index) => {
-    if (type.id === 'ing') {
+    if (type.id === "ing") {
       getProductsIngredients(item);
-    } else if (type.id === 'add') {
+    } else if (type.id === "add") {
       getAddOnProducts(item, index);
-    } else if (type.id === 'pg') {
+    } else if (type.id === "pg") {
       setProductItems(true);
-    } else if (type.id === 'rq') {
+    } else if (type.id === "rq") {
       setQuantityModelOpen(true);
-    } else if (type.id === 'pn') {
-      props.setDescriptionDetail(item?.Description ? item.Description : '');
+    } else if (type.id === "pn") {
+      props.setDescriptionDetail(item?.Description ? item.Description : "");
       props.setSelectedProductsNotes(item);
       props.setDescriptionModal(true);
     }
   };
 
-  const recieveData = data => {
+  const recieveData = (data) => {
     return setQuantityModelOpen(data);
   };
 
   const suitcaseArray = [
     {
-      id: 'dp',
-      title: 'Distributor Price',
+      id: "dp",
+      title: "Distributor Price",
       value: item?.DistributorPrice,
     },
     {
-      id: 'ws',
-      title: 'Wholesale Price',
+      id: "ws",
+      title: "Wholesale Price",
       value: item?.WholeSalePrice,
     },
     {
-      id: 'rs',
-      title: 'Retail Price',
+      id: "rs",
+      title: "Retail Price",
       value: item?.RetailPrice,
     },
   ];
@@ -129,24 +127,24 @@ const SelectedProductListItemMobile = ({
     item.ProductType == 3
       ? [
           {
-            id: 'ing',
-            title: 'Ingredients',
-            icon: 'cutlery',
+            id: "ing",
+            title: "Ingredients",
+            icon: "cutlery",
           },
           {
-            id: 'add',
-            title: 'Add-Ons',
-            icon: 'database',
+            id: "add",
+            title: "Add-Ons",
+            icon: "database",
           },
           {
-            id: 'pg',
-            title: 'Group Detail',
-            icon: 'cube',
+            id: "pg",
+            title: "Group Detail",
+            icon: "cube",
           },
           {
-            id: 'pn',
-            title: 'Product Description',
-            icon: 'sticky-note',
+            id: "pn",
+            title: "Product Description",
+            icon: "sticky-note",
           },
           // isConnected
           //   ? {
@@ -158,36 +156,37 @@ const SelectedProductListItemMobile = ({
         ]
       : [
           {
-            id: 'ing',
-            title: 'Ingredients',
-            icon: 'cutlery',
+            id: "ing",
+            title: "Ingredients",
+            icon: "cutlery",
           },
           {
-            id: 'add',
-            title: 'Add-Ons',
-            icon: 'database',
+            id: "add",
+            title: "Add-Ons",
+            icon: "database",
           },
           {
-            id: 'pn',
-            title: 'Product Description',
-            icon: 'sticky-note',
+            id: "pn",
+            title: "Product Description",
+            icon: "sticky-note",
           },
           isConnected
             ? {
-                id: 'rq',
-                title: 'Remaining Quantity',
-                icon: 'hourglass-half',
+                id: "rq",
+                title: "Remaining Quantity",
+                icon: "hourglass-half",
               }
             : null,
         ];
   const filteredOptionsArray = otherOptionsArray.filter(
-    option => option !== null,
+    (option) => option !== null
   );
   const renderTouchable = () => <TouchableOpacity></TouchableOpacity>;
   const TopNavigation = () => (
     <View
-      pointerEvents={printType === 'returnInvoice' ? 'none' : 'auto'}
-      style={{marginEnd: sizeHelper.calWp(10)}}>
+      pointerEvents={printType === "returnInvoice" ? "none" : "auto"}
+      style={{ marginEnd: sizeHelper.calWp(10) }}
+    >
       <Menu onSelect={(value, id) => onClickSearchFunction(value, id)}>
         <MenuTrigger renderTouchable={renderTouchable}>
           <View
@@ -196,12 +195,13 @@ const SelectedProductListItemMobile = ({
               width: 24,
               height: 24,
               marginHorizontal: 3,
-              justifyContent: 'center',
-              alignItems: 'center',
+              justifyContent: "center",
+              alignItems: "center",
               borderRadius: 50,
-            }}>
+            }}
+          >
             <Icon
-              name={'tag'}
+              name={"tag"}
               size={sizeHelper.calWp(30)}
               color={AppColor.white}
             />
@@ -210,7 +210,7 @@ const SelectedProductListItemMobile = ({
 
         <MenuOptions
           optionsContainerStyle={{
-            width: 'auto',
+            width: "auto",
             marginTop: sizeHelper.calWp(55),
             borderRadius: sizeHelper.calHp(10),
             paddingVertical: sizeHelper.calHp(15),
@@ -220,24 +220,29 @@ const SelectedProductListItemMobile = ({
             marginEnd: I18nManager.isRTL
               ? sizeHelper.calWp(300) - sizeHelper.screenWidth
               : 0,
-          }}>
-          {suitcaseArray.map(item => (
+          }}
+        >
+          {suitcaseArray.map((item) => (
             <MenuOption
-              style={{marginBottom: -10}}
+              style={{ marginBottom: -10 }}
               renderTouchable={renderTouchable}
               key={item.id}
-              value={item}>
+              value={item}
+            >
               <View
                 style={{
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                }}>
+                  alignItems: "center",
+                  flexDirection: "row",
+                  padding: 5,
+                }}
+              >
                 <Text
                   style={{
                     color: AppColor.black,
-                    fontFamily: 'ProximaNova-Semibold',
+                    fontFamily: "ProximaNova-Semibold",
                     fontSize: sizeHelper.calHp(20),
-                  }}>
+                  }}
+                >
                   {item.title}
                 </Text>
               </View>
@@ -250,8 +255,9 @@ const SelectedProductListItemMobile = ({
 
   const OtherOptionsView = () => (
     <View
-      pointerEvents={printType === 'returnInvoice' ? 'none' : 'auto'}
-      style={{marginEnd: sizeHelper.calWp(10)}}>
+      pointerEvents={printType === "returnInvoice" ? "none" : "auto"}
+      style={{ marginEnd: sizeHelper.calWp(10) }}
+    >
       <Menu onSelect={(value, id) => onClickOtherFunction(value, item, index)}>
         <MenuTrigger renderTouchable={renderTouchable}>
           <View
@@ -260,13 +266,14 @@ const SelectedProductListItemMobile = ({
               width: 24,
               height: 24,
               // marginTop: 5,
-              justifyContent: 'center',
-              alignItems: 'center',
+              justifyContent: "center",
+              alignItems: "center",
               borderRadius: 50,
               marginHorizontal: 2,
-            }}>
+            }}
+          >
             <Icon
-              name={'gear'}
+              name={"gear"}
               size={sizeHelper.calWp(30)}
               color={AppColor.white}
             />
@@ -274,7 +281,7 @@ const SelectedProductListItemMobile = ({
         </MenuTrigger>
         <MenuOptions
           optionsContainerStyle={{
-            width: 'auto',
+            width: "auto",
             marginTop: sizeHelper.calWp(55),
             borderRadius: sizeHelper.calHp(10),
             paddingVertical: sizeHelper.calHp(15),
@@ -284,27 +291,32 @@ const SelectedProductListItemMobile = ({
             marginEnd: I18nManager.isRTL
               ? sizeHelper.calWp(300) - sizeHelper.screenWidth
               : 0,
-          }}>
-          {filteredOptionsArray.map(item => (
+          }}
+        >
+          {filteredOptionsArray.map((item) => (
             <MenuOption
-              style={{marginBottom: -10}}
+              style={{ marginBottom: -10 }}
               renderTouchable={renderTouchable}
               key={item.id}
-              value={item}>
+              value={item}
+            >
               <View
                 style={{
-                  alignItems: 'center',
-                  flexDirection: 'row',
+                  alignItems: "center",
+                  flexDirection: "row",
                   margin: 0,
-                }}>
+                  padding: 5,
+                }}
+              >
                 <Icon name={item.icon} size={20} color={AppColor.blue1} />
                 <Text
                   style={{
                     marginLeft: 10,
                     color: AppColor.black,
-                    fontFamily: 'ProximaNova-Semibold',
+                    fontFamily: "ProximaNova-Semibold",
                     fontSize: sizeHelper.calHp(20),
-                  }}>
+                  }}
+                >
                   {item.title}
                 </Text>
               </View>
@@ -324,11 +336,12 @@ const SelectedProductListItemMobile = ({
 
   return (
     <View
-      pointerEvents={item?.FreeProduct === true ? 'none' : 'auto'}
+      pointerEvents={item?.FreeProduct === true ? "none" : "auto"}
       style={[
         styles.container,
-        open ? {height: sizeHelper.calHp(450)} : {height: 'auto'},
-      ]}>
+        open ? { height: sizeHelper.calHp(450) } : { height: "auto" },
+      ]}
+    >
       <View
         style={[
           styles.innerContainer,
@@ -341,7 +354,8 @@ const SelectedProductListItemMobile = ({
               : sizeHelper.calHp(120),
             // backgroundColor: "green"
           },
-        ]}>
+        ]}
+      >
         {/* <View style={{
           height: "100%",
           width: sizeHelper.calWp(45),
@@ -354,14 +368,15 @@ const SelectedProductListItemMobile = ({
           {item.IsParentAddOn &&
             <Text style={[styles.productName, { marginTop: sizeHelper.calHp(0), color: AppColor.white, fontSize: sizeHelper.calHp(24) }]}>{noOfProducts}</Text>}
         </View> */}
-        <View style={{marginStart: sizeHelper.calWp(10)}}>
-          <View style={{marginTop: sizeHelper.calHp(5)}}>
+        <View style={{ marginStart: sizeHelper.calWp(10) }}>
+          <View style={{ marginTop: sizeHelper.calHp(5) }}>
             <View
               style={{
                 width: sizeHelper.calWp(600),
-                alignItems: 'center',
-                flexDirection: 'row',
-              }}>
+                alignItems: "center",
+                flexDirection: "row",
+              }}
+            >
               <Text numberOfLines={1} style={styles.productName1}>
                 {I18nManager.isRTL ? item.ProductName2 : item.ProductName}
               </Text>
@@ -369,34 +384,36 @@ const SelectedProductListItemMobile = ({
               {item?.UOMFragment !== 0 && (
                 <Text style={styles.productBox1}>
                   {I18nManager.isRTL
-                    ? '  -' + item.UOMName2
-                    : '  -' + item.UOMName}
+                    ? "  -" + item.UOMName2
+                    : "  -" + item.UOMName}
                 </Text>
               )}
             </View>
           </View>
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
+              flexDirection: "row",
+              justifyContent: "space-between",
               marginTop: sizeHelper.calHp(5),
-              alignItems: 'center',
-            }}>
+              alignItems: "center",
+            }}
+          >
             <View
               style={{
                 width: sizeHelper.calWp(80),
                 height: sizeHelper.calHp(40),
-                justifyContent: 'center',
-              }}>
+                justifyContent: "center",
+              }}
+            >
               <TextInput
                 editable={
                   item.IsParentAddOn === 1 &&
                   userConfiguration.PriceChangeAllowed === 1
                 }
                 keyboardType="numeric"
-                onChangeText={text => onChangeText('changePrice', text, item)}
-                onEndEditing={text => {
-                  onEndEditing('changePrice', item), setFocusPrice(false);
+                onChangeText={(text) => onChangeText("changePrice", text, item)}
+                onEndEditing={(text) => {
+                  onEndEditing("changePrice", item), setFocusPrice(false);
                 }}
                 adjustsFontSizeToFit
                 numberOfLines={1}
@@ -404,14 +421,14 @@ const SelectedProductListItemMobile = ({
                   styles.inputField,
                   {
                     color: AppColor.black,
-                    fontFamily: 'Proxima Nova Bold',
+                    fontFamily: "Proxima Nova Bold",
                     fontSize: sizeHelper.calHp(24),
                   },
                 ]}
                 onFocus={() => {
                   setFocusPrice(true);
                   setmanuallyCount(
-                    item.PriceWithOutTax ? item.PriceWithOutTax : 0,
+                    item.PriceWithOutTax ? item.PriceWithOutTax : 0
                   );
                 }}
                 value={
@@ -428,47 +445,59 @@ const SelectedProductListItemMobile = ({
             </View>
             <View
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
+                flexDirection: "row",
+                alignItems: "center",
                 marginStart: 10,
-              }}>
+              }}
+            >
               {item.IsParentAddOn ? (
                 <TouchableOpacity
+                  style={{
+                    backgroundColor:
+                      item.Quantity <= 1 ? "#67859436" : "#1f7bed",
+                    height: 30,
+                    width: 30,
+                    borderRadius: 5,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                   disabled={item.Quantity <= 1}
+                  onPressIn={async () => {}}
                   onPress={async () => {
                     onClickIn();
                     setLoading(true);
                     setAddProductLoader(true);
-                    await onPressIncrementDecrement(item, 'decrement', index);
+                    await onPressIncrementDecrement(item, "decrement", index);
                     setTimeout(() => {
                       setAddProductLoader(false), setDisabled(false);
                     }, 0);
-                  }}>
-                  {item.Quantity <= 1 ? (
-                    <DecrementButtonDisable />
-                  ) : (
-                    <DecrementButton />
-                  )}
+                  }}
+                >
+                  <MinusIcon
+                    style={{ height: 28, width: 28 }}
+                    fill={item.Quantity <= 1 ? "#67859436" : "#fff"}
+                  />
                 </TouchableOpacity>
               ) : (
-                <View style={{width: 24, height: 24}} />
+                <View style={{ width: 24, height: 24 }} />
               )}
               <View
                 style={{
                   width: sizeHelper.calWp(100),
                   height: 24,
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                  justifyContent: "center",
+                  alignItems: "center",
                   //  backgroundColor: 'green',
-                }}>
+                }}
+              >
                 <TextInput
                   editable={item.IsParentAddOn === 1}
                   keyboardType="numeric"
-                  onChangeText={text =>
-                    onChangeText('manuallyCount', text, item)
+                  onChangeText={(text) =>
+                    onChangeText("manuallyCount", text, item)
                   }
-                  onEndEditing={text => {
-                    onEndEditing('manuallyCount', item), setFocus(false);
+                  onEndEditing={(text) => {
+                    onEndEditing("manuallyCount", item), setFocus(false);
                   }}
                   style={[
                     styles.inputField,
@@ -476,7 +505,7 @@ const SelectedProductListItemMobile = ({
                       paddingVertical: 0,
                       // backgroundColor: "yellow",
                       height: 24,
-                      textAlign: 'center',
+                      textAlign: "center",
                       width: sizeHelper.calWp(80),
                     },
                   ]}
@@ -490,7 +519,7 @@ const SelectedProductListItemMobile = ({
                       : item.IsParentAddOn
                       ? String(item.Quantity.toFixed(2))
                       : String(
-                          (item.Quantity * item.OrignalQuantity).toFixed(2),
+                          (item.Quantity * item.OrignalQuantity).toFixed(2)
                         )
                   }
                   placeholder="0.00"
@@ -498,22 +527,31 @@ const SelectedProductListItemMobile = ({
               </View>
               {item.IsParentAddOn ? (
                 <TouchableOpacity
+                  style={{
+                    backgroundColor: "#1f7bed",
+                    height: 30,
+                    width: 30,
+                    borderRadius: 5,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                   disabled={isDisabled}
                   onPress={async () => {
                     setDisabled(true);
                     onClickIn();
                     setLoading(true);
                     setAddProductLoader(true);
-                    await onPressIncrementDecrement(item, 'increment', index);
+                    await onPressIncrementDecrement(item, "increment", index);
                     setTimeout(() => {
                       setDisabled(false);
                       setAddProductLoader(false);
                     }, 0);
-                  }}>
-                  <IncrementButton />
+                  }}
+                >
+                  <PlusIcon style={{ height: 28, width: 28 }} />
                 </TouchableOpacity>
               ) : (
-                <View style={{width: 24, height: 24}} />
+                <View style={{ width: 24, height: 24 }} />
               )}
             </View>
 
@@ -524,18 +562,20 @@ const SelectedProductListItemMobile = ({
                 marginLeft: sizeHelper.calWp(20),
                 marginRight: sizeHelper.calHp(10),
                 height: sizeHelper.calHp(40),
-                justifyContent: 'center',
+                justifyContent: "center",
                 borderRadius: sizeHelper.calWp(5),
-              }}>
+              }}
+            >
               <Text
                 adjustsFontSizeToFit
                 numberOfLines={1}
-                style={styles.amount}>
+                style={styles.amount}
+              >
                 {/* {item.SellingPrice * item.Quantity +
                 item.tax * item.Quantity -
                 (item.DiscountAmount ? item.DiscountAmount : 0)} */}
                 {item.GrandAmount.toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 )}
               </Text>
             </View>
@@ -592,13 +632,29 @@ const SelectedProductListItemMobile = ({
             </TouchableOpacity> */}
 
             <TouchableOpacity
+              style={{
+                backgroundColor: AppColor.white,
+                height: 30,
+                width: 30,
+
+                justifyContent: "center",
+                alignItems: "center",
+                borderColor: AppColor.blue2,
+                borderWidth: 1,
+                borderRadius: 100,
+              }}
               onPress={() => {
                 setMore(!isMore);
                 if (isMore) {
                   setOpen(false);
                 }
-              }}>
-              {isMore ? <CloseAddonIcon /> : <AddIcon />}
+              }}
+            >
+              {isMore ? (
+                <CloseIcon style={{ height: 25, width: 25 }} />
+              ) : (
+                <OpenIcon style={{ height: 25, width: 25 }} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -609,15 +665,16 @@ const SelectedProductListItemMobile = ({
             styles.innerContainer,
             {
               backgroundColor: AppColor.white1,
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              justifyContent: "space-between",
+              alignItems: "center",
               paddingHorizontal: sizeHelper.calWp(20),
               paddingVertical:
                 sizeHelper.screenWidth > 450
                   ? sizeHelper.calHp(25)
                   : sizeHelper.calHp(25),
             },
-          ]}>
+          ]}
+        >
           <View>
             <Text style={styles.productName}>{StringsList._13}</Text>
             <Text style={styles.productBox}>{Number(item.tax).toFixed(2)}</Text>
@@ -628,7 +685,7 @@ const SelectedProductListItemMobile = ({
               <TextInput
                 editable={
                   item.IsParentAddOn === 1 &&
-                  TerminalConfiguration.IsDiscountOnSalesProduct !== 'true'
+                  TerminalConfiguration.IsDiscountOnSalesProduct !== "true"
                     ? false
                     : item.IsParentAddOn === 1 &&
                       userConfiguration.DiscountAllowed === 1
@@ -636,9 +693,11 @@ const SelectedProductListItemMobile = ({
                     : false
                 }
                 keyboardType="numeric"
-                onChangeText={text => onChangeText('DiscountRate', text, item)}
-                onEndEditing={text => {
-                  onEndEditing('DiscountRate', item), setFocusPDA(false);
+                onChangeText={(text) =>
+                  onChangeText("DiscountRate", text, item)
+                }
+                onEndEditing={(text) => {
+                  onEndEditing("DiscountRate", item), setFocusPDA(false);
                 }}
                 style={styles.inputField}
                 onFocus={() => {
@@ -657,10 +716,10 @@ const SelectedProductListItemMobile = ({
               <View style={[styles.dashedLine]}>
                 <View
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     left: 0,
                     bottom: 0,
-                    width: '100%',
+                    width: "100%",
                     height: 1,
                     backgroundColor: AppColor.white1,
                     zIndex: 1,
@@ -676,7 +735,7 @@ const SelectedProductListItemMobile = ({
                 editable={
                   item.IsParentAddOn === 1 &&
                   (item.DiscountRate > 0 ||
-                    TerminalConfiguration.IsDiscountOnSalesProduct !== 'true')
+                    TerminalConfiguration.IsDiscountOnSalesProduct !== "true")
                     ? false
                     : item.IsParentAddOn === 1 &&
                       userConfiguration.DiscountAllowed === 1
@@ -684,17 +743,17 @@ const SelectedProductListItemMobile = ({
                     : false
                 }
                 keyboardType="numeric"
-                onChangeText={text =>
-                  onChangeText('DiscountAmount', text, item)
+                onChangeText={(text) =>
+                  onChangeText("DiscountAmount", text, item)
                 }
-                onEndEditing={text => {
-                  onEndEditing('DiscountAmount', item), setFocusDA(false);
+                onEndEditing={(text) => {
+                  onEndEditing("DiscountAmount", item), setFocusDA(false);
                 }}
                 style={[styles.inputField]}
                 onFocus={() => {
                   setFocusDA(true);
                   setmanuallyCount(
-                    item.DiscountAmount ? item.DiscountAmount : 0,
+                    item.DiscountAmount ? item.DiscountAmount : 0
                   );
                 }}
                 value={
@@ -712,10 +771,10 @@ const SelectedProductListItemMobile = ({
               <View style={[styles.dashedLine]}>
                 <View
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     left: 0,
                     bottom: 0,
-                    width: '100%',
+                    width: "100%",
                     height: 1,
                     backgroundColor: AppColor.white1,
                     zIndex: 1,
@@ -732,7 +791,8 @@ const SelectedProductListItemMobile = ({
                   height: sizeHelper.calHp(80),
                   marginEnd: sizeHelper.calWp(120),
                   // backgroundColor: 'green',
-                }}>
+                }}
+              >
                 <Text style={styles.productName}>{StringsList._171}</Text>
               </View>
             )}
@@ -744,8 +804,9 @@ const SelectedProductListItemMobile = ({
           <View
             style={[
               styles.dropDownStyle,
-              {bottom: open ? sizeHelper.calHp(270) : sizeHelper.calHp(35)},
-            ]}>
+              { bottom: open ? sizeHelper.calHp(270) : sizeHelper.calHp(35) },
+            ]}
+          >
             <DropDownPicker
               listMode="SCROLLVIEW"
               disabled={!item.IsParentAddOn || disabled}
@@ -753,7 +814,7 @@ const SelectedProductListItemMobile = ({
               open={open}
               value={item.value ? item.value : value}
               items={items}
-              onChangeValue={value => {
+              onChangeValue={(value) => {
                 productAssignSaleAgent(items, value, item);
               }}
               style={{
@@ -776,8 +837,8 @@ const SelectedProductListItemMobile = ({
               //style={styles.dropDownStyle}
               placeholderStyle={{
                 color: AppColor.gray1,
-                fontWeight: 'bold',
-                alignSelf: 'center',
+                fontWeight: "bold",
+                alignSelf: "center",
                 marginStart: sizeHelper.calWp(10),
               }}
               dropDownMaxHeight={sizeHelper.calHp(100)}
@@ -795,8 +856,8 @@ const SelectedProductListItemMobile = ({
                 width: sizeHelper.calWp(35),
                 borderTopEndRadius: sizeHelper.calWp(15),
                 borderBottomRightRadius: sizeHelper.calWp(15),
-                justifyContent: 'center',
-                alignItems: 'center',
+                justifyContent: "center",
+                alignItems: "center",
                 backgroundColor: AppColor.blue1,
                 marginEnd: 0,
               }}
@@ -859,7 +920,7 @@ const styles = StyleSheet.create({
   container: {},
   innerContainer: {
     borderRadius: sizeHelper.calHp(10),
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: AppColor.white,
 
     // paddingRight: sizeHelper.calWp(24),
@@ -872,7 +933,7 @@ const styles = StyleSheet.create({
     //marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(25),
     color: AppColor.black,
-    fontFamily: 'ProximaNova-Semibold',
+    fontFamily: "ProximaNova-Semibold",
     //fontWeight: 'bold',
     // backgroundColor: "green",
   },
@@ -881,7 +942,7 @@ const styles = StyleSheet.create({
     marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
-    fontFamily: 'ProximaNova-Semibold',
+    fontFamily: "ProximaNova-Semibold",
     //fontWeight: 'bold',
     // backgroundColor: "green",
   },
@@ -890,22 +951,22 @@ const styles = StyleSheet.create({
     // marginTop: sizeHelper.calHp(15),
     fontSize: sizeHelper.calHp(16),
     color: AppColor.blue,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
   },
   productBox: {
     height: sizeHelper.calHp(28),
     marginTop: sizeHelper.calHp(15),
     fontSize: sizeHelper.calHp(16),
     color: AppColor.gray1,
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
   },
   amount: {
-    textAlign: 'center',
+    textAlign: "center",
     // backgroundColor: 'green',
     // width: sizeHelper.calWp(120),
     fontSize: sizeHelper.calHp(24),
     color: AppColor.black,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
 
     marginEnd: sizeHelper.calWp(2),
     marginStart: sizeHelper.calWp(2),
@@ -913,31 +974,31 @@ const styles = StyleSheet.create({
   quantity: {
     fontSize: sizeHelper.calHp(16),
     color: AppColor.black,
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
 
     //marginHorizontal: sizeHelper.calWp(17),
   },
   inputField: {
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(1),
     width: sizeHelper.calWp(100),
     height: sizeHelper.calHp(40),
     // backgroundColor: 'green',
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
     fontSize: sizeHelper.calHp(25),
     color: AppColor.black,
-    textAlign: I18nManager.isRTL ? 'right' : 'left',
+    textAlign: I18nManager.isRTL ? "right" : "left",
   },
   dashedLine: {
     width: sizeHelper.calWp(100),
     borderColor: AppColor.gray1,
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
     borderRadius: 10,
   },
   dropDownStyle: {
-    position: 'absolute',
+    position: "absolute",
     right: sizeHelper.calWp(24),
   },
 });

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -10,23 +10,21 @@ import {
   Modal,
   Animated,
   ScrollView,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import DropDownPicker from 'react-native-dropdown-picker';
-import Menu, {MenuOptions, MenuOption, MenuTrigger} from 'react-native-menu';
-import RemaningQuantityBox from './RemaningQuantityBox';
-import sizeHelper from '../helpers/sizeHelper';
-import AppColor from '../constant/AppColor';
-import IncrementButton from '../assets/svg/incrementButton';
-import DecrementButton from '../assets/svg/decrementButton';
-import DecrementButtonDisable from '../assets/svg/decrementButtonDisable';
-import AddIcon from '../assets/svg/AddIcon';
-import CloseAddonIcon from '../assets/svg/closeAddonIcon';
-import NetInfo from '@react-native-community/netinfo';
-import CustomModal from './CustomModal';
-import CustomButton from './CustomButton';
-import GroupProductsModal from './GroupProductsModal';
-import DescriptionBox from './DescriptionBox';
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import DropDownPicker from "react-native-dropdown-picker";
+import Menu, {
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from "react-native-popup-menu";
+import RemaningQuantityBox from "./RemaningQuantityBox";
+import sizeHelper from "../helpers/sizeHelper";
+import AppColor from "../constant/AppColor";
+import NetInfo from "@react-native-community/netinfo";
+import GroupProductsModal from "./GroupProductsModal";
+import DescriptionBox from "./DescriptionBox";
+import { PlusIcon, MinusIcon, CloseIcon, OpenIcon } from "../assets/svg/svg";
 const SelectedProductListItem = ({
   item,
   onPressIncrementDecrement,
@@ -52,6 +50,7 @@ const SelectedProductListItem = ({
   onChangePrice,
   printType,
 }) => {
+  console.log("Value of disabled:", disabled); // Log the value of disabled prop
   const [isMore, setMore] = useState(false);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(null);
@@ -64,7 +63,7 @@ const SelectedProductListItem = ({
   const [productItems, setProductItems] = useState(false);
   const [quantityModelOpen, setQuantityModelOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  console.log('printType', printType);
+  console.log("printType", printType);
   const checkInternetConnectivity = async () => {
     const netInfo = await NetInfo.fetch();
     if (netInfo?.details?.subnet) {
@@ -77,50 +76,50 @@ const SelectedProductListItem = ({
   };
   setInterval(checkInternetConnectivity, 500);
 
-  const onClickSearchFunction = async type => {
-    if (type.id === 'dp') {
+  const onClickSearchFunction = async (type) => {
+    if (type.id === "dp") {
       item.PriceType = 3;
-    } else if (type.id === 'ws') {
+    } else if (type.id === "ws") {
       item.PriceType = 2;
-    } else if (type.id === 'rs') {
+    } else if (type.id === "rs") {
       item.PriceType = 1;
     }
     onChangePrice(item, type.value);
   };
   const onClickOtherFunction = async (type, item, index) => {
-    if (type.id === 'ing') {
+    if (type.id === "ing") {
       getProductsIngredients(item);
-    } else if (type.id === 'add') {
+    } else if (type.id === "add") {
       getAddOnProducts(item, index);
-    } else if (type.id === 'pg') {
+    } else if (type.id === "pg") {
       setProductItems(true);
-    } else if (type.id === 'rq') {
+    } else if (type.id === "rq") {
       setQuantityModelOpen(true);
-    } else if (type.id === 'pn') {
-      props.setDescriptionDetail(item?.Description ? item.Description : '');
+    } else if (type.id === "pn") {
+      props.setDescriptionDetail(item?.Description ? item.Description : "");
       props.setSelectedProductsNotes(item);
       props.setDescriptionModal(true);
     }
   };
 
-  const recieveData = data => {
+  const recieveData = (data) => {
     return setQuantityModelOpen(data);
   };
 
   const suitcaseArray = [
     {
-      id: 'dp',
-      title: 'Distributor Price',
+      id: "dp",
+      title: "Distributor Price",
       value: item?.DistributorPrice,
     },
     {
-      id: 'ws',
-      title: 'Wholesale Price',
+      id: "ws",
+      title: "Wholesale Price",
       value: item?.WholeSalePrice,
     },
     {
-      id: 'rs',
-      title: 'Retail Price',
+      id: "rs",
+      title: "Retail Price",
       value: item?.RetailPrice,
     },
   ];
@@ -129,24 +128,24 @@ const SelectedProductListItem = ({
     item.ProductType == 3
       ? [
           {
-            id: 'ing',
-            title: 'Ingredients',
-            icon: 'cutlery',
+            id: "ing",
+            title: "Ingredients",
+            icon: "cutlery",
           },
           {
-            id: 'add',
-            title: 'Add-Ons',
-            icon: 'database',
+            id: "add",
+            title: "Add-Ons",
+            icon: "database",
           },
           {
-            id: 'pg',
-            title: 'Group Detail',
-            icon: 'cube',
+            id: "pg",
+            title: "Group Detail",
+            icon: "cube",
           },
           {
-            id: 'pn',
-            title: 'Product Description',
-            icon: 'sticky-note',
+            id: "pn",
+            title: "Product Description",
+            icon: "sticky-note",
           },
           // isConnected
           //   ? {
@@ -158,36 +157,37 @@ const SelectedProductListItem = ({
         ]
       : [
           {
-            id: 'ing',
-            title: 'Ingredients',
-            icon: 'cutlery',
+            id: "ing",
+            title: "Ingredients",
+            icon: "cutlery",
           },
           {
-            id: 'add',
-            title: 'Add-Ons',
-            icon: 'database',
+            id: "add",
+            title: "Add-Ons",
+            icon: "database",
           },
           {
-            id: 'pn',
-            title: 'Product Description',
-            icon: 'sticky-note',
+            id: "pn",
+            title: "Product Description",
+            icon: "sticky-note",
           },
           isConnected
             ? {
-                id: 'rq',
-                title: 'Remaining Quantity',
-                icon: 'hourglass-half',
+                id: "rq",
+                title: "Remaining Quantity",
+                icon: "hourglass-half",
               }
             : null,
         ];
   const filteredOptionsArray = otherOptionsArray.filter(
-    option => option !== null,
+    (option) => option !== null
   );
   const renderTouchable = () => <TouchableOpacity></TouchableOpacity>;
   const TopNavigation = () => (
     <View
-      pointerEvents={printType === 'returnInvoice' ? 'none' : 'auto'}
-      style={{marginEnd: sizeHelper.calWp(10)}}>
+      pointerEvents={printType === "returnInvoice" ? "none" : "auto"}
+      style={{ marginEnd: sizeHelper.calWp(10) }}
+    >
       <Menu onSelect={(value, id) => onClickSearchFunction(value, id)}>
         <MenuTrigger renderTouchable={renderTouchable}>
           <View
@@ -195,12 +195,13 @@ const SelectedProductListItem = ({
               backgroundColor: AppColor.green,
               width: 33,
               height: 33,
-              justifyContent: 'center',
-              alignItems: 'center',
+              justifyContent: "center",
+              alignItems: "center",
               borderRadius: 33 / 2,
-            }}>
+            }}
+          >
             <Icon
-              name={'tag'}
+              name={"tag"}
               size={
                 sizeHelper.screenWidth > 450
                   ? sizeHelper.calWp(25)
@@ -213,7 +214,7 @@ const SelectedProductListItem = ({
 
         <MenuOptions
           optionsContainerStyle={{
-            width: 'auto',
+            width: "auto",
             marginTop: sizeHelper.calWp(55),
             borderRadius: sizeHelper.calHp(10),
             paddingVertical: sizeHelper.calHp(15),
@@ -223,24 +224,29 @@ const SelectedProductListItem = ({
             marginEnd: I18nManager.isRTL
               ? sizeHelper.calWp(300) - sizeHelper.screenWidth
               : 0,
-          }}>
-          {suitcaseArray.map(item => (
+          }}
+        >
+          {suitcaseArray.map((item) => (
             <MenuOption
-              style={{marginBottom: -10}}
+              style={{ marginBottom: -10 }}
               renderTouchable={renderTouchable}
               key={item.id}
-              value={item}>
+              value={item}
+            >
               <View
                 style={{
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                }}>
+                  alignItems: "center",
+
+                  padding: 5,
+                }}
+              >
                 <Text
                   style={{
                     color: AppColor.black,
-                    fontFamily: 'ProximaNova-Semibold',
+                    fontFamily: "ProximaNova-Semibold",
                     fontSize: sizeHelper.calHp(20),
-                  }}>
+                  }}
+                >
                   {item.title}
                 </Text>
               </View>
@@ -253,8 +259,9 @@ const SelectedProductListItem = ({
 
   const OtherOptionsView = () => (
     <View
-      pointerEvents={printType === 'returnInvoice' ? 'none' : 'auto'}
-      style={{marginEnd: sizeHelper.calWp(10)}}>
+      pointerEvents={printType === "returnInvoice" ? "none" : "auto"}
+      style={{ marginEnd: sizeHelper.calWp(10) }}
+    >
       <Menu onSelect={(value, id) => onClickOtherFunction(value, item, index)}>
         <MenuTrigger renderTouchable={renderTouchable}>
           <View
@@ -262,13 +269,14 @@ const SelectedProductListItem = ({
               backgroundColor: AppColor.green,
               width: 33,
               height: 33,
-              justifyContent: 'center',
-              alignItems: 'center',
+              justifyContent: "center",
+              alignItems: "center",
               borderRadius: 5,
               borderRadius: 100,
-            }}>
+            }}
+          >
             <Icon
-              name={'gear'}
+              name={"gear"}
               size={
                 sizeHelper.screenWidth > 450
                   ? sizeHelper.calWp(25)
@@ -280,7 +288,7 @@ const SelectedProductListItem = ({
         </MenuTrigger>
         <MenuOptions
           optionsContainerStyle={{
-            width: 'auto',
+            width: "auto",
             marginTop: sizeHelper.calWp(55),
             borderRadius: sizeHelper.calHp(10),
             paddingVertical: sizeHelper.calHp(15),
@@ -290,27 +298,32 @@ const SelectedProductListItem = ({
             marginEnd: I18nManager.isRTL
               ? sizeHelper.calWp(300) - sizeHelper.screenWidth
               : 0,
-          }}>
-          {filteredOptionsArray.map(item => (
+          }}
+        >
+          {filteredOptionsArray.map((item) => (
             <MenuOption
-              style={{marginBottom: -10}}
+              style={{ marginBottom: -10 }}
               renderTouchable={renderTouchable}
               key={item.id}
-              value={item}>
+              value={item}
+            >
               <View
                 style={{
-                  alignItems: 'center',
-                  flexDirection: 'row',
+                  alignItems: "center",
+                  flexDirection: "row",
                   margin: 0,
-                }}>
+                  padding: 5,
+                }}
+              >
                 <Icon name={item.icon} size={20} color={AppColor.blue1} />
                 <Text
                   style={{
                     marginLeft: 10,
                     color: AppColor.black,
-                    fontFamily: 'ProximaNova-Semibold',
+                    fontFamily: "ProximaNova-Semibold",
                     fontSize: sizeHelper.calHp(20),
-                  }}>
+                  }}
+                >
                   {item.title}
                 </Text>
               </View>
@@ -330,11 +343,12 @@ const SelectedProductListItem = ({
 
   return (
     <View
-      pointerEvents={item?.FreeProduct === true ? 'none' : 'auto'}
+      pointerEvents={item?.FreeProduct === true ? "none" : "auto"}
       style={[
         styles.container,
-        open ? {height: sizeHelper.calHp(450)} : {height: 'auto'},
-      ]}>
+        open ? { height: sizeHelper.calHp(450) } : { height: "auto" },
+      ]}
+    >
       <View
         style={[
           styles.innerContainer,
@@ -346,7 +360,8 @@ const SelectedProductListItem = ({
               ? sizeHelper.calHp(100)
               : sizeHelper.calHp(100),
           },
-        ]}>
+        ]}
+      >
         <View
           style={{
             height: sizeHelper.calHp(100),
@@ -356,9 +371,10 @@ const SelectedProductListItem = ({
               : AppColor.gray2,
             borderTopLeftRadius: sizeHelper.calHp(10),
             borderBottomLeftRadius: sizeHelper.calHp(10),
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
           {item.IsParentAddOn && (
             <Text
               style={[
@@ -368,20 +384,22 @@ const SelectedProductListItem = ({
                   color: AppColor.white,
                   fontSize: sizeHelper.calHp(30),
                 },
-              ]}>
+              ]}
+            >
               {noOfProducts}
             </Text>
           )}
         </View>
-        <View style={{marginStart: sizeHelper.calWp(10)}}>
-          <View style={{marginTop: sizeHelper.calHp(5)}}>
+        <View style={{ marginStart: sizeHelper.calWp(10) }}>
+          <View style={{ marginTop: sizeHelper.calHp(5) }}>
             <View
               style={{
                 width: sizeHelper.calWp(600),
-                alignItems: 'center',
+                alignItems: "center",
                 //backgroundColor: 'green',
-                flexDirection: 'row',
-              }}>
+                flexDirection: "row",
+              }}
+            >
               <Text numberOfLines={1} style={styles.productName1}>
                 {I18nManager.isRTL ? item.ProductName2 : item.ProductName}
               </Text>
@@ -389,34 +407,36 @@ const SelectedProductListItem = ({
               {item?.UOMFragment !== 0 && (
                 <Text style={styles.productBox1}>
                   {I18nManager.isRTL
-                    ? '  -' + item.UOMName2
-                    : '  -' + item.UOMName}
+                    ? "  -" + item.UOMName2
+                    : "  -" + item.UOMName}
                 </Text>
               )}
             </View>
           </View>
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
+              flexDirection: "row",
+              justifyContent: "space-between",
               marginTop: sizeHelper.calHp(5),
-              alignItems: 'center',
-            }}>
+              alignItems: "center",
+            }}
+          >
             <View
               style={{
                 width: sizeHelper.calWp(80),
                 height: sizeHelper.calHp(40),
-                justifyContent: 'center',
-              }}>
+                justifyContent: "center",
+              }}
+            >
               <TextInput
                 editable={
                   item.IsParentAddOn === 1 &&
                   userConfiguration.PriceChangeAllowed === 1
                 }
                 keyboardType="numeric"
-                onChangeText={text => onChangeText('changePrice', text, item)}
-                onEndEditing={text => {
-                  onEndEditing('changePrice', item), setFocusPrice(false);
+                onChangeText={(text) => onChangeText("changePrice", text, item)}
+                onEndEditing={(text) => {
+                  onEndEditing("changePrice", item), setFocusPrice(false);
                 }}
                 adjustsFontSizeToFit
                 numberOfLines={1}
@@ -424,14 +444,14 @@ const SelectedProductListItem = ({
                   styles.inputField,
                   {
                     color: AppColor.black,
-                    fontFamily: 'Proxima Nova Bold',
+                    fontFamily: "Proxima Nova Bold",
                     fontSize: sizeHelper.calHp(24),
                   },
                 ]}
                 onFocus={() => {
                   setFocusPrice(true);
                   setmanuallyCount(
-                    item.PriceWithOutTax ? item.PriceWithOutTax : 0,
+                    item.PriceWithOutTax ? item.PriceWithOutTax : 0
                   );
                 }}
                 value={
@@ -446,49 +466,59 @@ const SelectedProductListItem = ({
                 placeholder="0.00"
               />
             </View>
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
               {item.IsParentAddOn ? (
                 <TouchableOpacity
+                  style={{
+                    backgroundColor:
+                      item.Quantity <= 1 ? "#67859436" : "#1f7bed",
+                    height: 30,
+                    width: 30,
+                    borderRadius: 5,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                   disabled={item.Quantity <= 1}
                   onPressIn={async () => {}}
                   onPress={async () => {
                     onClickIn();
                     setLoading(true);
                     setAddProductLoader(true);
-                    await onPressIncrementDecrement(item, 'decrement', index);
+                    await onPressIncrementDecrement(item, "decrement", index);
                     setTimeout(() => {
                       setAddProductLoader(false), setDisabled(false);
                     }, 0);
-                  }}>
-                  {item.Quantity < 2 ? (
-                    <DecrementButtonDisable />
-                  ) : (
-                    <DecrementButton />
-                  )}
+                  }}
+                >
+                  <MinusIcon
+                    style={{ height: 28, width: 28 }}
+                    fill={item.Quantity <= 1 ? "#67859436" : "#fff"}
+                  />
                 </TouchableOpacity>
               ) : (
-                <View style={{width: 26, height: 26}} />
+                <View style={{ width: 26, height: 26 }} />
               )}
               <View
                 style={{
                   width: sizeHelper.calWp(100),
                   height: sizeHelper.calHp(40),
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                  justifyContent: "center",
+                  alignItems: "center",
                   // backgroundColor: 'green',
-                }}>
+                }}
+              >
                 <TextInput
                   editable={item.IsParentAddOn === 1}
                   keyboardType="numeric"
-                  onChangeText={text =>
-                    onChangeText('manuallyCount', text, item)
+                  onChangeText={(text) =>
+                    onChangeText("manuallyCount", text, item)
                   }
-                  onEndEditing={text => {
-                    onEndEditing('manuallyCount', item), setFocus(false);
+                  onEndEditing={(text) => {
+                    onEndEditing("manuallyCount", item), setFocus(false);
                   }}
                   style={[
                     styles.inputField,
-                    {textAlign: 'center', width: sizeHelper.calWp(80)},
+                    { textAlign: "center", width: sizeHelper.calWp(80) },
                   ]}
                   onFocus={() => {
                     setFocus(true);
@@ -500,7 +530,7 @@ const SelectedProductListItem = ({
                       : item.IsParentAddOn
                       ? String(item.Quantity.toFixed(2))
                       : String(
-                          (item.Quantity * item.OrignalQuantity).toFixed(2),
+                          (item.Quantity * item.OrignalQuantity).toFixed(2)
                         )
                   }
                   placeholder="0.00"
@@ -508,22 +538,31 @@ const SelectedProductListItem = ({
               </View>
               {item.IsParentAddOn ? (
                 <TouchableOpacity
+                  style={{
+                    backgroundColor: "#1f7bed",
+                    height: 30,
+                    width: 30,
+                    borderRadius: 5,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                   disabled={isDisabled}
                   onPress={async () => {
                     setDisabled(true);
                     onClickIn();
                     setLoading(true);
                     setAddProductLoader(true);
-                    await onPressIncrementDecrement(item, 'increment', index);
+                    await onPressIncrementDecrement(item, "increment", index);
                     setTimeout(() => {
                       setDisabled(false);
                       setAddProductLoader(false);
                     }, 0);
-                  }}>
-                  <IncrementButton />
+                  }}
+                >
+                  <PlusIcon style={{ height: 28, width: 28 }} />
                 </TouchableOpacity>
               ) : (
-                <View style={{width: 26, height: 26}} />
+                <View style={{ width: 26, height: 26 }} />
               )}
             </View>
             <View
@@ -533,18 +572,20 @@ const SelectedProductListItem = ({
                 marginLeft: sizeHelper.calWp(20),
                 marginRight: sizeHelper.calHp(10),
                 height: sizeHelper.calHp(40),
-                justifyContent: 'center',
+                justifyContent: "center",
                 borderRadius: sizeHelper.calWp(5),
-              }}>
+              }}
+            >
               <Text
                 adjustsFontSizeToFit
                 numberOfLines={1}
-                style={styles.amount}>
+                style={styles.amount}
+              >
                 {/* {item.SellingPrice * item.Quantity +
                 item.tax * item.Quantity -
                 (item.DiscountAmount ? item.DiscountAmount : 0)} */}
                 {item.GrandAmount.toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 )}
               </Text>
             </View>
@@ -601,13 +642,29 @@ const SelectedProductListItem = ({
             </TouchableOpacity> */}
 
             <TouchableOpacity
+              style={{
+                backgroundColor: AppColor.white,
+                height: 30,
+                width: 30,
+
+                justifyContent: "center",
+                alignItems: "center",
+                borderColor: AppColor.blue2,
+                borderWidth: 1,
+                borderRadius: 100,
+              }}
               onPress={() => {
                 setMore(!isMore);
                 if (isMore) {
                   setOpen(false);
                 }
-              }}>
-              {isMore ? <CloseAddonIcon /> : <AddIcon />}
+              }}
+            >
+              {isMore ? (
+                <CloseIcon style={{ height: 25, width: 25 }} />
+              ) : (
+                <OpenIcon style={{ height: 25, width: 25 }} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -618,15 +675,16 @@ const SelectedProductListItem = ({
             styles.innerContainer,
             {
               backgroundColor: AppColor.white1,
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              justifyContent: "space-between",
+              alignItems: "center",
               paddingHorizontal: sizeHelper.calWp(20),
               paddingVertical:
                 sizeHelper.screenWidth > 450
                   ? sizeHelper.calHp(25)
                   : sizeHelper.calHp(25),
             },
-          ]}>
+          ]}
+        >
           <View>
             <Text style={styles.productName}>{StringsList._13}</Text>
             <Text style={styles.productBox}>{Number(item.tax).toFixed(2)}</Text>
@@ -637,7 +695,7 @@ const SelectedProductListItem = ({
               <TextInput
                 editable={
                   item.IsParentAddOn === 1 &&
-                  TerminalConfiguration.IsDiscountOnSalesProduct !== 'true'
+                  TerminalConfiguration.IsDiscountOnSalesProduct !== "true"
                     ? false
                     : item.IsParentAddOn === 1 &&
                       userConfiguration.DiscountAllowed === 1
@@ -647,9 +705,11 @@ const SelectedProductListItem = ({
                 keyboardType="numeric"
                 adjustsFontSizeToFit
                 numberOfLines={1}
-                onChangeText={text => onChangeText('DiscountRate', text, item)}
-                onEndEditing={text => {
-                  onEndEditing('DiscountRate', item), setFocusPDA(false);
+                onChangeText={(text) =>
+                  onChangeText("DiscountRate", text, item)
+                }
+                onEndEditing={(text) => {
+                  onEndEditing("DiscountRate", item), setFocusPDA(false);
                 }}
                 style={styles.inputField}
                 onFocus={() => {
@@ -668,10 +728,10 @@ const SelectedProductListItem = ({
               <View style={[styles.dashedLine]}>
                 <View
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     left: 0,
                     bottom: 0,
-                    width: '100%',
+                    width: "100%",
                     height: 1,
                     backgroundColor: AppColor.white1,
                     zIndex: 1,
@@ -688,7 +748,7 @@ const SelectedProductListItem = ({
                 editable={
                   item.IsParentAddOn === 1 &&
                   (item.DiscountRate > 0 ||
-                    TerminalConfiguration.IsDiscountOnSalesProduct !== 'true')
+                    TerminalConfiguration.IsDiscountOnSalesProduct !== "true")
                     ? false
                     : item.IsParentAddOn === 1 &&
                       userConfiguration.DiscountAllowed === 1
@@ -698,17 +758,17 @@ const SelectedProductListItem = ({
                 keyboardType="numeric"
                 adjustsFontSizeToFit
                 numberOfLines={1}
-                onChangeText={text =>
-                  onChangeText('DiscountAmount', text, item)
+                onChangeText={(text) =>
+                  onChangeText("DiscountAmount", text, item)
                 }
-                onEndEditing={text => {
-                  onEndEditing('DiscountAmount', item), setFocusDA(false);
+                onEndEditing={(text) => {
+                  onEndEditing("DiscountAmount", item), setFocusDA(false);
                 }}
                 style={styles.inputField}
                 onFocus={() => {
                   setFocusDA(true);
                   setmanuallyCount(
-                    item.DiscountAmount ? item.DiscountAmount : 0,
+                    item.DiscountAmount ? item.DiscountAmount : 0
                   );
                 }}
                 value={
@@ -726,10 +786,10 @@ const SelectedProductListItem = ({
               <View style={[styles.dashedLine]}>
                 <View
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     left: 0,
                     bottom: 0,
-                    width: '100%',
+                    width: "100%",
                     height: 1,
                     backgroundColor: AppColor.white1,
                     zIndex: 1,
@@ -746,7 +806,8 @@ const SelectedProductListItem = ({
                   height: sizeHelper.calHp(80),
                   marginEnd: sizeHelper.calWp(120),
                   //backgroundColor: 'green',
-                }}>
+                }}
+              >
                 <Text style={styles.productName}>{StringsList._171}</Text>
               </View>
             )}
@@ -758,8 +819,9 @@ const SelectedProductListItem = ({
           <View
             style={[
               styles.dropDownStyle,
-              {bottom: open ? sizeHelper.calHp(270) : sizeHelper.calHp(35)},
-            ]}>
+              { bottom: open ? sizeHelper.calHp(270) : sizeHelper.calHp(35) },
+            ]}
+          >
             <DropDownPicker
               listMode="SCROLLVIEW"
               disabled={!item.IsParentAddOn || disabled}
@@ -767,7 +829,7 @@ const SelectedProductListItem = ({
               open={open}
               value={item.value ? item.value : value}
               items={items}
-              onChangeValue={value => {
+              onChangeValue={(value) => {
                 productAssignSaleAgent(items, value, item);
               }}
               style={{
@@ -790,8 +852,8 @@ const SelectedProductListItem = ({
               //style={styles.dropDownStyle}
               placeholderStyle={{
                 color: AppColor.gray1,
-                fontWeight: 'bold',
-                alignSelf: 'center',
+                fontWeight: "bold",
+                alignSelf: "center",
                 marginStart: sizeHelper.calWp(10),
               }}
               dropDownMaxHeight={sizeHelper.calHp(100)}
@@ -809,8 +871,8 @@ const SelectedProductListItem = ({
                 width: sizeHelper.calWp(35),
                 borderTopEndRadius: sizeHelper.calWp(15),
                 borderBottomRightRadius: sizeHelper.calWp(15),
-                justifyContent: 'center',
-                alignItems: 'center',
+                justifyContent: "center",
+                alignItems: "center",
                 backgroundColor: AppColor.blue1,
                 marginEnd: 0,
               }}
@@ -874,7 +936,7 @@ const styles = StyleSheet.create({
   container: {},
   innerContainer: {
     borderRadius: sizeHelper.calHp(10),
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: AppColor.white,
     paddingRight: sizeHelper.calWp(24),
     paddingVertical:
@@ -883,34 +945,34 @@ const styles = StyleSheet.create({
   productName1: {
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
-    fontFamily: 'ProximaNova-Semibold',
-    fontWeight: 'bold',
+    fontFamily: "ProximaNova-Semibold",
+    fontWeight: "bold",
   },
   productName: {
     marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
-    fontFamily: 'ProximaNova-Semibold',
-    fontWeight: 'bold',
+    fontFamily: "ProximaNova-Semibold",
+    fontWeight: "bold",
   },
   productBox1: {
     fontSize: sizeHelper.calHp(16),
     color: AppColor.blue1,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
   },
   productBox: {
     height: sizeHelper.calHp(28),
     marginTop: sizeHelper.calHp(15),
     fontSize: sizeHelper.calHp(16),
     color: AppColor.gray1,
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
   },
   amount: {
-    textAlign: 'center',
+    textAlign: "center",
 
     fontSize: sizeHelper.calHp(24),
     color: AppColor.black,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
 
     marginEnd: sizeHelper.calWp(2),
     marginStart: sizeHelper.calWp(2),
@@ -918,29 +980,29 @@ const styles = StyleSheet.create({
   quantity: {
     fontSize: sizeHelper.calHp(16),
     color: AppColor.black,
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
   },
   inputField: {
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(1),
     width: sizeHelper.calWp(100),
     height: sizeHelper.calHp(40),
 
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
-    textAlign: I18nManager.isRTL ? 'right' : 'left',
+    textAlign: I18nManager.isRTL ? "right" : "left",
   },
   dashedLine: {
     width: sizeHelper.calWp(100),
     borderColor: AppColor.gray1,
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
     borderRadius: 10,
   },
   dropDownStyle: {
-    position: 'absolute',
+    position: "absolute",
     right: sizeHelper.calWp(24),
   },
   textInput: {
@@ -948,13 +1010,13 @@ const styles = StyleSheet.create({
     margin: 12,
     borderWidth: 1,
     padding: 10,
-    width: '100%',
+    width: "100%",
     borderRadius: 10,
-    borderColor: 'red',
+    borderColor: "red",
     backgroundColor: AppColor.backColor,
     borderColor: AppColor.gray,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     top: -10,
   },
 });

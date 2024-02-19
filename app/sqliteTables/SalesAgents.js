@@ -56,5 +56,5 @@ export const InsertSalesAgentsList = async values => {
   InsertDataQuery = InsertDataQuery + ';';
 
   let InsertSalesAgentsList = await ExecuteQuery(InsertDataQuery, []);
-  console.log('Insert Product Details..', InsertSalesAgentsList);
+  // console.log('Insert Product Details..', InsertSalesAgentsList);
 };

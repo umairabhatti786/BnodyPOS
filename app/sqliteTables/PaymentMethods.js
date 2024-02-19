@@ -34,5 +34,5 @@ export const InsertPaymentMethodList = async values => {
   }
   InsertDataQuery = InsertDataQuery + ';';
   let InsertPaymentMethodList = await ExecuteQuery(InsertDataQuery, []);
-  console.log('Insert Product Details..', InsertPaymentMethodList);
+  // console.log('Insert Product Details..', InsertPaymentMethodList);
 };

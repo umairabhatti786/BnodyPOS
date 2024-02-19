@@ -1,30 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { connect } from 'react-redux';
-import { getUniqueId, getMacAddress } from 'react-native-device-info';
-import { sha1 } from 'react-native-sha1';
-import base64 from 'react-native-base64';
-import * as RNLocalize from 'react-native-localize';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { I18nManager, PermissionsAndroid, BackHandler } from 'react-native';
-import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
-import { ServerCall, SaveAllData } from '../../redux/actions/asynchronousAction';
+import React, { useState, useEffect } from "react";
+import { connect } from "react-redux";
+import { getUniqueId, getMacAddress } from "react-native-device-info";
+import { sha1 } from "react-native-sha1";
+import base64 from "react-native-base64";
+import * as RNLocalize from "react-native-localize";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { I18nManager, PermissionsAndroid, BackHandler } from "react-native";
+import NetInfo, { useNetInfo } from "@react-native-community/netinfo";
+import {
+  ServerCall,
+  SaveAllData,
+} from "../../redux/actions/asynchronousAction";
 
-import Design from './design';
-import errorMessages from '../../constant/errorMessages';
-import DBTable from '../../constant/UpdateDB';
-import { SaleBillsTable } from '../../sqliteTables/SaleBills';
-import { getData } from '../../sqliteHelper';
-
-const LoginScreen = props => {
+import Design from "./design";
+import errorMessages from "../../constant/errorMessages";
+import DBTable from "../../constant/UpdateDB";
+import { SaleBillsTable } from "../../sqliteTables/SaleBills";
+import { getData } from "../../sqliteHelper";
+import Toast from "react-native-root-toast";
+const LoginScreen = (props) => {
   // const netInfo = useNetInfo();
   const [isVisiblePassword, setVisiblePassword] = useState(false);
   const [displayAlert, setDisplayAlert] = useState(false);
-  const [message, setMessage] = useState('');
-  const [deviceUniqueId, setDeviceUniqueId] = useState('');
-  const [languageTag, setlanguageTag] = useState('');
+  const [message, setMessage] = useState("");
+  const [deviceUniqueId, setDeviceUniqueId] = useState("");
+  const [languageTag, setlanguageTag] = useState("");
   const [isPromptAlert, setisPromptAlert] = useState(false);
   const [terminalCode, setTerminalCode] = useState();
-  const [values, setvalues] = useState('');
+  const [values, setvalues] = useState("");
   const [isLoading, setLoading] = useState(false);
   const [networkState, setNetworkState] = useState(true);
   const [isPrivacy, setIsPrivacy] = useState(true);
@@ -37,9 +40,7 @@ const LoginScreen = props => {
   useEffect(() => {
     // Subscribe to network state updates
     const unsubscribe = NetInfo.addEventListener((state) => {
-      setNetworkState(
-        state.isConnected
-      );
+      setNetworkState(state.isConnected);
     });
 
     return () => {
@@ -50,66 +51,67 @@ const LoginScreen = props => {
 
   const getNetInfo = async () => {
     // To get the network state once
-    let networkState = false
+    let networkState = false;
     await NetInfo.fetch().then((state) => {
-      networkState = state.isConnected
+      networkState = state.isConnected;
     });
-    return networkState
+    return networkState;
   };
 
-
-  const onClickSignin = async values => {
+  const onClickSignin = async (values) => {
+    let deviceUniqueID = await getUniqueId();
     let status = await getNetInfo();
     setLoading(true);
     let code, msg, msg1;
-    let loginUser = await AsyncStorage.getItem('LOGIN_USER_INFO');
+    let loginUser = await AsyncStorage.getItem("LOGIN_USER_INFO");
     loginUser = JSON.parse(loginUser);
     msg1 = errorMessages.GetLoginMessage(-23, props.StringsList);
     let accessToken, loginUserInfo;
-    sha1(values.password).then(async hash => {
+    sha1(values.password).then(async (hash) => {
       loginUserInfo = {
         UserName: values.userName,
         Password: hash,
         TerminalID: terminalCode,
-        TerminalGUID: deviceUniqueId,
+        TerminalGUID: deviceUniqueID,
         dbId: 0,
       };
 
       let str =
-        values.userName + ':' + hash + ':' + deviceUniqueId + ':' + languageTag;
+        values.userName + ":" + hash + ":" + deviceUniqueID + ":" + languageTag;
       accessToken = base64.encode(str);
-      // 
+      //
       if (
         values.userName.trim() === loginUser?.UserName.trim() &&
-        hash === loginUser?.Password && !status
+        hash === loginUser?.Password &&
+        !status
       ) {
-        console.log('user Match');
-        props.navigation.replace('Main');
-        await AsyncStorage.setItem('ACCESS_TOKEN', accessToken);
+        console.log("user Match");
+        props.navigation.replace("Main");
+        await AsyncStorage.setItem("ACCESS_TOKEN", accessToken);
       } else {
-        console.log('loginUserInfo....', loginUserInfo);
+        console.log("loginUserInfo....", loginUserInfo);
         const response = await props.dispatch(
-          ServerCall('', 'AuthorizeUser/SignIn', loginUserInfo),
+          ServerCall("", "AuthorizeUser/SignIn", loginUserInfo)
         );
 
         if (!response[0]) {
-          console.log('res is', response)
+          console.log("res is", response);
           setLoading(false);
           msg = errorMessages.GetLoginMessage(15, props.StringsList);
           setMessage(msg);
           setDisplayAlert(true);
         } else {
           // console.log("login response ......split", response[2])
-          code = String(response).split(',');
+          code = String(response).split(",");
           // console.log("login response ......split", response.length, code, msg)
           msg = errorMessages.GetLoginMessage(code[0], props.StringsList);
           loginUserInfo.dbId = code[1];
           console.log(
-            'login response split',
-            loginUser?.dbId && loginUser?.dbId !== code[1] && isBillNeedPost,
+            "login response split",
+            loginUser?.dbId && loginUser?.dbId !== code[1] && isBillNeedPost
           );
           loginUserInfo.dbId = code[1];
-          if (code[0] === '0') {
+          if (code[0] === "0") {
             setLoading(true);
 
             if (
@@ -118,29 +120,29 @@ const LoginScreen = props => {
               isBillNeedPost
             ) {
               const res = await props.dispatch(
-                ServerCall('', 'AuthorizeUser/SignOut', loginUserInfo),
+                ServerCall("", "AuthorizeUser/SignOut", loginUserInfo)
               );
               setMessage(msg1);
               setDisplayAlert(true);
             } else if (loginUser?.dbId !== code[0]) {
-              await DBTable.AddDataInDb(props, '', accessToken, loginUserInfo);
+              await DBTable.AddDataInDb(props, "", accessToken, loginUserInfo);
             } else {
-              await AsyncStorage.setItem('ACCESS_TOKEN', accessToken);
+              await AsyncStorage.setItem("ACCESS_TOKEN", accessToken);
               await AsyncStorage.setItem(
-                'LOGIN_USER_INFO',
-                JSON.stringify(loginUserInfo),
+                "LOGIN_USER_INFO",
+                JSON.stringify(loginUserInfo)
               );
-              props.navigation.replace('Main');
+              props.navigation.replace("Main");
             }
             setLoading(false);
           }
           if (msg) {
-            if (code[0] === '6') {
+            if (code[0] === "6") {
               setvalues(values);
               setisPromptAlert(true);
               setDisplayAlert(true);
               //  await AsyncStorage.removeItem('LOGIN_USER_INFO');
-            } else if (code[0] !== '0') {
+            } else if (code[0] !== "0") {
               setLoading(false);
               setMessage(msg);
               setDisplayAlert(true);
@@ -159,42 +161,43 @@ const LoginScreen = props => {
     PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
       PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-      PermissionsAndroid.PERMISSIONS.VIBRATE,
+      PermissionsAndroid.PERMISSIONS.VIBRATE
     );
 
-    let acceptPrivacy = await AsyncStorage.getItem('ACCEPT_PRIVACY', err => {
+    let acceptPrivacy = await AsyncStorage.getItem("ACCEPT_PRIVACY", (err) => {
       if (err) {
-        console.log('an error');
+        console.log("an error");
         throw err;
       }
-      console.log('success');
-    }).catch(err => {
-      console.log('error is: ' + err);
+      console.log("success");
+    }).catch((err) => {
+      console.log("error is: " + err);
     });
     acceptPrivacy = JSON.parse(acceptPrivacy);
-    console.log('acceptPrivacy222', isPrivacy);
+    console.log("acceptPrivacy222", isPrivacy);
     let isPrivacy =
       acceptPrivacy === true || acceptPrivacy == undefined ? true : false;
     setIsPrivacy(isPrivacy);
-    console.log('acceptPrivacy', isPrivacy);
+    console.log("acceptPrivacy", isPrivacy);
 
-    let loginUserInfo = await AsyncStorage.getItem('LOGIN_USER_INFO');
+    let loginUserInfo = await AsyncStorage.getItem("LOGIN_USER_INFO");
     loginUserInfo = JSON.parse(loginUserInfo);
-    console.log('LOGIN_USER_INFO', loginUserInfo);
+    console.log("LOGIN_USER_INFO", loginUserInfo);
     // getMacAddress().then(mac => {
     //   console.log("getMacAddress", mac)
     // })
-    setDeviceUniqueId(getUniqueId());
+    let deviceUniqueID = getUniqueId();
+    setDeviceUniqueId(deviceUniqueID);
     var localeInfo = RNLocalize.getLocales();
     var languageTag = localeInfo[0].languageTag;
     setlanguageTag(languageTag);
     if (!isPrivacy) {
     }
-    await getData(SaleBillsTable, async cb => {
+    await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
         if (
-          (cb[i].isUploaded == 'false' || !cb[i].isUploaded) &&
-          (cb[i].isProcessed == 'false' || !cb[i].isProcessed)
+          (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
+          (cb[i].isProcessed == "false" || !cb[i].isProcessed)
         ) {
           setBillNeedPost(true);
         } else {
@@ -206,14 +209,14 @@ const LoginScreen = props => {
 
   const onAcceptPrivacy = () => {
     setIsPrivacy(true);
-    AsyncStorage.setItem('ACCEPT_PRIVACY', 'true', err => {
+    AsyncStorage.setItem("ACCEPT_PRIVACY", "true", (err) => {
       if (err) {
-        console.log('an error');
+        console.log("an error");
         throw err;
       }
-      console.log('success');
-    }).catch(err => {
-      console.log('error is: ' + err);
+      console.log("success");
+    }).catch((err) => {
+      console.log("error is: " + err);
     });
   };
 
@@ -223,7 +226,7 @@ const LoginScreen = props => {
   };
 
   const onChangeText = (type, text) => {
-    console.log('setTerminalCode', text);
+    console.log("setTerminalCode", text);
     setTerminalCode(text);
   };
 
@@ -246,7 +249,7 @@ const LoginScreen = props => {
       terminalCode={terminalCode}
       reacallLoginApi={reacallLoginApi}
       StringsList={props.StringsList}
-      placeholderText={'Please enter Terminal code'}
+      placeholderText={"Please enter Terminal code"}
       isPrivacy={isPrivacy}
       onAcceptPrivacy={onAcceptPrivacy}
       onRejectPrivacy={onRejectPrivacy}
@@ -254,13 +257,13 @@ const LoginScreen = props => {
   );
 };
 
-const mapStateToProps = state => {
+const mapStateToProps = (state) => {
   return {
     StringsList: state.user.SaveAllData.StringsList,
   };
 };
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   dispatch,
 });
 

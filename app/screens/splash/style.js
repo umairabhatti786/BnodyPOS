@@ -1,13 +1,13 @@
-import { StyleSheet } from 'react-native';
-import AppColor from '../../constant/AppColor';
-import sizeHelper from '../../helpers/sizeHelper';
+import { StyleSheet } from "react-native";
+import AppColor from "../../constant/AppColor";
+import sizeHelper from "../../helpers/sizeHelper";
 
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
     backgroundColor: AppColor.blue1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   logo: {

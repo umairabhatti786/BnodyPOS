@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   StatusBar,
@@ -11,22 +11,20 @@ import {
   TouchableWithoutFeedback,
   I18nManager,
   ActivityIndicator,
-} from 'react-native';
-import * as Progress from 'react-native-progress';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import i18n from 'i18n-js';
-import { Formik } from 'formik';
-import * as yup from 'yup';
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import { Formik } from "formik";
+import * as yup from "yup";
 
-import styles from './style';
-import LoginShape from '../../assets/svg/loginShape.svg';
-import BnodyLogo from '../../assets/svg/bnodyLogo.svg';
-import sizeHelper from '../../helpers/sizeHelper';
-import appColor from '../../constant/AppColor';
+import styles from "./style";
+import LoginShape from "../../assets/svg/loginShape.svg";
+import BnodyLogo from "../../assets/svg/bnodyLogo.svg";
+import sizeHelper from "../../helpers/sizeHelper";
+import appColor from "../../constant/AppColor";
 
-import Loading from '../../components/Loading';
-import AlertModel from '../../components/AlertModel';
-import PrivacyPolicy from '../../components/PrivacyPolicy';
+import Loading from "../../components/Loading";
+import AlertModel from "../../components/AlertModel";
+import PrivacyPolicy from "../../components/PrivacyPolicy";
 
 const Design = ({
   isVisiblePassword,
@@ -47,13 +45,11 @@ const Design = ({
   onRejectPrivacy,
 }) => {
   const loginValidationSchema = yup.object().shape({
-    userName: yup
-      .string()
-      .required('Name is required'),
+    userName: yup.string().required("Name is required"),
     password: yup
       .string()
-      .min(6, ({ min }) => 'Password must be at least of 6 characters')
-      .required('Password is required'),
+      .min(6, ({ min }) => "Password must be at least of 6 characters")
+      .required("Password is required"),
   });
 
   return (
@@ -63,41 +59,50 @@ const Design = ({
         <StatusBar hidden />
         <View
           style={{
-            alignSelf: 'flex-end',
+            alignSelf: "flex-end",
             width: sizeHelper.calWp(363),
             height: sizeHelper.calWp(449),
-            alignItems: 'flex-end',
+            alignItems: "flex-end",
             // flexWrap: 'wrap',
 
             transform: [
-              I18nManager.isRTL ? { rotateY: '180deg' } : { rotate: '0deg' },
+              I18nManager.isRTL ? { rotateY: "180deg" } : { rotate: "0deg" },
             ],
-          }}>
-          <LoginShape width={'100%'} height={'100%'} />
+          }}
+        >
+          <LoginShape width={"100%"} height={"100%"} />
         </View>
         <KeyboardAvoidingView
           behavior="position"
-          style={{ flex: 0.7, justifyContent: 'center' }}>
-          <View style={{ alignSelf: 'center', justifyContent: "center", alignItems: "center", }}>
+          style={{ flex: 0.7, justifyContent: "center" }}
+        >
+          <View
+            style={{
+              alignSelf: "center",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <BnodyLogo
               width={sizeHelper.calWp(150)}
               height={sizeHelper.calHp(69)}
             />
             <Text style={styles.signinText}>
               {I18nManager.isRTL
-                ? 'تسجيل الدخول إلى حسابك'
-                : 'Sign in to your account'}
+                ? "تسجيل الدخول إلى حسابك"
+                : "Sign in to your account"}
             </Text>
           </View>
           <Formik
             validationSchema={loginValidationSchema}
             initialValues={{
-              userName: '',
-              password: '',
+              userName: "",
+              password: "",
             }}
-            onSubmit={values => {
+            onSubmit={(values) => {
               onClickSignin(values);
-            }}>
+            }}
+          >
             {({ handleChange, handleSubmit, values, errors, isValid }) => (
               <View>
                 <View
@@ -106,23 +111,24 @@ const Design = ({
                     {
                       borderColor: errors.userName
                         ? appColor.orange
-                        : 'transparent',
+                        : "transparent",
                       borderWidth: errors.userName ? 1 : 0,
                     },
-                  ]}>
+                  ]}
+                >
                   <Icon
-                    name={'user'}
+                    name={"user"}
                     size={sizeHelper.calWp(21)}
                     color={appColor.black}
                   />
 
                   <TextInput
                     editable={!isLoading}
-                    name={'userName'}
-                    onChangeText={handleChange('userName')}
+                    name={"userName"}
+                    onChangeText={handleChange("userName")}
                     style={styles.inputField}
                     placeholder={
-                      I18nManager.isRTL ? 'اسم االمستخدم' : 'User Name'
+                      I18nManager.isRTL ? "اسم االمستخدم" : "User Name"
                     }
                     value={values.userName}
                     error={errors.userName}
@@ -138,35 +144,37 @@ const Design = ({
                       marginTop: sizeHelper.calHp(33),
                       borderColor: errors.password
                         ? appColor.orange
-                        : 'transparent',
+                        : "transparent",
                       borderWidth: errors.password ? 1 : 0,
                     },
-                  ]}>
+                  ]}
+                >
                   <Icon
-                    name={'lock'}
+                    name={"lock"}
                     size={sizeHelper.calWp(21)}
                     color={appColor.black}
                   />
                   <TextInput
                     editable={!isLoading}
-                    name={'password'}
-                    onChangeText={handleChange('password')}
+                    name={"password"}
+                    onChangeText={handleChange("password")}
                     secureTextEntry={!isVisiblePassword}
                     style={styles.inputField}
                     error={errors.password}
-                    placeholder={I18nManager.isRTL ? 'كلمه السر' : 'Password'}
+                    placeholder={I18nManager.isRTL ? "كلمه السر" : "Password"}
                     value={values.password}
                   />
                   <TouchableOpacity
                     style={{
                       height: sizeHelper.calHp(64),
-                      justifyContent: 'center',
-                      alignItems: 'center',
+                      justifyContent: "center",
+                      alignItems: "center",
                       width: sizeHelper.calWp(45),
                     }}
-                    onPress={visiblePassword}>
+                    onPress={visiblePassword}
+                  >
                     <Icon
-                      name={isVisiblePassword ? 'eye' : 'eye-slash'}
+                      name={isVisiblePassword ? "eye" : "eye-slash"}
                       size={sizeHelper.calWp(21)}
                       color={
                         isVisiblePassword ? appColor.black : appColor.grayColor
@@ -183,30 +191,33 @@ const Design = ({
                     handleSubmit();
                     Keyboard.dismiss();
                   }}
-                  style={styles.signinButtonContainer}>
+                  style={styles.signinButtonContainer}
+                >
                   {isLoading ? (
                     <View
                       style={{
-                        flexDirection: 'row',
+                        flexDirection: "row",
 
-                        alignItems: 'center',
-                        alignSelf: 'center',
-                      }}>
+                        alignItems: "center",
+                        alignSelf: "center",
+                      }}
+                    >
                       <Loading />
                     </View>
                   ) : (
                     <View
                       style={{
-                        flexDirection: 'row',
+                        flexDirection: "row",
 
-                        alignItems: 'center',
-                      }}>
+                        alignItems: "center",
+                      }}
+                    >
                       <Text style={styles.buttonText}>
-                        {I18nManager.isRTL ? 'تسجيل الدخول' : 'Sign in'}
+                        {I18nManager.isRTL ? "تسجيل الدخول" : "Sign in"}
                       </Text>
                       <Icon
                         name={
-                          I18nManager.isRTL ? 'chevron-left' : 'chevron-right'
+                          I18nManager.isRTL ? "chevron-left" : "chevron-right"
                         }
                         size={sizeHelper.calWp(18)}
                         color={appColor.white}
@@ -218,17 +229,15 @@ const Design = ({
             )}
           </Formik>
         </KeyboardAvoidingView>
-        {
-          !isPrivacy && (
-            <View style={styles.popupContainer}>
-              <PrivacyPolicy
-                StringsList={StringsList}
-                onAcceptPrivacy={onAcceptPrivacy}
-                onPressCancel={onRejectPrivacy}
-              />
-            </View>
-          )
-        }
+        {!isPrivacy && (
+          <View style={styles.popupContainer}>
+            <PrivacyPolicy
+              StringsList={StringsList}
+              onAcceptPrivacy={onAcceptPrivacy}
+              onPressCancel={onRejectPrivacy}
+            />
+          </View>
+        )}
 
         <AlertModel
           displayAlert={displayAlert}
@@ -237,11 +246,10 @@ const Design = ({
           isPromptAlert={isPromptAlert}
           message={message}
           value={terminalCode}
-          placeholderText={'Please Enter terminal code'}
+          placeholderText={"Please Enter terminal code"}
           onChangeText={onChangeText}
           reacallFunc={reacallLoginApi}
         />
-
       </View>
     </TouchableWithoutFeedback>
   );

@@ -136,7 +136,6 @@ public class PinTempletActivity extends AppCompatActivity {
                             sendEvent(context, "DeviceFound", String.valueOf(uri));
                             goBack();
 
-
                         } catch (Exception e) {
                             e.printStackTrace();
                         }

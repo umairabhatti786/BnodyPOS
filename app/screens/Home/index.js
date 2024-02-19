@@ -1,12 +1,20 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {CameraRoll} from '@react-native-camera-roll/camera-roll';
-import moment from 'moment';
-import React, {useEffect, useRef, useState, useMemo} from 'react';
-import uuid from 'react-native-uuid';
-import {captureRef} from 'react-native-view-shot';
-import {connect} from 'react-redux';
-import QRCode from 'react-native-qrcode-svg';
-import RNFS from 'react-native-fs';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ScopedStorage from "react-native-scoped-storage";
+import { CameraRoll } from "@react-native-camera-roll/camera-roll";
+import moment from "moment";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  forwardRef,
+} from "react";
+import uuid from "react-native-uuid";
+import { captureRef } from "react-native-view-shot";
+import { connect } from "react-redux";
+import QRCode from "react-native-qrcode-svg";
+import RNFS from "react-native-fs";
 import {
   Alert,
   PermissionsAndroid,
@@ -15,9 +23,9 @@ import {
   Platform,
   NativeModules,
   Keyboard,
-} from 'react-native';
-import * as RNLocalize from 'react-native-localize';
-import Toast from 'react-native-root-toast';
+} from "react-native";
+import * as RNLocalize from "react-native-localize";
+import Toast from "react-native-root-toast";
 // import ImageEditor from '@react-native-community/image-editor';
 // import EscPosPrinter, {
 //   getPrinterSeriesByName,
@@ -25,9 +33,9 @@ import Toast from 'react-native-root-toast';
 // } from 'react-native-esc-pos-printer';
 // import Encoder from 'esc-pos-encoder';
 
-import {Invoice} from '@axenda/zatca';
-import RNPrint from 'react-native-print';
-import {ServerCall} from '../../redux/actions/asynchronousAction';
+import { Invoice } from "@axenda/zatca";
+import RNPrint from "react-native-print";
+import { ServerCall } from "../../redux/actions/asynchronousAction";
 import {
   DeleteColumnById,
   getData,
@@ -35,64 +43,63 @@ import {
   getDataByMultipaleID,
   getDataJoinById,
   updateColunm,
-} from '../../sqliteHelper';
-import {CategoriesListTable} from '../../sqliteTables/CategoriesList';
-import {DrawerSetupTable} from '../../sqliteTables/DrawerSetup';
+} from "../../sqliteHelper";
+import { CategoriesListTable } from "../../sqliteTables/CategoriesList";
+import { DrawerSetupTable } from "../../sqliteTables/DrawerSetup";
 import {
   HoldInvoiceTable,
   InsertHoldInvoice,
-} from '../../sqliteTables/HoldInvoice';
-import {ProductCardAddOnGroupListTable} from '../../sqliteTables/ProductCardAddOnGroupList';
-import {SalesFamilySummaryListTable} from '../../sqliteTables/SalesFamilySummaryList';
-import {ProductListTable} from '../../sqliteTables/ProductList';
+} from "../../sqliteTables/HoldInvoice";
+import { ProductCardAddOnGroupListTable } from "../../sqliteTables/ProductCardAddOnGroupList";
+import { SalesFamilySummaryListTable } from "../../sqliteTables/SalesFamilySummaryList";
+import { ProductListTable } from "../../sqliteTables/ProductList";
 import {
   InsertSaleBillDetails,
   SaleBillDetailsTable,
-} from '../../sqliteTables/SaleBillDetails';
-import {InsertSaleBills, SaleBillsTable} from '../../sqliteTables/SaleBills';
-import {SalesAgentsTable} from '../../sqliteTables/SalesAgents';
-import {TaxRateParentListTable} from '../../sqliteTables/TaxRateParentList';
-import {TerminalConfigurationTable} from '../../sqliteTables/TerminalConfiguration';
-import {TerminalSetupTable} from '../../sqliteTables/TerminalSetup';
-import {UpdateProductDetailListTable} from '../../sqliteTables/UpdateProductDetailList';
-import Design from './design';
-import calculateTaxeGroups from '../../helpers/TaxCalculationHelper';
-import {LoyaltyRewardsListTable} from '../../sqliteTables/LoyaltyRewardsList';
-import {LoyaltyListTable} from '../../sqliteTables/LoyaltyList';
-import {LoyaltyDetailListTable} from '../../sqliteTables/LoyaltyDetailList';
-import errorMessages from '../../constant/errorMessages';
-import {SalesPostingConfigurationListTable} from '../../sqliteTables/SalesPostingConfigurationList';
-import DBTable from '../../constant/UpdateDB';
-import {ProductCardAddOnEquivalentProductsListTable} from '../../sqliteTables/ProductCardAddOnEquivalentProductsList';
+} from "../../sqliteTables/SaleBillDetails";
+import { InsertSaleBills, SaleBillsTable } from "../../sqliteTables/SaleBills";
+import { SalesAgentsTable } from "../../sqliteTables/SalesAgents";
+import { TaxRateParentListTable } from "../../sqliteTables/TaxRateParentList";
+import { TerminalConfigurationTable } from "../../sqliteTables/TerminalConfiguration";
+import { TerminalSetupTable } from "../../sqliteTables/TerminalSetup";
+import { UpdateProductDetailListTable } from "../../sqliteTables/UpdateProductDetailList";
+import Design from "./design";
+import calculateTaxeGroups from "../../helpers/TaxCalculationHelper";
+import { LoyaltyRewardsListTable } from "../../sqliteTables/LoyaltyRewardsList";
+import { LoyaltyListTable } from "../../sqliteTables/LoyaltyList";
+import { LoyaltyDetailListTable } from "../../sqliteTables/LoyaltyDetailList";
+import errorMessages from "../../constant/errorMessages";
+import { SalesPostingConfigurationListTable } from "../../sqliteTables/SalesPostingConfigurationList";
+import DBTable from "../../constant/UpdateDB";
+import { ProductCardAddOnEquivalentProductsListTable } from "../../sqliteTables/ProductCardAddOnEquivalentProductsList";
 import {
   InsertProductCardIngredientsList,
   ProductCardIngredientsListTable,
-} from '../../sqliteTables/ProductCardIngredientsList';
-import sizeHelper from '../../helpers/sizeHelper';
-import {UserConfigurationTable} from '../../sqliteTables/UserConfiguration';
-import {A4PrintStylesTable} from '../../sqliteTables/A4PrintStyles';
-import ResetDrawerSetup from '../../constant/ResetDrawerSetup';
-import {PaymentMethodTable} from '../../sqliteTables/PaymentMethods';
-import base64 from 'react-native-base64';
-var Sound = require('react-native-sound');
-const numberToWord = require('number-to-words');
-const numberToArb = require('tafgeetjs');
-import NetInfo from '@react-native-community/netinfo';
-const {PrinterNativeModule} = NativeModules;
+} from "../../sqliteTables/ProductCardIngredientsList";
+import sizeHelper from "../../helpers/sizeHelper";
+import { UserConfigurationTable } from "../../sqliteTables/UserConfiguration";
+import { A4PrintStylesTable } from "../../sqliteTables/A4PrintStyles";
+import ResetDrawerSetup from "../../constant/ResetDrawerSetup";
+import { PaymentMethodTable } from "../../sqliteTables/PaymentMethods";
+import base64 from "react-native-base64";
+var Sound = require("react-native-sound");
+const numberToWord = require("number-to-words");
+const numberToArb = require("tafgeetjs");
+import NetInfo from "@react-native-community/netinfo";
+const { PrinterNativeModule } = NativeModules;
 const PermissionFile = NativeModules.PermissionFile;
-const eventEmitter = new NativeEventEmitter(PrinterNativeModule);
-const HomeScreen = props => {
+const HomeScreen = (props) => {
   const [options, setOptions] = useState([
-    {label: props.StringsList._32, value: 'getHoldInvoice'},
-    {label: props.StringsList._105, value: 'reprint'},
-    {label: props.StringsList._319, value: 'returnBill'},
-    {label: props.StringsList._30, value: 'buyer'},
-    {label: props.StringsList._437, value: 'loyaltyCard'},
+    { label: props.StringsList._32, value: "getHoldInvoice" },
+    { label: props.StringsList._105, value: "reprint" },
+    { label: props.StringsList._319, value: "returnBill" },
+    { label: props.StringsList._30, value: "buyer" },
+    { label: props.StringsList._437, value: "loyaltyCard" },
   ]);
   const [payments, setPayments] = useState([
-    {label: props.StringsList._314, value: '1'},
-    {label: props.StringsList._55, value: '2'},
-    {label: props.StringsList._325, value: '3'},
+    { label: props.StringsList._314, value: "1" },
+    { label: props.StringsList._55, value: "2" },
+    { label: props.StringsList._325, value: "3" },
   ]);
   const [printType, setPrintType] = useState(null);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
@@ -127,11 +134,11 @@ const HomeScreen = props => {
   const [isPromptAlert, setisPromptAlert] = useState(false);
   const [displayAlert, setDisplayAlert] = useState(false);
   const [isHoldInvoices, setisHoldInvoices] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [beepSound, setBeepSound] = useState(null);
   const [terminalSetup, setTerminalSetupObj] = useState(null);
   const [drawerSetupArr, setDrawerSetupArr] = useState({});
-  const [holdInvoiceName, setHoldInvoiceName] = useState('');
+  const [holdInvoiceName, setHoldInvoiceName] = useState("");
   const [isScanner, setScanner] = useState(false);
   const [alertValue, setAlertValue] = useState(null);
   const [alertType, setAlertType] = useState(null);
@@ -166,16 +173,16 @@ const HomeScreen = props => {
   const [EarnPointIArry, setEarnPointIArry] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [totalTaxOfInvoice, setTotalTaxOfInvoice] = useState(0);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [isDrawar, setIsDrawar] = useState(false);
   const [isIngredient, setIsIngredient] = useState(false);
   const [ingredientsData, setIngredientsData] = useState([]);
   const [sumOfProductTax, setSumOfProductsTax] = useState(0);
   const [sumOfProductDiscount, setSumOfProductsDiscount] = useState(0);
   const [numberOfItems, setNumberOfItems] = useState(0);
-  const [searchIngredient, setSearchIngredient] = useState('');
-  const [ingredientProductCode, setIngredientProductCode] = useState('');
-  const [ingredientText, setIngredientText] = useState('');
+  const [searchIngredient, setSearchIngredient] = useState("");
+  const [ingredientProductCode, setIngredientProductCode] = useState("");
+  const [ingredientText, setIngredientText] = useState("");
   const [isIngredientSearch, setIsIngredientSearch] = useState(false);
   const [printerMacAddress, setPrinterMacAddress] = useState(null);
   const [printerName, setPrinterName] = useState(null);
@@ -187,7 +194,7 @@ const HomeScreen = props => {
   const [addProductLoader, setAddProductLoader] = useState(false);
   const [companyVATRegistor, setCompanyVATRegistor] = useState(false);
   const [barCode, setBarCode] = useState(true);
-  const [barCodeText, setbarCodeText] = useState('');
+  const [barCodeText, setbarCodeText] = useState("");
   const [billFormatType, setBillFormatType] = useState(1);
   const [billDates, setBillDate] = useState(null);
   const [isLogout, setisLogout] = useState(false);
@@ -196,31 +203,31 @@ const HomeScreen = props => {
   const [clientCustomInvoice, setClientCustomInvoice] = useState(false);
   const [isCustomInvoice, setIsCustomInvoice] = useState(false);
   const [isPaidCash, setIsPaidCash] = useState(false);
-  const [cashAmount, setCashAmount] = useState('');
+  const [cashAmount, setCashAmount] = useState("");
   const [productTaxes, setProductTaxes] = useState([]);
-  const [customerNotes, setCustomerNotes] = useState('');
+  const [customerNotes, setCustomerNotes] = useState("");
   const [customerNotesOpen, setCustomerNotesOpen] = useState(false);
   const [billingTypeData, setBillingTypeData] = useState([
     {
       id: 1,
-      name: 'Ordinary Sales Bill',
-      name2: 'فاتورة مبيعات عادية',
+      name: "Ordinary Sales Bill",
+      name2: "فاتورة مبيعات عادية",
       isSelected: false,
     },
     {
       id: 2,
-      name: 'Simplified Tax Bill',
-      name2: 'فاتورة ضريبية مبسطة',
+      name: "Simplified Tax Bill",
+      name2: "فاتورة ضريبية مبسطة",
       isSelected: false,
     },
-    {id: 3, name: 'Tax Invoice', name2: 'فاتورة ضريبية', isSelected: false},
+    { id: 3, name: "Tax Invoice", name2: "فاتورة ضريبية", isSelected: false },
   ]);
   const [billingStyleId, setBillingStyleId] = useState(2);
   const [isInnerPrinter, setInnerPrinter] = useState(false);
   const [isBillNeedPost, setBillNeedPost] = useState(false);
   const [refundPayments, setRefundPayments] = useState([
-    {label: props.StringsList._314, value: '1'},
-    {label: 'on Account', value: '2'},
+    { label: props.StringsList._314, value: "1" },
+    { label: "on Account", value: "2" },
   ]);
   const [descriptionModal, setDescriptionModal] = useState(false);
   const [descriptionDetail, setDescriptionDetail] = useState();
@@ -246,16 +253,17 @@ const HomeScreen = props => {
     setInterval(async () => {
       let status = await getNetInfo();
       if (status === true) {
-        console.log('Connected calling', status);
+        console.log("Connected calling", status);
         postBillsbyInterval();
       } else {
-        console.log('Not connected', status);
+        console.log("Not connected", status);
       }
     }, mins);
   }, []);
-  const onSaveNotes = item => {
+
+  const onSaveNotes = (item) => {
     let notesArray = [...selectedProducts];
-    let newArray = notesArray.map(p => {
+    let newArray = notesArray.map((p) => {
       var temp = Object.assign({}, p);
       if (temp.ProductBarCode === item.ProductBarCode) {
         temp.Description = descriptionDetail;
@@ -267,9 +275,10 @@ const HomeScreen = props => {
   };
 
   useEffect(async () => {
-    const OsVer = Platform.constants['Release'];
-    console.log('android version', OsVer);
-    const unsubscri = props.navigation.addListener('focus', async () => {
+    const OsVer = Platform.constants["Release"];
+    console.log("android version", OsVer);
+
+    const unsubscri = props.navigation.addListener("focus", async () => {
       setLoading(true);
       // console.log(
       //   'getBrand',
@@ -280,43 +289,43 @@ const HomeScreen = props => {
       // );
 
       let ConnectedBluetoothInfo = await AsyncStorage.getItem(
-        'ConnectedBluetoothInfo',
+        "ConnectedBluetoothInfo"
       );
       if (ConnectedBluetoothInfo) {
-        console.log('ConnectedBluetoothInfo', ConnectedBluetoothInfo);
-        let printAdress = ConnectedBluetoothInfo?.split('|');
+        console.log("ConnectedBluetoothInfo", ConnectedBluetoothInfo);
+        let printAdress = ConnectedBluetoothInfo?.split("|");
         setPrinterMacAddress(printAdress[1]);
         setPrinterName(printAdress[0]);
-        if (printAdress[0] === 'InnerPrinter') {
+        if (printAdress[0] === "InnerPrinter") {
           setInnerPrinter(true);
         } else {
           setInnerPrinter(false);
         }
       }
-      let bilT = await AsyncStorage.getItem('SaleBIL_STYLE');
+      let bilT = await AsyncStorage.getItem("SaleBIL_STYLE");
       if (bilT) {
         let billTypeSe = await JSON.parse(bilT);
-        console.log('bill type is ', billTypeSe);
+        console.log("bill type is ", billTypeSe);
         setBillingType(billTypeSe);
       } else {
         setBillingType({
           id: 3,
-          name: 'Tax Invoice',
-          name2: 'فاتورة ضريبية',
+          name: "Tax Invoice",
+          name2: "فاتورة ضريبية",
           isSelected: true,
         });
       }
-      let BT = await AsyncStorage.getItem('BILLING_STYLE');
+      let BT = await AsyncStorage.getItem("BILLING_STYLE");
       BT = BT ? JSON.parse(BT) : 2;
       setBillingStyleId(BT.id);
       getAllCategories();
       let agentArray = [],
         loyaltyArray = [],
         paymentArray = [];
-      getData(LoyaltyListTable, cb => {
+      getData(LoyaltyListTable, (cb) => {
         // console.log("LoyaltyListTable..", cb)
 
-        cb.forEach(element => {
+        cb.forEach((element) => {
           loyaltyArray.push({
             label: element?.LoyaltyName,
             value: element?.LoyaltyName,
@@ -325,8 +334,8 @@ const HomeScreen = props => {
         });
       });
       setLoyaltyList(loyaltyArray);
-      getData(SalesAgentsTable, sa => {
-        sa.forEach(element => {
+      getData(SalesAgentsTable, (sa) => {
+        sa.forEach((element) => {
           agentArray.push({
             label: element?.SalesAgentName,
             value: element?.UserCode,
@@ -335,15 +344,15 @@ const HomeScreen = props => {
         });
       });
 
-      let cashalert = await AsyncStorage.getItem('CASH_PAID_ALERT');
+      let cashalert = await AsyncStorage.getItem("CASH_PAID_ALERT");
 
       // createInvoiceNumber();
-      await getData(TerminalSetupTable, cb => {
+      await getData(TerminalSetupTable, (cb) => {
         setTerminalSetupObj(cb[0]);
         // console.log("TerminalSetupTable...", cb)
       });
-      let companyCode = '';
-      await getData(TerminalConfigurationTable, async TC => {
+      let companyCode = "";
+      await getData(TerminalConfigurationTable, async (TC) => {
         setTerminalConfiguration(TC[0]);
         // reduceImageSizes(TC[0].CompanyLogoType +
         //   ',' + TC[0].CompanyLogo);
@@ -351,30 +360,30 @@ const HomeScreen = props => {
         let isnum = /^\d+$/.test(TC[0].ValueAddedTaxNumber);
         //let isCherector = /^[a-z]+$/i.test("a")
         // numberCher = /^[a-z0-9]+$/i.test("1245566555")
-        let isZero = TC[0].ValueAddedTaxNumber === '000000000000000';
+        let isZero = TC[0].ValueAddedTaxNumber === "000000000000000";
         // console.log('TerminalConfigurationTable...', TC);
         if (TC[0].ValueAddedTaxNumber.length === 15 && isnum && !isZero)
           setCompanyVATRegistor(true);
         //  console.table("TerminalConfigurationTable...", TC[0])
       });
-      if (cashalert === 'true') {
+      if (cashalert === "true") {
         setIsCustomInvoice(true);
       }
-      await getData(UserConfigurationTable, async TC => {
+      await getData(UserConfigurationTable, async (TC) => {
         setUserConfiguration(TC[0]);
         setUserDiscountLimit(TC[0]?.DiscountLimit);
         //console.log("UserConfigurationTable...", TC)
         if (TC[0].SalesRefundAllowed === 0) {
           setOptions([
-            {label: props.StringsList._32, value: 'getHoldInvoice'},
-            {label: props.StringsList._30, value: 'buyer'},
-            {label: props.StringsList._437, value: 'loyaltyCard'},
+            { label: props.StringsList._32, value: "getHoldInvoice" },
+            { label: props.StringsList._30, value: "buyer" },
+            { label: props.StringsList._437, value: "loyaltyCard" },
           ]);
         }
-        await getData(SalesPostingConfigurationListTable, cb => {
-          cb.forEach(element => {
-            if (element?.PaymentTypeName === 'Credit') {
-              if (TC[0]?.AllowCreditSale === 'true') {
+        await getData(SalesPostingConfigurationListTable, (cb) => {
+          cb.forEach((element) => {
+            if (element?.PaymentTypeName === "Credit") {
+              if (TC[0]?.AllowCreditSale === "true") {
                 paymentArray.push({
                   label: I18nManager.isRTL
                     ? element?.PaymentTypeName2
@@ -399,90 +408,160 @@ const HomeScreen = props => {
       setPayments(paymentArray);
       setAgentList(agentArray);
 
-      let DefaultGTax = await AsyncStorage.getItem('DEFAULT_GTAX');
-      await getData(TaxRateParentListTable, cb => {
-        let t = cb.filter(t => t.TaxLevel === 2);
-        t.unshift({TaxFamilyName: 'None', TaxFamilyCode: 'None'});
+      let DefaultGTax = await AsyncStorage.getItem("DEFAULT_GTAX");
+      await getData(TaxRateParentListTable, (cb) => {
+        let t = cb.filter((t) => t.TaxLevel === 2);
+        t.unshift({ TaxFamilyName: "None", TaxFamilyCode: "None" });
         if (Array.isArray(t) && t.length > 0) {
-          let defaultT = t.find(t => t.TaxFamilyCode === DefaultGTax);
+          let defaultT = t.find((t) => t.TaxFamilyCode === DefaultGTax);
           if (defaultT) {
-            initialglobalTaxFun(defaultT, '', '');
+            initialglobalTaxFun(defaultT, "", "");
           }
         }
         setGlobalTaxList(t);
-        // setTerminalSetupObj(cb[0]);
       });
 
-      // getPrinterList()
       soundLoading();
-      getData(DrawerSetupTable, cb => {
-        // console.log(' DrawerSetupTable', cb);
+      getData(DrawerSetupTable, (cb) => {
         setDrawerSetupArr(cb[0]);
       });
 
-      let saleAgent = await AsyncStorage.getItem('SELECTED_AGNETS');
+      let saleAgent = await AsyncStorage.getItem("SELECTED_AGNETS");
       if (saleAgent) {
-        // console.log('SaleAgent', saleAgent);
         saleAgent = JSON.parse(saleAgent);
 
         setSelectedAgent(saleAgent);
       }
+
+      let uri = await AsyncStorage.getItem("FILE_URI");
+      console.log("FILE_URI", uri);
     });
     return () => {
       unsubscri;
     };
   }, [props.navigation]);
   const postBillsbyInterval = async () => {
-    let uri = await AsyncStorage.getItem('FILE_URI');
-    console.log('Folder uri', uri);
-
+    let uri = await AsyncStorage.getItem("FILE_URI");
+    console.log("Folder uri", uri);
+    const path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
     let newBillList = [];
-    await getData(SaleBillsTable, async cb => {
+    await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
         if (
-          (cb[i].isUploaded == 'false' || !cb[i].isUploaded) &&
-          (cb[i].isProcessed == 'false' || !cb[i].isProcessed)
+          (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
+          (cb[i].isProcessed == "false" || !cb[i].isProcessed)
         ) {
           await getDataById(
             SaleBillDetailsTable,
-            'salesBillID',
+            "salesBillID",
             cb[i].salesBillID,
-            billProducts => {
+            (billProducts) => {
               (cb[i].isProcessed = false), (cb[i].isUploaded = true);
               cb[i].BillDetails = billProducts;
               (cb[i].isGlobalTax1IncludedInPrice =
-                cb[i].isGlobalTax1IncludedInPrice === 'false' ? false : true),
+                cb[i].isGlobalTax1IncludedInPrice === "false" ? false : true),
                 (cb[i].isGlobalTax2IncludedInPrice =
-                  cb[i].isGlobalTax2IncludedInPrice === 'false' ? false : true),
+                  cb[i].isGlobalTax2IncludedInPrice === "false" ? false : true),
                 (cb[i].isLoyaltyInvoice =
-                  cb[i].isLoyaltyInvoice === 'false' ? false : true);
+                  cb[i].isLoyaltyInvoice === "false" ? false : true);
 
               newBillList.push(cb[i]);
-            },
+            }
           );
         }
       }
-      console.log('New Bill list ...', newBillList);
+      console.log("New Bill list ...", newBillList);
       if (newBillList.length > 0) {
-        let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
+        let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
         const response1 = await props.dispatch(
-          ServerCall(UserLogin, 'SalesBill/CreateSalesBill', newBillList),
+          ServerCall(UserLogin, "SalesBill/CreateSalesBill", newBillList)
         );
-        console.log('bill posting response by interval', response1);
-        if (response1 === 'success') {
+        console.log("bill posting response by interval", response1);
+        if (response1 === "success") {
           updatePostedIvoice(newBillList);
           setBillNeedPost(false);
-          PermissionFile.deleteFile(uri);
-        } else if (response1 === 'False') {
-          let msg = errorMessages.GetCounterMessage(
-            'PostSettingTaxorDiscounttoRemove',
-            props.StringsList,
-          );
+          if (Platform.OS === "android") {
+            const isDeleted = await ScopedStorage.deleteFile(path).then(() => {
+              Toast.show("Invoice File Deleted after posting", {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+                shadow: true,
+                animation: true,
+                hideOnPress: true,
+                delay: 0,
+              });
+            });
+            if (isDeleted) {
+              await AsyncStorage.removeItem("FILE_URI");
+            }
+          } else {
+            try {
+              const folderName = "Bnody POS";
+              const fileName = "invoices.txt";
+
+              const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
+
+              const folderPath = `${libraryDirectoryPath}/${folderName}`;
+              const filePath = `${folderPath}/${fileName}`;
+
+              const fileExists = await RNFS.exists(filePath);
+              if (fileExists) {
+                await RNFS.unlink(filePath);
+                console.log("File deleted successfully:", filePath);
+              }
+
+              await RNFS.writeFile(filePath, "", "utf8");
+              console.log("File created successfully:", filePath);
+            } catch (error) {
+              console.error("Error creating folder and file:", error);
+            }
+          }
+
+          // let msg = errorMessages.GetCounterMessage(
+          //   "PostSettingTaxorDiscounttoRemove",
+          //   props.StringsList
+          // );
           setMessage(props.StringsList._298);
           setDisplayAlert(true);
           updatePostedIvoice(newBillList);
           setBillNeedPost(false);
-          PermissionFile.deleteFile(uri);
+
+          if (Platform.OS === "android") {
+            const isDeleted = await ScopedStorage.deleteFile(path).then(() => {
+              Toast.show("Invoice File Deleted after posting", {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+                shadow: true,
+                animation: true,
+                hideOnPress: true,
+                delay: 0,
+              });
+            });
+            if (isDeleted) {
+              await AsyncStorage.removeItem("FILE_URI");
+            }
+          } else {
+            try {
+              const folderName = "Bnody POS";
+              const fileName = "invoices.txt";
+
+              const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
+
+              const folderPath = `${libraryDirectoryPath}/${folderName}`;
+              const filePath = `${folderPath}/${fileName}`;
+
+              const fileExists = await RNFS.exists(filePath);
+              if (fileExists) {
+                await RNFS.unlink(filePath);
+                console.log("File deleted successfully:", filePath);
+              }
+
+              await RNFS.writeFile(filePath, "", "utf8");
+              console.log("File created successfully:", filePath);
+            } catch (error) {
+              console.error("Error creating folder and file:", error);
+            }
+          }
         } else {
           setMessage(props.StringsList._228);
           setDisplayAlert(true);
@@ -504,9 +583,9 @@ const HomeScreen = props => {
   // };
 
   const initialglobalTaxFun = async (itm, type, n, totalAmount, disAmount) => {
-    if (itm.TaxFamilyCode !== 'None') {
+    if (itm.TaxFamilyCode !== "None") {
       let tPrice = totalAmount ? totalAmount : totalPrice;
-      let subPr = type === 'returnInvoice' ? subPrice : type;
+      let subPr = type === "returnInvoice" ? subPrice : type;
       let disA =
         disAmount || disAmount === 0 ? disAmount : globalDiscountAmount;
       setSelectedGlobalTaxObj(itm);
@@ -522,7 +601,7 @@ const HomeScreen = props => {
         TerminalConfiguration,
         0,
         0,
-        true,
+        true
       );
       taxAmt.globalTaxGroupID = itm.TaxFamilyCode;
       taxAmt.globalTaxGroupName = itm.TaxFamilyName;
@@ -548,7 +627,7 @@ const HomeScreen = props => {
       setLoading(false);
     } else {
       let tPrice = totalPrice - globalTax;
-      console.log('globalTax else', tPrice);
+      console.log("globalTax else", tPrice);
       setTotalPrice(tPrice);
       setSelectedGlobalTaxObj(null);
       setGlobalTaxObj(null);
@@ -558,7 +637,7 @@ const HomeScreen = props => {
   };
   const getNetInfo = async () => {
     let networkState = false;
-    await NetInfo.fetch().then(state => {
+    await NetInfo.fetch().then((state) => {
       networkState = state.isConnected;
     });
     return networkState;
@@ -572,35 +651,95 @@ const HomeScreen = props => {
   const checkLocalDBBills = async () => {
     setPrintType(null);
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        {
-          title: 'Permissions for write access',
-          message: 'Give permission to your storage to write a file',
-          buttonPositive: 'ok',
-        },
-      );
+      await getData(DrawerSetupTable, async (cb) => {
+        console.log("isInitialLogin ", cb[0]?.isInitialLogin === "true");
+        if (cb[0]?.isInitialLogin === "true") {
+          updateColunm(
+            DrawerSetupTable,
+            ["isInitialLogin"],
+            "id",
+            "D12345678",
+            "false"
+          );
+          const OsVer = Platform.constants["Release"];
 
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        getData(DrawerSetupTable, async cb => {
-          console.log('isInitialLogin ', cb[0]?.isInitialLogin === 'true');
-          if (cb[0]?.isInitialLogin === 'true') {
-            updateColunm(
-              DrawerSetupTable,
-              ['isInitialLogin'],
-              'id',
-              'D12345678',
-              'false',
-            );
-            const OsVer = Platform.constants['Release'];
+          if (Platform.OS === "android") {
+            let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+            const isBills = await RNFS.exists(path);
+            if (isBills) {
+              let uri = await AsyncStorage.getItem("FILE_URI");
+              console.log("Folder uri android", uri);
+              const Data = await ScopedStorage.readFile(uri, "utf8");
 
-            if (OsVer >= 11) {
-              let path = '/storage/emulated/0/Documents/Bnody POS/Invoices.txt';
-              if (await RNFS.exists(path)) {
-                let uri = await AsyncStorage.getItem('FILE_URI');
-                console.log('Folder uri android 11 and above', uri);
-                let Data = await PermissionFile.getInvoices(uri);
+              console.log("File content:", Data);
+              // let Data = await PermissionFile.getInvoices(uri);
+              // console.log('Data =================>', Data);
+              let newBillList = Data;
+              let bills = await JSON.parse(newBillList);
+              if (bills.length > 0) {
+                //
+                const lastObject = bills[bills.length - 1];
+                const lastBillNumber = lastObject.BillDetails[0].BillNumber;
+                let lastBill = lastBillNumber.split("-");
+                const numericPart = lastBill[lastBill.length - 1].replace(
+                  /^0+/,
+                  ""
+                );
+                console.log("Last Bill Number:=====>", numericPart);
+                //
+                let status = await getNetInfo();
+                console.log("Net Status =====>", status);
+                if (status === true) {
+                  postingBill(newBillList);
+                } else {
+                  Alert.alert(
+                    "Panding Bills",
+                    "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
+                    [
+                      {
+                        text: "OKAY",
+                        onPress: async () => {
+                          let columnName = ["LastBillNumber"];
+                          let columnValue = [Number(numericPart)];
+                          await getData(
+                            TerminalConfigurationTable,
+                            async (TC) => {
+                              if (TC[0]?.UserCode) {
+                                updateColunm(
+                                  TerminalConfigurationTable,
+                                  columnName,
+                                  "UserCode",
+                                  TC[0]?.UserCode,
+                                  columnValue
+                                );
+                              }
+                            }
+                          );
+
+                          console.log("Press OK");
+                        },
+                      },
+                    ]
+                  );
+                }
+              }
+            }
+          } else {
+            try {
+              const folderName = "Bnody POS";
+              const fileName = "invoices.txt";
+
+              const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
+
+              const folderPath = `${libraryDirectoryPath}/${folderName}`;
+              const filePath = `${folderPath}/${fileName}`;
+
+              const fileExists = await RNFS.exists(filePath);
+              if (fileExists) {
+                const Data = await RNFS.readFile(uri, "utf8");
+
+                console.log("File content:", Data);
+                // let Data = await PermissionFile.getInvoices(uri);
                 // console.log('Data =================>', Data);
                 let newBillList = Data;
                 let bills = await JSON.parse(newBillList);
@@ -608,111 +747,117 @@ const HomeScreen = props => {
                   //
                   const lastObject = bills[bills.length - 1];
                   const lastBillNumber = lastObject.BillDetails[0].BillNumber;
-                  let lastBill = lastBillNumber.split('-');
+                  let lastBill = lastBillNumber.split("-");
                   const numericPart = lastBill[lastBill.length - 1].replace(
                     /^0+/,
-                    '',
+                    ""
                   );
-                  console.log('Last Bill Number:=====>', numericPart);
+                  console.log("Last Bill Number:=====>", numericPart);
                   //
                   let status = await getNetInfo();
-                  console.log('Net Status =====>', status);
+                  console.log("Net Status =====>", status);
                   if (status === true) {
                     postingBill(newBillList);
                   } else {
                     Alert.alert(
-                      'Panding Bills',
-                      'Some of Your bills are pending to post kindly connect to your internet connection to post bills',
+                      "Panding Bills",
+                      "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
                       [
                         {
-                          text: 'OKAY',
+                          text: "OKAY",
                           onPress: async () => {
-                            let columnName = ['LastBillNumber'];
+                            let columnName = ["LastBillNumber"];
                             let columnValue = [Number(numericPart)];
                             await getData(
                               TerminalConfigurationTable,
-                              async TC => {
+                              async (TC) => {
                                 if (TC[0]?.UserCode) {
                                   updateColunm(
                                     TerminalConfigurationTable,
                                     columnName,
-                                    'UserCode',
+                                    "UserCode",
                                     TC[0]?.UserCode,
-                                    columnValue,
+                                    columnValue
                                   );
                                 }
-                              },
+                              }
                             );
 
-                            console.log('Press OK');
+                            console.log("Press OK");
                           },
                         },
-                      ],
+                      ]
                     );
                   }
                 }
               }
-            } else {
-              let path = '/storage/emulated/0/Downloads/Bnody POS/Invoices.txt';
-              if (RNFS.exists(path)) {
-                let uri = await AsyncStorage.getItem('FILE_URI');
-                console.log('Folder uri android 10 ', uri);
-                let Data = await PermissionFile.getInvoices(uri);
-                let newBillList = Data;
-                let bills = await JSON.parse(newBillList);
-                if (bills.length > 0) {
-                  //
-                  const lastObject = bills[bills.length - 1];
-                  const lastBillNumber = lastObject.BillDetails[0].BillNumber;
-                  let lastBill = lastBillNumber.split('-');
-                  const numericPart = lastBill[lastBill.length - 1].replace(
-                    /^0+/,
-                    '',
-                  );
-                  console.log('Last Bill Number:=====>', numericPart);
-                  //
-                  if (status === true) {
-                    postingBill(newBillList);
-                  } else {
-                    Alert.alert(
-                      'Panding Bills',
-                      'Some of Your bills are pending to post kindly connect to your internet connection to post bills',
-                      [
-                        {
-                          text: 'OKAY',
-                          onPress: async () => {
-                            let columnName = ['LastBillNumber'];
-                            let columnValue = [Number(numericPart)];
-                            await getData(
-                              TerminalConfigurationTable,
-                              async TC => {
-                                if (TC[0]?.UserCode) {
-                                  updateColunm(
-                                    TerminalConfigurationTable,
-                                    columnName,
-                                    'UserCode',
-                                    TC[0]?.UserCode,
-                                    columnValue,
-                                  );
-                                }
-                              },
-                            );
 
-                            console.log('Press OK');
-                          },
-                        },
-                      ],
-                    );
-                  }
-                }
-              }
+              await RNFS.writeFile(filePath, "", "utf8");
+              console.log("File created successfully:", filePath);
+            } catch (error) {
+              console.error("Error creating folder and file:", error);
             }
           }
-        });
-      } else {
-        console.log('permission denied');
-        return;
-      }
+
+          // if (OsVer >= 11) {
+
+          // } else {
+          //   let path = "/storage/emulated/0/Downloads/Bnody POS/Invoices.txt";
+          //   if (RNFS.exists(path)) {
+          //     let uri = await AsyncStorage.getItem("FILE_URI");
+          //     console.log("Folder uri android 10 ", uri);
+          //     let Data = await PermissionFile.getInvoices(uri);
+          //     let newBillList = Data;
+          //     let bills = await JSON.parse(newBillList);
+          //     if (bills.length > 0) {
+          //       //
+          //       const lastObject = bills[bills.length - 1];
+          //       const lastBillNumber = lastObject.BillDetails[0].BillNumber;
+          //       let lastBill = lastBillNumber.split("-");
+          //       const numericPart = lastBill[lastBill.length - 1].replace(
+          //         /^0+/,
+          //         ""
+          //       );
+          //       console.log("Last Bill Number:=====>", numericPart);
+          //       //
+          //       if (status === true) {
+          //         postingBill(newBillList);
+          //       } else {
+          //         Alert.alert(
+          //           "Panding Bills",
+          //           "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
+          //           [
+          //             {
+          //               text: "OKAY",
+          //               onPress: async () => {
+          //                 let columnName = ["LastBillNumber"];
+          //                 let columnValue = [Number(numericPart)];
+          //                 await getData(
+          //                   TerminalConfigurationTable,
+          //                   async (TC) => {
+          //                     if (TC[0]?.UserCode) {
+          //                       updateColunm(
+          //                         TerminalConfigurationTable,
+          //                         columnName,
+          //                         "UserCode",
+          //                         TC[0]?.UserCode,
+          //                         columnValue
+          //                       );
+          //                     }
+          //                   }
+          //                 );
+
+          //                 console.log("Press OK");
+          //               },
+          //             },
+          //           ]
+          //         );
+          //       }
+          //     }
+          //   }
+          // }
+        }
+      });
     } catch (err) {
       console.warn(err);
       return;
@@ -722,76 +867,94 @@ const HomeScreen = props => {
     setLoading(true);
 
     let newBillList = [];
-    await getData(SaleBillsTable, async cb => {
+    await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
         if (
-          (cb[i].isUploaded == 'false' || !cb[i].isUploaded) &&
-          (cb[i].isProcessed == 'false' || !cb[i].isProcessed)
+          (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
+          (cb[i].isProcessed == "false" || !cb[i].isProcessed)
         ) {
           await getDataById(
             SaleBillDetailsTable,
-            'salesBillID',
+            "salesBillID",
             cb[i].salesBillID,
-            billProducts => {
+            (billProducts) => {
               (cb[i].isProcessed = false), (cb[i].isUploaded = true);
               cb[i].BillDetails = billProducts;
               (cb[i].isGlobalTax1IncludedInPrice =
-                cb[i].isGlobalTax1IncludedInPrice === 'false' ? false : true),
+                cb[i].isGlobalTax1IncludedInPrice === "false" ? false : true),
                 (cb[i].isGlobalTax2IncludedInPrice =
-                  cb[i].isGlobalTax2IncludedInPrice === 'false' ? false : true),
+                  cb[i].isGlobalTax2IncludedInPrice === "false" ? false : true),
                 (cb[i].isLoyaltyInvoice =
-                  cb[i].isLoyaltyInvoice === 'false' ? false : true);
+                  cb[i].isLoyaltyInvoice === "false" ? false : true);
 
               newBillList.push(cb[i]);
-            },
+            }
           );
         }
       }
-      console.log('New Bill list ...', newBillList);
+      console.log("New Bill list ...", newBillList);
       if (newBillList.length > 0) {
-        let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
+        let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
 
         const response1 = await props.dispatch(
-          ServerCall(UserLogin, 'SalesBill/CreateSalesBill', newBillList),
+          ServerCall(UserLogin, "SalesBill/CreateSalesBill", newBillList)
         );
 
-        console.log('bill posting response', response1);
-        if (response1 === 'success') {
+        console.log("bill posting response", response1);
+        if (response1 === "success") {
           updatePostedIvoice(newBillList);
           setBillNeedPost(false);
           try {
             const granted = await PermissionsAndroid.request(
               PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
               {
-                title: 'Permissions for read access',
-                message: 'Give permission to your storage to read a file',
-                buttonPositive: 'ok',
-              },
+                title: "Permissions for read access",
+                message: "Give permission to your storage to read a file",
+                buttonPositive: "ok",
+              }
             );
             if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-              const OsVer = Platform.constants['Release'];
-              console.log('android version', OsVer);
-              if (OsVer >= 10) {
-                let path =
-                  '/storage/emulated/0/Downloads/Bnody POS/Invoices.txt';
-                RNFS.unlink(path).then(() => {
-                  console.log('FILE DELETED');
-                });
+              const OsVer = Platform.constants["Release"];
+              console.log("android version", OsVer);
+
+              let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+              const isDeleted = await ScopedStorage.deleteFile(path).then(
+                () => {
+                  Toast.show("Invoice File Deleted after posting", {
+                    duration: Toast.durations.SHORT,
+                    position: Toast.positions.BOTTOM,
+                    shadow: true,
+                    animation: true,
+                    hideOnPress: true,
+                    delay: 0,
+                  });
+                }
+              );
+              if (isDeleted) {
+                await AsyncStorage.removeItem("FILE_URI");
               }
-            } else {
-              let path = '/storage/emulated/0/Bnody POS/Invoices.txt';
-              RNFS.unlink(path).then(() => {
-                console.log('FILE DELETED');
-              });
             }
+            // else {
+            //   let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+            //   await ScopedStorage.deleteFile(path).then(() => {
+            //     Toast.show("Invoice File Deleted after posting", {
+            //       duration: Toast.durations.LONG,
+            //       position: Toast.positions.BOTTOM,
+            //       shadow: true,
+            //       animation: true,
+            //       hideOnPress: true,
+            //       delay: 0,
+            //     });
+            //   });
+            // }
           } catch (err) {
             console.warn(err);
             return;
           }
-        } else if (response1 === 'False') {
+        } else if (response1 === "False") {
           let msg = errorMessages.GetCounterMessage(
-            'PostSettingTaxorDiscounttoRemove',
-            props.StringsList,
+            "PostSettingTaxorDiscounttoRemove",
+            props.StringsList
           );
           setMessage(props.StringsList._298);
 
@@ -802,16 +965,28 @@ const HomeScreen = props => {
             const granted = await PermissionsAndroid.request(
               PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
               {
-                title: 'Permissions for read access',
-                message: 'Give permission to your storage to read a file',
-                buttonPositive: 'ok',
-              },
+                title: "Permissions for read access",
+                message: "Give permission to your storage to read a file",
+                buttonPositive: "ok",
+              }
             );
             if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-              let path = '/storage/emulated/0/Downloads/Bnody POS/Invoices.txt';
-              RNFS.unlink(path).then(() => {
-                console.log('FILE DELETED');
-              });
+              let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+              const isDeleted = await ScopedStorage.deleteFile(path).then(
+                () => {
+                  Toast.show("Invoice File Deleted after posting", {
+                    duration: Toast.durations.SHORT,
+                    position: Toast.positions.BOTTOM,
+                    shadow: true,
+                    animation: true,
+                    hideOnPress: true,
+                    delay: 0,
+                  });
+                }
+              );
+              if (isDeleted) {
+                await AsyncStorage.removeItem("FILE_URI");
+              }
             }
           } catch (err) {
             console.warn(err);
@@ -826,50 +1001,86 @@ const HomeScreen = props => {
       setLoading(false);
     });
   };
-  const updatePostedIvoice = array => {
+  const updatePostedIvoice = (array) => {
     for (let i = 0; i < array.length; i++) {
-      let columnName = ['isUploaded', 'isProcessed'];
+      let columnName = ["isUploaded", "isProcessed"];
       let columnValue = [true, false];
       updateColunm(
         SaleBillsTable,
         columnName,
-        'salesBillID',
+        "salesBillID",
         array[i].salesBillID,
-        columnValue,
+        columnValue
       );
     }
   };
-  const postingBill = async newBillList => {
+  const postingBill = async (newBillList) => {
     setLoading(true);
     setPrintType(null);
-    let uri = await AsyncStorage.getItem('FILE_URI');
-    console.log('Folder uri android 11 and above', uri);
-    let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
+    let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+    let uri = await AsyncStorage.getItem("FILE_URI");
+    console.log("Folder uri android 11 and above", uri);
+    let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
     let bill = await JSON.parse(newBillList);
     const response1 = await props.dispatch(
-      ServerCall(UserLogin, 'SalesBill/CreateSalesBill', bill),
+      ServerCall(UserLogin, "SalesBill/CreateSalesBill", bill)
     );
-    if (response1 === 'success') {
+    if (response1 === "success") {
       setLoading(true);
-      PermissionFile.deleteFile(uri);
-      let accessToken = await AsyncStorage.getItem('ACCESS_TOKEN');
-      let res = await DBTable.AddDataInDb(props, 'rebootTerminal', accessToken);
-      await AsyncStorage.removeItem('SELECTED_AGNETS');
+      if (Platform.OS === "android") {
+        const isDeleted = await ScopedStorage.deleteFile(path).then(() => {
+          Toast.show("Invoice File Deleted after posting", {
+            duration: Toast.durations.SHORT,
+            position: Toast.positions.BOTTOM,
+            shadow: true,
+            animation: true,
+            hideOnPress: true,
+            delay: 0,
+          });
+        });
+        if (isDeleted) {
+          await AsyncStorage.removeItem("FILE_URI");
+        }
+      } else {
+        try {
+          const folderName = "Bnody POS";
+          const fileName = "invoices.txt";
+
+          const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
+
+          const folderPath = `${libraryDirectoryPath}/${folderName}`;
+          const filePath = `${folderPath}/${fileName}`;
+
+          const fileExists = await RNFS.exists(filePath);
+          if (fileExists) {
+            await RNFS.unlink(filePath);
+            console.log("File deleted successfully:", filePath);
+          }
+
+          await RNFS.writeFile(filePath, "", "utf8");
+          console.log("File created successfully:", filePath);
+        } catch (error) {
+          console.error("Error creating folder and file:", error);
+        }
+      }
+      let accessToken = await AsyncStorage.getItem("ACCESS_TOKEN");
+      let res = await DBTable.AddDataInDb(props, "rebootTerminal", accessToken);
+      await AsyncStorage.removeItem("SELECTED_AGNETS");
       setLoading(false);
     } else {
-      Alert.alert('Issue Bill', props.StringsList._298, [
+      Alert.alert("Issue Bill", props.StringsList._298, [
         {
-          text: 'Try Again',
+          text: "Try Again",
           onPress: () => {
             postingBill(newBillList);
           },
         },
         {
-          text: 'Cancel',
+          text: "Cancel",
           onPress: () => {
-            console.log('Cancel Pressed');
+            console.log("Cancel Pressed");
           },
-          style: 'cancel',
+          style: "cancel",
         },
       ]);
 
@@ -879,13 +1090,13 @@ const HomeScreen = props => {
     setLoading(false);
   };
 
-  const convertArabicNumbersToEnglish = arabicText => {
-    let arabic_numbers = '٠١٢٣٤٥٦٧٨٩'.split('');
-    let n = '';
+  const convertArabicNumbersToEnglish = (arabicText) => {
+    let arabic_numbers = "٠١٢٣٤٥٦٧٨٩".split("");
+    let n = "";
     let englishNumber = false;
 
     for (let i = 0; i < arabicText?.length; i++) {
-      var number = arabic_numbers.find(x => x == arabicText[i]);
+      var number = arabic_numbers.find((x) => x == arabicText[i]);
       if (number) {
         englishNumber = false;
       } else {
@@ -906,8 +1117,7 @@ const HomeScreen = props => {
     }
     return n;
   };
-
-  const QR = () => {
+  const QR = forwardRef(() => {
     var tax = globalTax,
       proTax = 0,
       prodis = 0;
@@ -924,41 +1134,90 @@ const HomeScreen = props => {
     setSumOfProductsDiscount(prodis);
     let VAT = TerminalConfiguration?.ValueAddedTaxNumber
       ? TerminalConfiguration?.ValueAddedTaxNumber
-      : '000000000000000';
-    let currentDate = moment().format('YYYY-MM-DD H:mm:ss');
+      : "000000000000000";
+
     let invoiceTotal = totalPrice.toFixed(
-      TerminalConfiguration.DecimalsInAmount,
+      TerminalConfiguration.DecimalsInAmount
     );
     let invoiceVatTotal = tax.toFixed(TerminalConfiguration.DecimalsInAmount);
-    // console.log("current Date", currentDate)
-    // console.log("selectedProducts tax", invoiceTotal, invoiceVatTotal, currentDate, VAT)
+
+    const currentDateISO = new Date().toISOString();
+    console.log(currentDateISO);
+    // let currentDate = moment().format("YYYY-MM-DD H:mm:ss");
+    // console.log("current Date", currentDate);
     const invoice = new Invoice({
       sellerName: TerminalConfiguration.CompanyName,
       vatRegistrationNumber: convertArabicNumbersToEnglish(VAT),
-      invoiceTimestamp: currentDate,
+      invoiceTimestamp: currentDateISO,
       invoiceTotal: invoiceTotal,
       invoiceVatTotal: invoiceVatTotal,
     });
-    // console.log("imageData......imageData", TerminalConfiguration.CompanyName, VAT, currentDate, invoiceTotal, invoiceVatTotal, convertArabicNumbersToEnglish(VAT))
+
     let imageData = invoice.toBase64();
-
     if (imageData !== null) {
+      qrRef.current = imageData;
       return (
-        <QRCode
-          ref={qrRef}
-          size={sizeHelper.calWp(300)}
-          value={imageData}
-          getRef={c => {
-            if (!c?.toDataURL) return;
-
-            c?.toDataURL(base64Image => {
-              qrRef.current = base64Image;
-            });
-          }}
-        />
+        <QRCode ref={qrRef} size={sizeHelper.calWp(300)} value={imageData} />
       );
     }
-  };
+  });
+
+  // const QR = () => {
+  //   var tax = globalTax,
+  //     proTax = 0,
+  //     prodis = 0;
+  //   for (let i = 0; i < selectedProducts?.length; i++) {
+  //     let pro = selectedProducts[i];
+
+  //     tax = tax + pro.tax;
+  //     proTax = proTax + pro.tax;
+  //     prodis = pro?.DiscountAmount
+  //       ? prodis + Number(pro.DiscountAmount)
+  //       : prodis + 0;
+  //   }
+  //   setSumOfProductsTax(proTax);
+  //   setSumOfProductsDiscount(prodis);
+  //   let VAT = TerminalConfiguration?.ValueAddedTaxNumber
+  //     ? TerminalConfiguration?.ValueAddedTaxNumber
+  //     : "000000000000000";
+  //   let currentDate = moment().format("YYYY-MM-DD H:mm:ss");
+  //   let invoiceTotal = totalPrice.toFixed(
+  //     TerminalConfiguration.DecimalsInAmount
+  //   );
+  //   let invoiceVatTotal = tax.toFixed(TerminalConfiguration.DecimalsInAmount);
+  //   console.log("current Date", currentDate);
+
+  //   const invoice = new Invoice({
+  //     sellerName: TerminalConfiguration.CompanyName,
+  //     vatRegistrationNumber: convertArabicNumbersToEnglish(VAT),
+  //     invoiceTimestamp: currentDate,
+  //     invoiceTotal: invoiceTotal,
+  //     invoiceVatTotal: invoiceVatTotal,
+  //   });
+  //   // console.log("imageData......imageData", TerminalConfiguration.CompanyName, VAT, currentDate, invoiceTotal, invoiceVatTotal, convertArabicNumbersToEnglish(VAT))
+  //   let imageData = invoice.toBase64();
+  //   console.log("imageData......imageData", imageData);
+
+  //   if (imageData !== null) {
+  //     return (
+  //       <QRCode
+  //         ref={qrRef}
+  //         size={sizeHelper.calWp(300)}
+  //         value={imageData}
+  //         getRef={(c) => {
+  //           console.log("====>", c);
+  //           if (!c.toDataURL) {
+  //             return;
+  //           } else {
+  //             c.toDataURL((base64Image) => {
+  //               qrRef.current = base64Image;
+  //             });
+  //           }
+  //         }}
+  //       />
+  //     );
+  //   }
+  // };
 
   // const callback = dataURL => {
   //   // createInvoiceStyle(dataURL)
@@ -969,50 +1228,53 @@ const HomeScreen = props => {
   // };
 
   const soundLoading = () => {
-    let sound = new Sound(require('../../assets/sounds/beep01.mp3'), error => {
-      if (error) {
-        console.log('failed to load the sound', error);
+    let sound = new Sound(
+      require("../../assets/sounds/beep01.mp3"),
+      (error) => {
+        if (error) {
+          console.log("failed to load the sound", error);
+        }
       }
-    });
+    );
     setBeepSound(sound);
   };
 
   const SoundPlay = () => {
-    beepSound.play(success => {
+    beepSound.play((success) => {
       if (success) {
-        console.log('successfully finished playing');
+        console.log("successfully finished playing");
       } else {
-        console.log('playback failed due to audio decoding errors');
+        console.log("playback failed due to audio decoding errors");
       }
     });
   };
 
-  const updateTerminalConfiguration = ADamount => {
-    let columnName = ['LastBillNumber'];
+  const updateTerminalConfiguration = (ADamount) => {
+    let columnName = ["LastBillNumber"];
     let columnValue = [Number(TerminalConfiguration.LastBillNumber) + 1];
     updateColunm(
       TerminalConfigurationTable,
       columnName,
-      'UserCode',
+      "UserCode",
       TerminalConfiguration.UserCode,
-      columnValue,
+      columnValue
     );
     let StartFromValue = [Number(terminalSetup.StartFrom) + 1];
     updateColunm(
       TerminalSetupTable,
-      ['StartFrom'],
-      'id',
-      '12345678',
-      StartFromValue,
+      ["StartFrom"],
+      "id",
+      "12345678",
+      StartFromValue
     );
 
-    payments.forEach(element => {
-      if (paymentsValue === '1' || Number(paymentsValue) > 5) {
+    payments.forEach((element) => {
+      if (paymentsValue === "1" || Number(paymentsValue) > 5) {
         if (element.value == paymentsValue) {
-          let columnNameDrawer = ['Sales'];
-          getData(PaymentMethodTable, cb => {
+          let columnNameDrawer = ["Sales"];
+          getData(PaymentMethodTable, (cb) => {
             // console.log("LoyaltyListTable..", cb)
-            let amount = cb.find(x => x.PaymentType == paymentsValue);
+            let amount = cb.find((x) => x.PaymentType == paymentsValue);
             let salePrice;
             if (amount) {
               salePrice = Number(amount.Sales) + Number(totalPrice);
@@ -1023,20 +1285,20 @@ const HomeScreen = props => {
             updateColunm(
               PaymentMethodTable,
               columnNameDrawer,
-              'PaymentType',
+              "PaymentType",
               element.value,
-              columnValueDrawer,
+              columnValueDrawer
             );
           });
         }
       } else {
         if (paymentsValue == element.value) {
           let salePrice = Number(drawerSetupArr.CashSales) + Number(ADamount);
-          let columnNameDrawer = ['Sales'];
+          let columnNameDrawer = ["Sales"];
           // console.log('estimatedAmountinDrawer..advancePaidInCash', ADamount);
-          getData(PaymentMethodTable, cb => {
+          getData(PaymentMethodTable, (cb) => {
             // console.log("LoyaltyListTable..", cb)
-            let amount = cb.find(x => x.PaymentType == paymentsValue);
+            let amount = cb.find((x) => x.PaymentType == paymentsValue);
             let creditSales;
             if (amount) {
               creditSales =
@@ -1048,100 +1310,100 @@ const HomeScreen = props => {
             updateColunm(
               PaymentMethodTable,
               columnNameDrawer,
-              'PaymentType',
+              "PaymentType",
               element.value,
-              columnValueDrawer,
+              columnValueDrawer
             );
           });
 
           updateColunm(
             PaymentMethodTable,
             columnNameDrawer,
-            'PaymentType',
-            '1',
-            [salePrice],
+            "PaymentType",
+            "1",
+            [salePrice]
           );
         }
       }
     });
 
-    if (paymentsValue === '1') {
+    if (paymentsValue === "1") {
       let estimatedAmountinDrawer =
         Number(drawerSetupArr.estimatedAmountinDrawer) + Number(totalPrice);
 
       let salePrice = Number(drawerSetupArr.CashSales) + Number(totalPrice);
-      let columnNameDrawer = ['CashSales', 'estimatedAmountinDrawer'];
+      let columnNameDrawer = ["CashSales", "estimatedAmountinDrawer"];
 
       let columnValueDrawer = [salePrice, estimatedAmountinDrawer];
       updateColunm(
         DrawerSetupTable,
         columnNameDrawer,
-        'id',
-        'D12345678',
-        columnValueDrawer,
+        "id",
+        "D12345678",
+        columnValueDrawer
       );
     } else {
       let estimatedAmountinDrawer =
         Number(drawerSetupArr.estimatedAmountinDrawer) + Number(ADamount);
       let salePrice = Number(drawerSetupArr.CashSales) + Number(ADamount);
 
-      console.log('estimatedAmountinDrawer..advancePaidInCash', ADamount);
+      console.log("estimatedAmountinDrawer..advancePaidInCash", ADamount);
       let creditSales =
         Number(drawerSetupArr.creditSales) + Number(totalPrice - ADamount);
       let columnNameDrawer = [
-        'CashSales',
-        'creditSales',
-        'estimatedAmountinDrawer',
+        "CashSales",
+        "creditSales",
+        "estimatedAmountinDrawer",
       ];
       let columnValueDrawer = [salePrice, creditSales, estimatedAmountinDrawer];
       updateColunm(
         DrawerSetupTable,
         columnNameDrawer,
-        'id',
-        'D12345678',
-        columnValueDrawer,
+        "id",
+        "D12345678",
+        columnValueDrawer
       );
     }
   };
 
   const updateReturnTerminalConfiguration = () => {
-    console.log('updateReturnTerminalConfiguration');
-    let columnName = ['LastReturnBillNumber'];
+    console.log("updateReturnTerminalConfiguration");
+    let columnName = ["LastReturnBillNumber"];
     let columnValue = [Number(TerminalConfiguration.LastReturnBillNumber) + 1];
     updateColunm(
       TerminalConfigurationTable,
       columnName,
-      'UserCode',
+      "UserCode",
       TerminalConfiguration.UserCode,
-      columnValue,
+      columnValue
     );
 
     let estimatedAmountinDrawer =
       Number(drawerSetupArr.estimatedAmountinDrawer) - Number(totalPrice);
     //if (estimatedAmountinDrawer > 0) {
     let salePrice = Number(drawerSetupArr.CashRefund) + Number(totalPrice);
-    let columnNameDrawer = ['CashRefund', 'estimatedAmountinDrawer'];
+    let columnNameDrawer = ["CashRefund", "estimatedAmountinDrawer"];
     let columnValueDrawer = [salePrice, estimatedAmountinDrawer];
     updateColunm(
       DrawerSetupTable,
       columnNameDrawer,
-      'id',
-      'D12345678',
-      columnValueDrawer,
+      "id",
+      "D12345678",
+      columnValueDrawer
     );
   };
 
-  const getAllCategories = async type => {
-    getData(CategoriesListTable, async categories => {
+  const getAllCategories = async (type) => {
+    getData(CategoriesListTable, async (categories) => {
       setAllCategories(categories);
       if (categories.length > 0) {
         getSelectedCategoryProducts(categories[0]);
       } else {
         setNoFamilyFound(true);
-        await getData(UpdateProductDetailListTable, async productsDetail => {
+        await getData(UpdateProductDetailListTable, async (productsDetail) => {
           // console.log('UpdateProductDetailListTable', productsDetail);
           let proDetails = [...productsDetail];
-          if (type !== 'isRestState') {
+          if (type !== "isRestState") {
             onSelectProduct(null, proDetails);
           } else {
             setCategoryProducts(proDetails);
@@ -1164,26 +1426,26 @@ const HomeScreen = props => {
     await getDataJoinById(
       ProductCardAddOnGroupListTable,
       UpdateProductDetailListTable,
-      'AddOnGroupCode',
+      "AddOnGroupCode",
       item.AddOnGroupCode,
-      async addonProducts => {
-        console.log('Product Card Add On Group List Table...', addonProducts);
+      async (addonProducts) => {
+        console.log("Product Card Add On Group List Table...", addonProducts);
         let products = [];
 
         for (let i = 0; i < addonProducts.length; i++) {
           let isFind = selectedProduct.find(
-            x =>
+            (x) =>
               (x.ProductBarCode === addonProducts[i].ProductBarCode ||
                 x.EquiProductCode === addonProducts[i].ProductCode) &&
-              x.AddOnParentSalesInvoiceDetailsID === item.SalesBillDetailsID,
+              x.AddOnParentSalesInvoiceDetailsID === item.SalesBillDetailsID
           );
           await getDataJoinById(
             ProductCardAddOnEquivalentProductsListTable,
             UpdateProductDetailListTable,
-            'EquiProductCode',
+            "EquiProductCode",
             addonProducts[i].ProductCode,
-            EquivalentProduct => {
-              console.log('addon equivaletnt Products', EquivalentProduct);
+            (EquivalentProduct) => {
+              console.log("addon equivaletnt Products", EquivalentProduct);
               let EqP = [];
               for (let j = 0; j < EquivalentProduct.length; j++) {
                 let pro = {
@@ -1213,25 +1475,25 @@ const HomeScreen = props => {
                   TaxGroupID: EquivalentProduct[0].SaleTaxGroupCode,
                   IsTax1IncludedInPrice: false,
                   IsTax2IncludedInPrice: false,
-                  Tax1Code: '',
-                  Tax1Name: '',
+                  Tax1Code: "",
+                  Tax1Name: "",
                   Tax1Rate: 0,
                   Tax1Amount: 0,
-                  Tax2Code: '',
-                  Tax2Name: '',
+                  Tax2Code: "",
+                  Tax2Name: "",
                   Tax2Rate: 0,
                   Tax2Amount: 0,
                   GrandAmount: addonProducts[i].Price,
-                  GroupDataID: '',
+                  GroupDataID: "",
                   ProductBarCode: EquivalentProduct[j].ProductBarCode,
-                  ReturnSalesBillDetailID: '',
-                  DeliveryStatus: '',
-                  DeliveryDate: '',
-                  DeliveryTime: '',
-                  DeliveryNote: '',
-                  DeliveredDate: '',
-                  DeliveredTime: '',
-                  Remarks: '',
+                  ReturnSalesBillDetailID: "",
+                  DeliveryStatus: "",
+                  DeliveryDate: "",
+                  DeliveryTime: "",
+                  DeliveryNote: "",
+                  DeliveredDate: "",
+                  DeliveredTime: "",
+                  Remarks: "",
                   SalesAgentCode: null,
                   IsParentAddOn: false,
                   AddOnGroupCode: addonProducts[i].AddOnGroupCode,
@@ -1282,25 +1544,25 @@ const HomeScreen = props => {
                   TaxGroupID: addonProducts[i].SaleTaxGroupCode,
                   IsTax1IncludedInPrice: false,
                   IsTax2IncludedInPrice: false,
-                  Tax1Code: '',
-                  Tax1Name: '',
+                  Tax1Code: "",
+                  Tax1Name: "",
                   Tax1Rate: 0,
                   Tax1Amount: 0,
-                  Tax2Code: '',
-                  Tax2Name: '',
+                  Tax2Code: "",
+                  Tax2Name: "",
                   Tax2Rate: 0,
                   Tax2Amount: 0,
                   GrandAmount: addonProducts[i].Price,
-                  GroupDataID: '',
+                  GroupDataID: "",
                   ProductBarCode: addonProducts[i].ProductBarCode,
-                  ReturnSalesBillDetailID: '',
-                  DeliveryStatus: '',
-                  DeliveryDate: '',
-                  DeliveryTime: '',
-                  DeliveryNote: '',
-                  DeliveredDate: '',
-                  DeliveredTime: '',
-                  Remarks: '',
+                  ReturnSalesBillDetailID: "",
+                  DeliveryStatus: "",
+                  DeliveryDate: "",
+                  DeliveryTime: "",
+                  DeliveryNote: "",
+                  DeliveredDate: "",
+                  DeliveredTime: "",
+                  Remarks: "",
                   SalesAgentCode: null,
                   IsParentAddOn: false,
                   AddOnGroupCode: addonProducts[i].AddOnGroupCode,
@@ -1322,28 +1584,28 @@ const HomeScreen = props => {
                 };
                 products.push(pro);
               }
-            },
+            }
           );
         }
         // console.log('update addon products......', products);
         setisAddon(true), setReturnProducts(products);
         setLoading(false);
-      },
+      }
     );
   };
 
-  const getProductsIngredients = async item => {
+  const getProductsIngredients = async (item) => {
     setLoading(true);
     let selectedProduct = [...selectedProducts];
     await getDataById(
       ProductCardIngredientsListTable,
-      'ProductBarCode',
+      "ProductBarCode",
       item.ProductBarCode,
-      ingredients => {
-        console.log('ingredients.....', ingredients, item);
+      (ingredients) => {
+        console.log("ingredients.....", ingredients, item);
         for (let i = 0; i < ingredients.length; i++) {
           let isFind = item?.IngredientsArray.find(
-            x => x.Id === ingredients[i].Id,
+            (x) => x.Id === ingredients[i].Id
           );
           if (isFind) {
             ingredients[i].isSelected = true;
@@ -1356,17 +1618,17 @@ const HomeScreen = props => {
         setIngredientsData(ingredients);
         setIngredientProductCode(item.ProductBarCode);
         setLoading(false);
-      },
+      }
     );
   };
 
-  const searchIngredientFun = text => {
+  const searchIngredientFun = (text) => {
     setLoading(true);
 
     let filteredName = [];
 
-    if (text || text !== '') {
-      ingredientsData.filter(item => {
+    if (text || text !== "") {
+      ingredientsData.filter((item) => {
         if (
           item?.IngredientName?.toLowerCase().match(text?.toLowerCase()) ||
           item?.IngredientName1?.toLowerCase().match(text?.toLowerCase())
@@ -1390,34 +1652,34 @@ const HomeScreen = props => {
     let selectpro = [...selectedProducts];
     ingredient[index].isSelected = !item.isSelected;
     // console.log("onSelectIngredintes", item, index)
-    selectpro.forEach(pro => {
+    selectpro.forEach((pro) => {
       if (pro.ProductBarCode === item.ProductBarCode) {
-        console.log('select item run', item);
+        console.log("select item run", item);
         if (ingredient[index].isSelected) {
           pro.IngredientsArray.push(item);
           pro.Ingredients =
-            String(pro.Ingredients) + String(item.CategoryIngredientCode) + ',';
+            String(pro.Ingredients) + String(item.CategoryIngredientCode) + ",";
           pro.IngredientNames =
-            String(pro.IngredientNames) + String(item.IngredientName) + ',';
+            String(pro.IngredientNames) + String(item.IngredientName) + ",";
         } else {
           const index = pro.IngredientsArray.findIndex(
-            res => res.Id === item.Id,
+            (res) => res.Id === item.Id
           );
-          console.log('onSelectIngredintes ', index, pro.IngredientsArray);
+          console.log("onSelectIngredintes ", index, pro.IngredientsArray);
           if (index > -1) {
             pro.IngredientsArray.splice(index, 1);
             pro.Ingredients = String(pro.Ingredients).replace(
               `${item.CategoryIngredientCode},`,
-              '',
+              ""
             );
             pro.IngredientNames = String(pro.IngredientNames).replace(
               `${item.IngredientName},`,
-              '',
+              ""
             );
             console.log(
-              'pro.Ingredients.replace',
+              "pro.Ingredients.replace",
               pro.Ingredients,
-              `${item.CategoryIngredientCode},`,
+              `${item.CategoryIngredientCode},`
             );
           }
         }
@@ -1429,20 +1691,20 @@ const HomeScreen = props => {
   };
 
   const addIngredientFun = async () => {
-    let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
+    let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
     let ingredientName = ingredientText,
-      cultureCode = I18nManager.isRTL ? 'ar-SA' : 'en-US',
+      cultureCode = I18nManager.isRTL ? "ar-SA" : "en-US",
       productBarCode = ingredientProductCode;
 
     const response1 = await props.dispatch(
       ServerCall(
         UserLogin,
         `Products/CreateProductIngredient?ingredientName=${ingredientName}&cultureCode=${cultureCode}&productBarCode=${productBarCode}`,
-        'GET',
-      ),
+        "GET"
+      )
     );
 
-    console.log('add new integredient', response1);
+    console.log("add new integredient", response1);
     let ing = [];
     ing.push(response1);
     InsertProductCardIngredientsList(ing);
@@ -1450,12 +1712,12 @@ const HomeScreen = props => {
 
   const onPressAddIntgredient = () => {
     setMessage(props.StringsList._407);
-    setAlertType('ingredient');
+    setAlertType("ingredient");
     setDisplayAlert(true);
     setisPromptAlert(true);
   };
 
-  const getDetailofProduct = async items => {
+  const getDetailofProduct = async (items) => {
     setoptionsOpen(false);
     setPaymentsOpen(false);
     let filterCategoryProducts = [];
@@ -1465,13 +1727,13 @@ const HomeScreen = props => {
 
       await getDataById(
         UpdateProductDetailListTable,
-        'ProductBarCode',
+        "ProductBarCode",
         product?.ProductCode,
-        async productDeltail => {
+        async (productDeltail) => {
           if (productDeltail.length > 0) {
             filterCategoryProducts.push(productDeltail[0]);
           }
-        },
+        }
       );
     }
     // console.log('Filter Category Products', filterCategoryProducts);
@@ -1496,11 +1758,11 @@ const HomeScreen = props => {
 
     await getDataById(
       ProductListTable,
-      'ProductFamilyCode',
+      "ProductFamilyCode",
       itemId,
-      products => {
+      (products) => {
         catProducts = products;
-      },
+      }
     );
     // console.log('catProducts', catProducts);
 
@@ -1520,7 +1782,7 @@ const HomeScreen = props => {
   };
 
   const onPressBackCat = () => {
-    console.log('onPressBackCat....');
+    console.log("onPressBackCat....");
     if (noFamilyFound) {
       getAllCategories();
       setToggle(false);
@@ -1543,20 +1805,20 @@ const HomeScreen = props => {
 
   const numberToEngArbWords = (val, isEnglish) => {
     let value = Number(val);
-    let words = '';
+    let words = "";
     if (isEnglish) {
-      let fractword = String(val).split('.');
-      console.log('word of english ', fractword);
+      let fractword = String(val).split(".");
+      console.log("word of english ", fractword);
       let firstWords = Number(fractword[0]);
       words = numberToWord.toWords(firstWords);
       if (Number(fractword[1] > 0)) {
         let num = Number(fractword[1]);
         let secondWords = numberToWord.toWords(num);
-        words = words + ' and ' + secondWords;
+        words = words + " and " + secondWords;
       }
-      words = words + ' halala only.';
+      words = words + " halala only.";
     } else {
-      words = new numberToArb(value, 'SAR').parse();
+      words = new numberToArb(value, "SAR").parse();
     }
     return words;
   };
@@ -1564,7 +1826,7 @@ const HomeScreen = props => {
   const onInvoiceClick = () => {
     let srNo = 1;
     let array = [...selectedProducts];
-    array.forEach(e => {
+    array.forEach((e) => {
       if (e.IsParentAddOn) {
         e.srNo = srNo++;
       } else {
@@ -1580,7 +1842,7 @@ const HomeScreen = props => {
     setToggle(!isToggle);
   };
 
-  const onManuallyAddCount = async item => {
+  const onManuallyAddCount = async (item) => {
     setoptionsOpen(false);
     setPaymentsOpen(false);
     let selectedProduct = [...selectedProducts];
@@ -1604,14 +1866,14 @@ const HomeScreen = props => {
           }
           if (newQuantity !== product.Quantity) {
             let type =
-              newQuantity > product.Quantity ? 'increment' : 'decrement';
+              newQuantity > product.Quantity ? "increment" : "decrement";
             if (product.IsParentAddOn) {
               changeProductGroupItem(
                 product,
                 type,
                 newQuantity,
                 product.DiscountRate,
-                Number(product.DiscountAmount),
+                Number(product.DiscountAmount)
               );
             } else {
               changeProductGroupAddon(
@@ -1619,7 +1881,7 @@ const HomeScreen = props => {
                 type,
                 addonFinalQuantity,
                 product.DiscountRate,
-                Number(product.DiscountAmount),
+                Number(product.DiscountAmount)
               );
             }
           }
@@ -1654,13 +1916,13 @@ const HomeScreen = props => {
               0,
               TerminalConfiguration,
               product.PriceOriginal,
-              product.DiscountRate,
+              product.DiscountRate
             );
-            console.log('ManuallyAddCount Tax Calculation', taxAmt);
+            console.log("ManuallyAddCount Tax Calculation", taxAmt);
             let proQ,
               discount = 0;
-            product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-            (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+            product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+            (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
               (product.Tax1Rate = taxAmt.Tax1Percentage
                 ? taxAmt.Tax1Percentage
                 : 0);
@@ -1672,8 +1934,8 @@ const HomeScreen = props => {
             } else {
               product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
             }
-            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-              (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+              (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
               (product.Tax2Rate = taxAmt?.Tax2Percentage
                 ? taxAmt?.Tax2Percentage
                 : 0),
@@ -1704,7 +1966,7 @@ const HomeScreen = props => {
                       (product.DiscountRate *
                         (product.PriceOriginal * newQuantity +
                           product.Tax1Amount)) /
-                        100,
+                        100
                     );
               } else {
                 discount = product.DiscountAmount;
@@ -1719,7 +1981,7 @@ const HomeScreen = props => {
                   : Number(
                       product.PriceOriginal * newQuantity -
                         discount +
-                        taxAmt.Tax1Amount,
+                        taxAmt.Tax1Amount
                     );
               }
               product.GrandAmount = Number(GAmount);
@@ -1770,7 +2032,7 @@ const HomeScreen = props => {
             pd = 0;
           }
           product.DiscountAmount = pd;
-          console.log('change price type', Amount, newprice);
+          console.log("change price type", Amount, newprice);
           let taxAmt = await calculateTaxeGroups(
             newQuantity,
             Amount,
@@ -1781,29 +2043,29 @@ const HomeScreen = props => {
             0,
             TerminalConfiguration,
             newprice,
-            product.DiscountRate,
+            product.DiscountRate
           );
-          console.log('calculateTaxeGroups onChangePrice', taxAmt);
+          console.log("calculateTaxeGroups onChangePrice", taxAmt);
           let proQ,
             discount = 0;
-          product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-          (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+          product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+          (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
             (product.Tax1Rate = taxAmt.Tax1Percentage
               ? taxAmt.Tax1Percentage
               : 0),
             (product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
             (product.Tax1Fragment = taxAmt.Tax1Fragment
               ? taxAmt.Tax1Fragment
-              : ''),
-            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-            (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+              : ""),
+            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+            (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
             (product.Tax2Rate = taxAmt?.Tax2Percentage
               ? taxAmt?.Tax2Percentage
               : 0),
             (product.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
           (product.Tax2Fragment = taxAmt.Tax2Fragment
             ? taxAmt.Tax2Fragment
-            : ''),
+            : ""),
             (product.PriceWithOutTax = taxAmt.Price);
           product.PriceOriginal = newprice;
           if (!product.IsParentAddOn) {
@@ -1826,7 +2088,7 @@ const HomeScreen = props => {
                     (product.DiscountRate *
                       (product.PriceOriginal * newQuantity +
                         taxAmt.Tax1Amount)) /
-                      100,
+                      100
                   );
             } else {
               discount = product.DiscountAmount;
@@ -1842,7 +2104,7 @@ const HomeScreen = props => {
                 : Number(
                     product.PriceOriginal * newQuantity -
                       discount +
-                      taxAmt.Tax1Amount,
+                      taxAmt.Tax1Amount
                   );
             }
             product.GrandAmount = Number(GAmount);
@@ -1850,7 +2112,7 @@ const HomeScreen = props => {
             //;
             discount = Number(discount);
             product.DiscountAmount = discount.toFixed(
-              TerminalConfiguration.DecimalsInAmount,
+              TerminalConfiguration.DecimalsInAmount
             );
             product.tax = product.Tax1Amount + product.Tax2Amount;
           } else {
@@ -1874,7 +2136,7 @@ const HomeScreen = props => {
     }
   };
 
-  const onManuallyChangePrice = async item => {
+  const onManuallyChangePrice = async (item) => {
     setoptionsOpen(false);
     setPaymentsOpen(false);
     let selectedProduct = [...selectedProducts];
@@ -1898,7 +2160,7 @@ const HomeScreen = props => {
                 ? Number(item.PriceOriginal * item.Quantity)
                 : Number(manuallyCount * item.Quantity);
             Amount = Number(
-              Amount.toFixed(TerminalConfiguration.DecimalsInAmount),
+              Amount.toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             if (product.DiscountAmount >= Amount) {
               product.DiscountAmount = 0;
@@ -1906,10 +2168,10 @@ const HomeScreen = props => {
               product.DiscountAmount = product.DiscountAmount;
             }
             console.log(
-              'Amount change for product type 3',
+              "Amount change for product type 3",
               Amount,
               manuallyCount,
-              product.DiscountAmount,
+              product.DiscountAmount
             );
 
             if (product.groupTaxCodes) {
@@ -1937,18 +2199,18 @@ const HomeScreen = props => {
                     }
                     if (position === item.productGroupTaxInfoObj.length - 1) {
                       item.PriceOriginal = manuallyCount.toFixed(
-                        TerminalConfiguration.DecimalsInAmount,
+                        TerminalConfiguration.DecimalsInAmount
                       );
                       item.PriceOriginal = Number(item.PriceOriginal);
                       executeCal = false;
                       item.PriceWithOutTax = AmountWithOutTax;
-                      handleDiscount(item, 'DiscountRate');
+                      handleDiscount(item, "DiscountRate");
                     }
                   });
                 } else {
                   percentageDiscountAmount = item.DiscountAmount;
                   item.PriceOriginal = manuallyCount.toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
+                    TerminalConfiguration.DecimalsInAmount
                   );
                   item.PriceOriginal = Number(item.PriceOriginal);
                   executeCal = false;
@@ -1959,7 +2221,7 @@ const HomeScreen = props => {
               if (executeCal)
                 await product.groupTaxCodes.forEach(async (element, index) => {
                   let amountBeforeDiscount = Amount;
-                  let taxGroupID = '';
+                  let taxGroupID = "";
                   let itemQty = 0,
                     itemAmount = 0,
                     itemProposedSalesAmount = 0,
@@ -1990,7 +2252,7 @@ const HomeScreen = props => {
                     0,
                     TerminalConfiguration,
                     manuallyCount,
-                    item.DiscountRate,
+                    item.DiscountRate
                   );
 
                   if (taxAmt.Tax1Fragment == 2) {
@@ -2018,23 +2280,23 @@ const HomeScreen = props => {
                   product.Tax2Fragment = product.Tax2Fragment;
 
                   console.log(
-                    'calculateTaxeGroups for Product type 3...',
-                    taxAmt,
+                    "calculateTaxeGroups for Product type 3...",
+                    taxAmt
                   );
                   let proQ,
                     discount = 0;
-                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
                     (product.Tax1Rate = taxAmt.Tax1Percentage
                       ? taxAmt.Tax1Percentage
                       : 0),
                     (product.Tax1Amount = totaltax1),
                     (product.Tax2Code = taxAmt?.Tax2Code
                       ? taxAmt.Tax2Code
-                      : ''),
+                      : ""),
                     (product.Tax2Name = taxAmt?.Tax2Name
                       ? taxAmt?.Tax2Name
-                      : ''),
+                      : ""),
                     (product.Tax2Rate = taxAmt?.Tax2Percentage
                       ? taxAmt?.Tax2Percentage
                       : 0),
@@ -2048,12 +2310,12 @@ const HomeScreen = props => {
                   product.PriceWithOutTax =
                     manuallyCount - includedTax / newQuantity;
                   product.PriceWithOutTax = product?.PriceWithOutTax.toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
+                    TerminalConfiguration.DecimalsInAmount
                   );
                   product.PriceWithOutTax = Number(product.PriceWithOutTax);
                   product.PriceUnitlesstax = product.PriceWithOutTax;
                   item.PriceOriginal = manuallyCount.toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
+                    TerminalConfiguration.DecimalsInAmount
                   );
                   item.PriceOriginal = Number(item.PriceOriginal);
                   if (!product.IsParentAddOn) {
@@ -2075,7 +2337,7 @@ const HomeScreen = props => {
                             (product.DiscountRate *
                               (product.PriceWithOutTax * newQuantity +
                                 taxAmt.Tax1Amount)) /
-                              100,
+                              100
                           );
                     } else {
                       discount = product.DiscountAmount;
@@ -2088,7 +2350,7 @@ const HomeScreen = props => {
                     product.webperamount = product.PriceWithOutTax;
                     //;
                     product.DiscountAmount = Number(discount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
 
                     product.tax = totaltax1 + totaltax2;
@@ -2117,21 +2379,21 @@ const HomeScreen = props => {
                 0,
                 TerminalConfiguration,
                 manuallyCount,
-                product.DiscountRate,
+                product.DiscountRate
               );
-              console.log('calculateTaxeGroups for Product type 3...', taxAmt);
+              console.log("calculateTaxeGroups for Product type 3...", taxAmt);
               let proQ,
                 discount = 0;
-              product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-              (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+              product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+              (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
                 (product.Tax1Rate = taxAmt.Tax1Percentage
                   ? taxAmt.Tax1Percentage
                   : 0),
                 (product.Tax1Amount = taxAmt.Tax1Amount
                   ? taxAmt.Tax1Amount
                   : 0),
-                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-                (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+                (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
                 (product.Tax2Rate = taxAmt?.Tax2Percentage
                   ? taxAmt?.Tax2Percentage
                   : 0),
@@ -2139,12 +2401,12 @@ const HomeScreen = props => {
                   ? taxAmt?.Tax2Amount
                   : 0);
               item.PriceWithOutTax = taxAmt?.Price.toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               );
               item.PriceWithOutTax = Number(item.PriceWithOutTax);
               // product.PriceWithOutTax = taxAmt.Price;
               item.PriceOriginal = manuallyCount.toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               );
               item.PriceOriginal = Number(item.PriceOriginal);
               if (!product.IsParentAddOn) {
@@ -2164,7 +2426,7 @@ const HomeScreen = props => {
                         (product.DiscountRate *
                           (product.PriceWithOutTax * newQuantity +
                             taxAmt.Tax1Amount)) /
-                          100,
+                          100
                       );
                 }
 
@@ -2178,7 +2440,7 @@ const HomeScreen = props => {
                     : Number(
                         product.PriceOriginal * newQuantity -
                           discount +
-                          taxAmt.Tax1Amount,
+                          taxAmt.Tax1Amount
                       );
                 }
                 product.GrandAmount = Number(GAmount);
@@ -2186,7 +2448,7 @@ const HomeScreen = props => {
                 //;
                 discount = Number(discount);
                 product.DiscountAmount = discount.toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 );
 
                 product.tax = product.Tax1Amount + product.Tax2Amount;
@@ -2219,12 +2481,12 @@ const HomeScreen = props => {
                 : Number(manuallyCount * item.Quantity);
 
             Amount = Number(
-              Amount.toFixed(TerminalConfiguration.DecimalsInAmount),
+              Amount.toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             console.log(
-              'Amount change for product type 3',
+              "Amount change for product type 3",
               Amount,
-              manuallyCount,
+              manuallyCount
             );
             product.DiscountAmount =
               product.DiscountAmount >= Amount ? 0 : product.DiscountAmount;
@@ -2238,13 +2500,13 @@ const HomeScreen = props => {
               0,
               TerminalConfiguration,
               manuallyCount,
-              product.DiscountRate,
+              product.DiscountRate
             );
-            console.log('calculateTaxeGroups...', taxAmt);
+            console.log("calculateTaxeGroups...", taxAmt);
             let proQ,
               discount = 0;
-            product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-            (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+            product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+            (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
               (product.Tax1Rate = taxAmt.Tax1Percentage
                 ? taxAmt.Tax1Percentage
                 : 0);
@@ -2254,8 +2516,8 @@ const HomeScreen = props => {
               product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
             }
 
-            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-              (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+              (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
               (product.Tax2Rate = taxAmt?.Tax2Percentage
                 ? taxAmt?.Tax2Percentage
                 : 0),
@@ -2265,12 +2527,12 @@ const HomeScreen = props => {
             product.Tax1Fragment = product.Tax1Fragment;
             product.Tax2Fragment = product.Tax2Fragment;
             item.PriceWithOutTax = taxAmt?.Price.toFixed(
-              TerminalConfiguration.DecimalsInAmount,
+              TerminalConfiguration.DecimalsInAmount
             );
             item.PriceWithOutTax = Number(item.PriceWithOutTax);
             // product.PriceWithOutTax = taxAmt.Price;
             item.PriceOriginal = manuallyCount.toFixed(
-              TerminalConfiguration.DecimalsInAmount,
+              TerminalConfiguration.DecimalsInAmount
             );
             item.PriceOriginal = Number(item.PriceOriginal);
             if (!product.IsParentAddOn) {
@@ -2300,14 +2562,14 @@ const HomeScreen = props => {
                   : Number(
                       product.PriceOriginal * newQuantity -
                         discount +
-                        taxAmt.Tax1Amount,
+                        taxAmt.Tax1Amount
                     );
               }
               product.GrandAmount = Number(GAmount);
 
               discount = Number(discount);
               product.DiscountAmount = discount.toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               );
 
               product.tax = product.Tax1Amount + product.Tax2Amount;
@@ -2339,7 +2601,7 @@ const HomeScreen = props => {
     let percentageDiscountAmount = 0;
     pGL = item.groupTaxCodes;
     let tax1AmountTotal = 0;
-    if (type === 'DiscountRate') {
+    if (type === "DiscountRate") {
       dP = item.DiscountRate;
       percentageDiscountAmount =
         (item.PriceWithOutTax * item.Quantity * dP) / 100;
@@ -2351,7 +2613,7 @@ const HomeScreen = props => {
     }
     let totalTax = 0,
       totalPrice = 0;
-    item.productGroupTaxInfoObj.forEach(element => {
+    item.productGroupTaxInfoObj.forEach((element) => {
       let itemProposedAmount =
         ((element.proposedPrice * item.Quantity) /
           (item.Pricefortax * item.Quantity)) *
@@ -2384,9 +2646,9 @@ const HomeScreen = props => {
       if (selectedProduct.length > 0 && manuallyCount !== 0) {
         tax1AmountTotal = totalTax;
         item.GrandAmount = totalPrice;
-        selectedProduct.forEach(async product => {
+        selectedProduct.forEach(async (product) => {
           if (product.SalesBillDetailsID === item?.SalesBillDetailsID) {
-            if (type === 'DiscountRate') {
+            if (type === "DiscountRate") {
               product.DiscountRate = product.DiscountRate;
               product.DiscountAmount =
                 product.DiscountRate === 0
@@ -2448,7 +2710,7 @@ const HomeScreen = props => {
     pGL = item.groupTaxCodes;
     amount = Number(item?.PriceWithOutTax * item?.Quantity);
 
-    if (type === 'DiscountRate') {
+    if (type === "DiscountRate") {
       dA = manuallyCount === 0 ? manuallyCount : item.DiscountAmount;
       dP = manuallyCount;
       percentageDiscountAmount =
@@ -2461,7 +2723,7 @@ const HomeScreen = props => {
     if (item.ProductType === 3) {
       let totalTax = 0,
         totalPrice = 0;
-      item.productGroupTaxInfoObj.forEach(element => {
+      item.productGroupTaxInfoObj.forEach((element) => {
         let itemProposedAmount =
           ((element.proposedPrice * item.Quantity) /
             (item.Pricefortax * item.Quantity)) *
@@ -2495,28 +2757,28 @@ const HomeScreen = props => {
           ? item.IsTax2InclusiveInPrice
           : 0,
         Tax2Value: item.Tax2Amount == 0 ? item.Tax2Amount : totalTax,
-        Tax2Fragment: item.Tax2Fragment ? item.Tax2Fragment : '',
-        Tax2Name: item.Tax2Name ? item.Tax2Name : '',
-        Tax2Code: item.Tax2Code ? item.Tax2Code : '',
+        Tax2Fragment: item.Tax2Fragment ? item.Tax2Fragment : "",
+        Tax2Name: item.Tax2Name ? item.Tax2Name : "",
+        Tax2Code: item.Tax2Code ? item.Tax2Code : "",
         IsTax1InclusiveInPrice: item.IsTax1InclusiveInPrice
           ? item.IsTax1InclusiveInPrice
           : 0,
         Tax1Value: item.Tax1Amount == 0 ? item.Tax1Amount : totalTax,
-        Tax1Fragment: item.Tax1Fragment ? item.Tax1Fragment : '',
-        Tax1Name: item.Tax1Name ? item.Tax1Name : '',
-        Tax1Code: item.Tax1Code ? item.Tax1Code : '',
+        Tax1Fragment: item.Tax1Fragment ? item.Tax1Fragment : "",
+        Tax1Name: item.Tax1Name ? item.Tax1Name : "",
+        Tax1Code: item.Tax1Code ? item.Tax1Code : "",
       };
       let tax = totalTax;
       console.log(
-        'calculateTaxeGroups...onManuallyAddDiscount',
+        "calculateTaxeGroups...onManuallyAddDiscount",
         taxAmt,
         manuallyCount,
         userDiscountLimit,
         item.DiscountAmount,
-        type,
+        type
       );
       if (tax >= 0) {
-        if (type === 'DiscountRate') {
+        if (type === "DiscountRate") {
           pDiscount =
             manuallyCount === 0
               ? 0
@@ -2525,7 +2787,7 @@ const HomeScreen = props => {
               : parseFloat(
                   (manuallyCount *
                     (item.PriceWithOutTax * item.Quantity + tax)) /
-                    100,
+                    100
                 );
         } else {
           amtDisP =
@@ -2548,19 +2810,19 @@ const HomeScreen = props => {
           }
         }
         if (
-          (dP <= userDiscountLimit && type === 'DiscountRate' && dP < 100) ||
+          (dP <= userDiscountLimit && type === "DiscountRate" && dP < 100) ||
           (amtDisP <= userDiscountLimit &&
-            type !== 'DiscountRate' &&
+            type !== "DiscountRate" &&
             manuallyCount < amount)
         ) {
-          if (manuallyCount === 0 && type === 'DiscountRate') {
+          if (manuallyCount === 0 && type === "DiscountRate") {
             let disLimt =
               userDiscountLimit - Number(manuallyCount) + item.DiscountRate;
             // setUserDiscountLimit(disLimt);
           } else {
             let p = 0;
             if (item.DiscountAmount > 0) {
-              console.log('');
+              console.log("");
               p =
                 (item.DiscountAmount /
                   (item.GrandAmount + item.DiscountAmount)) *
@@ -2570,9 +2832,9 @@ const HomeScreen = props => {
             let disLimt = userDiscountLimit - amtDisP + p;
           }
           if (selectedProduct.length > 0 && manuallyCount !== 0) {
-            selectedProduct.forEach(async product => {
+            selectedProduct.forEach(async (product) => {
               if (product.SalesBillDetailsID === item?.SalesBillDetailsID) {
-                if (type === 'DiscountRate') {
+                if (type === "DiscountRate") {
                   let disLimt =
                     userDiscountLimit - manuallyCount + item.DiscountRate;
                   // setUserDiscountLimit(disLimt);
@@ -2637,7 +2899,7 @@ const HomeScreen = props => {
         0,
         TerminalConfiguration,
         item.PriceWithOutTax,
-        dP,
+        dP
       );
 
       if (item.Tax1Fragment == 2) {
@@ -2650,7 +2912,7 @@ const HomeScreen = props => {
 
       let tax = taxAmt?.Tax1Amount ? taxAmt?.Tax1Amount : 0;
       if (tax >= 0) {
-        if (type === 'DiscountRate') {
+        if (type === "DiscountRate") {
           pDiscount =
             manuallyCount === 0
               ? 0
@@ -2659,7 +2921,7 @@ const HomeScreen = props => {
               : parseFloat(
                   (manuallyCount *
                     (item.PriceWithOutTax * item.Quantity + tax)) /
-                    100,
+                    100
                 );
         } else {
           amtDisP =
@@ -2682,12 +2944,12 @@ const HomeScreen = props => {
           }
         }
         if (
-          (dP <= userDiscountLimit && type === 'DiscountRate' && dP < 100) ||
+          (dP <= userDiscountLimit && type === "DiscountRate" && dP < 100) ||
           (amtDisP <= userDiscountLimit &&
-            type !== 'DiscountRate' &&
+            type !== "DiscountRate" &&
             manuallyCount < amount)
         ) {
-          if (manuallyCount === 0 && type === 'DiscountRate') {
+          if (manuallyCount === 0 && type === "DiscountRate") {
             let disLimt =
               userDiscountLimit - Number(manuallyCount) + item.DiscountRate;
             // setUserDiscountLimit(disLimt);
@@ -2702,18 +2964,18 @@ const HomeScreen = props => {
 
             let disLimt = userDiscountLimit - amtDisP + p;
             console.log(
-              'manuallyCount....disLimt',
+              "manuallyCount....disLimt",
               disLimt,
               amtDisP,
               p,
-              userDiscountLimit,
+              userDiscountLimit
             );
             // setUserDiscountLimit(disLimt);
           }
           if (selectedProduct.length > 0 && manuallyCount !== 0) {
-            selectedProduct.forEach(async product => {
+            selectedProduct.forEach(async (product) => {
               if (product.SalesBillDetailsID === item?.SalesBillDetailsID) {
-                if (type === 'DiscountRate') {
+                if (type === "DiscountRate") {
                   let disLimt =
                     userDiscountLimit - manuallyCount + item.DiscountRate;
                   // setUserDiscountLimit(disLimt);
@@ -2722,13 +2984,13 @@ const HomeScreen = props => {
                     taxAmt.calculationId === 1
                   ) {
                     product.GrandAmount = Number(
-                      taxAmt.amount + taxAmt.Tax1Amount,
+                      taxAmt.amount + taxAmt.Tax1Amount
                     );
                   } else {
                     product.GrandAmount = Number(
                       product.IsTax1IncludedInPrice == 0
                         ? item.PriceOriginal * item.Quantity - pDiscount + tax
-                        : item.PriceOriginal * item.Quantity - pDiscount,
+                        : item.PriceOriginal * item.Quantity - pDiscount
                     );
                   }
                   product.DiscountRate =
@@ -2740,11 +3002,11 @@ const HomeScreen = props => {
                       : taxAmt.DiscountAmount
                       ? taxAmt.DiscountAmount.toFixed(2)
                       : pDiscount.toFixed(
-                          TerminalConfiguration.DecimalsInAmount,
+                          TerminalConfiguration.DecimalsInAmount
                         );
 
-                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
                     (product.Tax1Rate = taxAmt.Tax1Percentage
                       ? taxAmt.Tax1Percentage
                       : 0),
@@ -2753,10 +3015,10 @@ const HomeScreen = props => {
                       : 0),
                     (product.Tax2Code = taxAmt?.Tax2Code
                       ? taxAmt.Tax2Code
-                      : ''),
+                      : ""),
                     (product.Tax2Name = taxAmt?.Tax2Name
                       ? taxAmt?.Tax2Name
-                      : ''),
+                      : ""),
                     (product.Tax2Rate = taxAmt?.Tax2Percentage
                       ? taxAmt?.Tax2Percentage
                       : 0),
@@ -2765,8 +3027,8 @@ const HomeScreen = props => {
                       : 0);
                   product.tax = product.Tax1Amount + product.Tax2Amount;
                 } else {
-                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
                     (product.Tax1Rate = taxAmt.Tax1Percentage
                       ? taxAmt.Tax1Percentage
                       : 0),
@@ -2775,10 +3037,10 @@ const HomeScreen = props => {
                       : 0),
                     (product.Tax2Code = taxAmt?.Tax2Code
                       ? taxAmt.Tax2Code
-                      : ''),
+                      : ""),
                     (product.Tax2Name = taxAmt?.Tax2Name
                       ? taxAmt?.Tax2Name
-                      : ''),
+                      : ""),
                     (product.Tax2Rate = taxAmt?.Tax2Percentage
                       ? taxAmt?.Tax2Percentage
                       : 0),
@@ -2809,14 +3071,14 @@ const HomeScreen = props => {
               }
             });
           } else {
-            item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-            (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+            item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+            (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
               (item.Tax1Rate = taxAmt.Tax1Percentage
                 ? taxAmt.Tax1Percentage
                 : 0),
               (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
-              (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-              (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+              (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+              (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
               (item.Tax2Rate = taxAmt?.Tax2Percentage
                 ? taxAmt?.Tax2Percentage
                 : 0),
@@ -2988,29 +3250,29 @@ const HomeScreen = props => {
     let products =
       selectedProduct.length > 0
         ? selectedProduct
-        : type === 'delete'
+        : type === "delete"
         ? []
         : selectedProducts;
     let subTotal = 0,
       total = 0;
-    products.forEach(p => {
+    products.forEach((p) => {
       subTotal = subTotal + p.GrandAmount;
     });
     total = subTotal;
 
     if (selectedGlobalTaxObj || globalDiscountRate > 0) {
       if (globalDiscountRate > 0) {
-        globalDiscountAmountFun('', subTotal, total, 'recalling');
+        globalDiscountAmountFun("", subTotal, total, "recalling");
       } else if (globalDiscountAmount > 0) {
-        globalDiscountAmountFun('globalDiscount', subTotal, total, 'recalling');
+        globalDiscountAmountFun("globalDiscount", subTotal, total, "recalling");
       } else if (selectedGlobalTaxObj) {
-        globalTaxFun(selectedGlobalTaxObj, subTotal, '', total);
+        globalTaxFun(selectedGlobalTaxObj, subTotal, "", total);
       }
     } else {
       setLoading(false);
       setTotalPrice(total);
     }
-    console.log('finalCalculation.....,subTotal', subTotal);
+    console.log("finalCalculation.....,subTotal", subTotal);
     setsubPrice(subTotal);
     setLoading(false);
   };
@@ -3020,9 +3282,9 @@ const HomeScreen = props => {
     type,
     newQuantity,
     dr,
-    discount,
+    discount
   ) => {
-    let pq = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1;
+    let pq = type === "increment" ? item.Quantity + 1 : item.Quantity - 1;
     item.maxQuantity =
       returnInvoiceNumber !== null
         ? item.maxQuantity
@@ -3030,10 +3292,10 @@ const HomeScreen = props => {
     item.DiscountAmount = discount;
     // console.log('return product quanttoty check', item.maxQuantity >= pq)
     if (item.maxQuantity >= pq) {
-      let rr = await getData(SalesFamilySummaryListTable, async cb => {
+      let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
         // console.log(' SalesFamilySummaryListTable are', cb);
         let groupTaxCodes = cb.filter(
-          x => x.SalesFamilyCode === item.ProductCode,
+          (x) => x.SalesFamilyCode === item.ProductCode
         );
         productGroupList = groupTaxCodes;
         // console.log(' our group is', productGroupList);
@@ -3057,17 +3319,17 @@ const HomeScreen = props => {
           if (item.DiscountRate > 0) {
             percentageDiscountAmount =
               (item.webperamount * newQuantity * item.DiscountRate) / 100;
-            if (type === 'increment' || type === 'decrement') {
+            if (type === "increment" || type === "decrement") {
               // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
               item.Quantity = newQuantity;
 
               executeCal = false;
-              handleDiscount(item, 'DiscountRate');
+              handleDiscount(item, "DiscountRate");
             }
           } else {
             percentageDiscountAmount = item.DiscountAmount;
 
-            if (type === 'increment' || type === 'decrement') {
+            if (type === "increment" || type === "decrement") {
               // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
               item.Quantity = newQuantity;
               executeCal = false;
@@ -3077,9 +3339,9 @@ const HomeScreen = props => {
         }
         if (executeCal == true) {
           await productGroupList.forEach(async (element, index) => {
-            console.log('Element', element);
+            console.log("Element", element);
             let amountBeforeDiscount = item.PriceOriginal * newQuantity;
-            let taxGroupID = '';
+            let taxGroupID = "";
             let itemQty = 0,
               itemAmount = 0,
               itemProposedSalesAmount = 0,
@@ -3110,10 +3372,10 @@ const HomeScreen = props => {
               0,
               TerminalConfiguration,
               item.PriceOriginal,
-              dr,
+              dr
             );
 
-            console.log('taxamount is', taxAmt);
+            console.log("taxamount is", taxAmt);
             // let tax = item.Tax1Amount + item.Tax2Amount;
 
             if (taxAmt.Tax1Fragment == 2) {
@@ -3186,14 +3448,14 @@ const HomeScreen = props => {
             item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice ? 1 : 0;
             item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice ? 1 : 0;
             item.IngredientsArray = [];
-            item.IngredientNames = '';
+            item.IngredientNames = "";
 
             item.Tax1Code = taxAmt.Tax1Code;
-            (item.Tax1Name = ''),
+            (item.Tax1Name = ""),
               (item.Tax1Rate = taxAmt.Tax1Percentage),
               (item.Tax1Amount = totaltax1),
-              (item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : ''),
-              (item.Tax2Name = ''),
+              (item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : ""),
+              (item.Tax2Name = ""),
               (item.Tax2Rate = taxAmt.Tax2Percentage
                 ? taxAmt.Tax2Percentage
                 : 0),
@@ -3202,18 +3464,18 @@ const HomeScreen = props => {
             // item.TaxGroupID = taxGroupID
 
             let product = item;
-            if (type === 'increment') {
+            if (type === "increment") {
               // productIncrement(taxAmt, product)
               if (taxAmt) {
                 let proQ;
 
                 if (!product.IsParentAddOn) {
                   proQ =
-                    type === 'increment'
+                    type === "increment"
                       ? (newQuantity - 1) * product.OrignalQuantity
                       : newQuantity * product.OrignalQuantity;
                 } else {
-                  proQ = type === 'increment' ? newQuantity - 1 : newQuantity;
+                  proQ = type === "increment" ? newQuantity - 1 : newQuantity;
                 }
                 // console.log("proQ !== product.maxQuantity...", proQ, newQuantity, product)
                 if (proQ !== product.maxQuantity) {
@@ -3223,7 +3485,7 @@ const HomeScreen = props => {
                     discount = product.DiscountAmount
                       ? percentageDiscountAmount
                       : parseFloat(
-                          (dr * product.webperamount * newQuantity) / 100,
+                          (dr * product.webperamount * newQuantity) / 100
                         );
                     discount = Number(discount);
                   } else {
@@ -3265,10 +3527,10 @@ const HomeScreen = props => {
 
                   product.DiscountAmount = Number(discount).toFixed(2);
                   product.tax = tax;
-                  console.log('Tax is ', tax);
+                  console.log("Tax is ", tax);
 
                   product.tax = product.Tax1Amount + product.Tax2Amount;
-                  console.log('Tax is ', product.tax);
+                  console.log("Tax is ", product.tax);
                 } else {
                   // console.log("asmdfjsagjdfjsadfgj")
                   setMessage(props.StringsList._230);
@@ -3276,7 +3538,7 @@ const HomeScreen = props => {
                   setLoading(false);
                 }
               }
-            } else if (type === 'decrement') {
+            } else if (type === "decrement") {
               // console.log("newQuantity", newQuantity)
               product.Quantity = newQuantity;
               if (dr > 0) {
@@ -3340,7 +3602,7 @@ const HomeScreen = props => {
                     prod?.PriceOriginal === item?.PriceOriginal) ||
                     prod?.AddOnParentSalesInvoiceDetailsID ===
                       item.SalesBillDetailsID) &&
-                  type !== 'returnInvoice'
+                  type !== "returnInvoice"
                 ) {
                   prod = item;
                 }
@@ -3365,23 +3627,23 @@ const HomeScreen = props => {
     type,
     newQuantity,
     dr,
-    discount,
+    discount
   ) => {
-    let pq = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1;
+    let pq = type === "increment" ? item.Quantity + 1 : item.Quantity - 1;
     item.maxQuantity =
       returnInvoiceNumber !== null
         ? item.maxQuantity
         : 100000000000 + item.Quantity;
     item.DiscountAmount = discount;
-    console.log('return product quanttoty check', item.maxQuantity >= pq);
+    console.log("return product quanttoty check", item.maxQuantity >= pq);
     if (item.maxQuantity >= pq) {
-      let rr = await getData(SalesFamilySummaryListTable, async cb => {
-        console.log(' SalesFamilySummaryListTable are', cb);
+      let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
+        console.log(" SalesFamilySummaryListTable are", cb);
         let groupTaxCodes = cb.filter(
-          x => x.SalesFamilyCode === item.ProductCode,
+          (x) => x.SalesFamilyCode === item.ProductCode
         );
         productGroupList = groupTaxCodes;
-        console.log(' our group is', productGroupList);
+        console.log(" our group is", productGroupList);
         let totaltax1 = 0;
         let totaltax2 = 0;
         let finaltaxObj;
@@ -3402,17 +3664,17 @@ const HomeScreen = props => {
           if (item.DiscountRate > 0) {
             percentageDiscountAmount =
               (item.webperamount * newQuantity * item.DiscountRate) / 100;
-            if (type === 'increment' || type === 'decrement') {
+            if (type === "increment" || type === "decrement") {
               // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
               item.Quantity = newQuantity;
 
               executeCal = false;
-              handleDiscount(item, 'DiscountRate');
+              handleDiscount(item, "DiscountRate");
             }
           } else {
             percentageDiscountAmount = item.DiscountAmount;
 
-            if (type === 'increment' || type === 'decrement') {
+            if (type === "increment" || type === "decrement") {
               // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
               item.Quantity = newQuantity;
               executeCal = false;
@@ -3422,9 +3684,9 @@ const HomeScreen = props => {
         }
         if (executeCal == true) {
           await productGroupList.forEach(async (element, index) => {
-            console.log('Element', element);
+            console.log("Element", element);
             let amountBeforeDiscount = item.PriceOriginal * newQuantity;
-            let taxGroupID = '';
+            let taxGroupID = "";
             let itemQty = 0,
               itemAmount = 0,
               itemProposedSalesAmount = 0,
@@ -3455,10 +3717,10 @@ const HomeScreen = props => {
               0,
               TerminalConfiguration,
               item.PriceOriginal,
-              dr,
+              dr
             );
 
-            console.log('taxamount is', taxAmt);
+            console.log("taxamount is", taxAmt);
 
             if (taxAmt.Tax1Fragment == 2) {
               let taxtPerGroup = taxAmt.Tax1Amount * newQuantity;
@@ -3526,30 +3788,30 @@ const HomeScreen = props => {
             item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice ? 1 : 0;
             item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice ? 1 : 0;
             item.IngredientsArray = [];
-            item.IngredientNames = '';
+            item.IngredientNames = "";
 
             item.Tax1Code = taxAmt.Tax1Code;
-            (item.Tax1Name = ''),
+            (item.Tax1Name = ""),
               (item.Tax1Rate = taxAmt.Tax1Percentage),
               (item.Tax1Amount = totaltax1),
-              (item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : ''),
-              (item.Tax2Name = ''),
+              (item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : ""),
+              (item.Tax2Name = ""),
               (item.Tax2Rate = taxAmt.Tax2Percentage
                 ? taxAmt.Tax2Percentage
                 : 0),
               (item.Tax2Amount = totaltax2);
             let tax = totaltax1 + totaltax2;
             let product = item;
-            if (type === 'increment') {
+            if (type === "increment") {
               if (taxAmt) {
                 let proQ;
                 if (!product.IsParentAddOn) {
                   proQ =
-                    type === 'increment'
+                    type === "increment"
                       ? (newQuantity - 1) * product.OrignalQuantity
                       : newQuantity * product.OrignalQuantity;
                 } else {
-                  proQ = type === 'increment' ? newQuantity - 1 : newQuantity;
+                  proQ = type === "increment" ? newQuantity - 1 : newQuantity;
                 }
                 if (proQ !== product.maxQuantity) {
                   product.Quantity = newQuantity;
@@ -3558,7 +3820,7 @@ const HomeScreen = props => {
                     discount = product.DiscountAmount
                       ? percentageDiscountAmount
                       : parseFloat(
-                          (dr * product.webperamount * newQuantity) / 100,
+                          (dr * product.webperamount * newQuantity) / 100
                         );
                     discount = Number(discount);
                   } else {
@@ -3592,17 +3854,17 @@ const HomeScreen = props => {
 
                   product.DiscountAmount = Number(discount).toFixed(2);
                   product.tax = tax;
-                  console.log('Tax is ', tax);
+                  console.log("Tax is ", tax);
 
                   product.tax = product.Tax1Amount + product.Tax2Amount;
-                  console.log('Tax is ', product.tax);
+                  console.log("Tax is ", product.tax);
                 } else {
                   setMessage(props.StringsList._230);
                   setDisplayAlert(true);
                   setLoading(false);
                 }
               }
-            } else if (type === 'decrement') {
+            } else if (type === "decrement") {
               product.Quantity = newQuantity;
               if (dr > 0) {
                 discount = product.DiscountAmount
@@ -3647,7 +3909,7 @@ const HomeScreen = props => {
                 if (
                   prod?.AddOnParentSalesInvoiceDetailsID ===
                     parentItem.SalesBillDetailsID &&
-                  type !== 'returnInvoice'
+                  type !== "returnInvoice"
                 ) {
                   prod = item;
                 } else if (
@@ -3671,20 +3933,19 @@ const HomeScreen = props => {
   };
 
   const addProductToList = async (itm, type, index, proArray, SP, TP) => {
-    console.log('addProductToList item', itm);
+    console.log("addProductToList item", itm);
     // getProductsIngredients(itm)
     setLoading(true);
-    setoptionsOpen(false);
-    setPaymentsOpen(false);
+
     let executeCalculation = true;
     let addonFinalQuantity = 0;
     // createInvoiceStyle()
     if (!returnInvoiceNumber && !invoiceNumber) onNewInvoice();
-    let item = {...itm},
+    let item = { ...itm },
       selectedProduct = [...selectedProducts],
       sPrice = subPrice,
       tPrice = totalPrice;
-    if (terminalSetup?.BeepSound === 'true') {
+    if (terminalSetup?.BeepSound === "true") {
       SoundPlay();
     }
     if (retunProducts.length > 0 && !itm.IsParentAddOn) {
@@ -3699,18 +3960,18 @@ const HomeScreen = props => {
       let newQuantity;
 
       let isProductExist = selectedProducts.find(
-        x =>
+        (x) =>
           x?.ProductBarCode === item?.ProductBarCode &&
           x?.PriceOriginal === item?.PriceOriginal &&
-          x.haveAddon == true,
+          x.haveAddon == true
       );
 
       if (isProductExist && !isToggle) {
         let sameProductWithoutAddon = selectedProducts.findIndex(
-          x =>
+          (x) =>
             x?.ProductBarCode === item?.ProductBarCode &&
             x?.PriceOriginal === item?.PriceOriginal &&
-            x.haveAddon == undefined,
+            x.haveAddon == undefined
         );
 
         if (sameProductWithoutAddon) {
@@ -3725,7 +3986,7 @@ const HomeScreen = props => {
       if (item.addAsNew === false) {
         for (let i = 0; i < selectedProduct.length; i++) {
           let product = selectedProduct[i];
-          console.log('index is ===>', index);
+          console.log("index is ===>", index);
 
           let ind;
           if (localIndex == undefined) {
@@ -3733,26 +3994,26 @@ const HomeScreen = props => {
           } else {
             ind = localIndex;
           }
-          console.log('my index is', ind);
+          console.log("my index is", ind);
           if (
             (i === ind ||
               product?.AddOnParentSalesInvoiceDetailsID ===
                 item.SalesBillDetailsID) &&
-            type !== 'returnInvoice'
+            type !== "returnInvoice"
           ) {
             if (
               product?.ProductBarCode === item?.ProductBarCode &&
               product?.PriceOriginal === item?.PriceOriginal
             ) {
               newQuantity =
-                type !== 'increment'
+                type !== "increment"
                   ? product.Quantity - 1
                   : product.Quantity + 1;
             }
             console.log(
-              'add Product To List... item',
+              "add Product To List... item",
               product.Quantity,
-              newQuantity,
+              newQuantity
             );
 
             if (
@@ -3760,14 +4021,14 @@ const HomeScreen = props => {
                 product?.PriceOriginal === item?.PriceOriginal) ||
                 product?.AddOnParentSalesInvoiceDetailsID ===
                   item.SalesBillDetailsID) &&
-              type !== 'returnInvoice'
+              type !== "returnInvoice"
             ) {
-              let groupType = '';
+              let groupType = "";
               if (
                 product?.AddOnParentSalesInvoiceDetailsID ===
                 item.SalesBillDetailsID
               ) {
-                groupType = 'addon';
+                groupType = "addon";
               }
               // console.log("calculateTaxeGroups...", taxAmt)
 
@@ -3785,11 +4046,11 @@ const HomeScreen = props => {
               let taxAmt;
 
               if (product.ProductType === 3) {
-                if (printType === 'returnBill') {
+                if (printType === "returnBill") {
                   let totalQuantity =
                     product?.Quantity + product?.ReturnedQuantity;
                   let discountAfterDivision = Number(
-                    (item.DiscountAmount / totalQuantity) * newQuantity,
+                    (item.DiscountAmount / totalQuantity) * newQuantity
                   );
                   if (product.DiscountRate > 0) {
                     pd = product.DiscountAmount;
@@ -3798,7 +4059,7 @@ const HomeScreen = props => {
                   }
                 }
                 executeCalculation = false;
-                if (groupType === 'addon') {
+                if (groupType === "addon") {
                   if (!product?.IsParentAddOn) {
                     addonFinalQuantity = newQuantity * product.OrignalQuantity;
                     pd = 0;
@@ -3809,17 +4070,17 @@ const HomeScreen = props => {
                     type,
                     addonFinalQuantity,
                     dr,
-                    pd,
+                    pd
                   );
                 } else {
                   changeProductGroupItem(itm, type, newQuantity, dr, pd);
                 }
               } else {
-                if (printType === 'returnBill') {
+                if (printType === "returnBill") {
                   let totalQuantity =
                     product?.Quantity + product?.ReturnedQuantity;
                   let discountAfterDivision = Number(
-                    (item.DiscountAmount / totalQuantity) * newQuantity,
+                    (item.DiscountAmount / totalQuantity) * newQuantity
                   );
                   if (product.DiscountRate > 0) {
                     pd = product.DiscountAmount;
@@ -3842,12 +4103,12 @@ const HomeScreen = props => {
                   0,
                   TerminalConfiguration,
                   product.PriceOriginal,
-                  dr,
+                  dr
                 );
 
                 //  console.log("Amount.....taxAmt", taxAmt)
-                product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-                (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+                product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
                   (product.Tax1Rate = taxAmt.Tax1Percentage
                     ? taxAmt.Tax1Percentage
                     : 0);
@@ -3873,8 +4134,8 @@ const HomeScreen = props => {
 
                 product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
 
-                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-                  (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+                  (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
                   (product.Tax2Rate = taxAmt?.Tax2Percentage
                     ? taxAmt?.Tax2Percentage
                     : 0);
@@ -3883,23 +4144,23 @@ const HomeScreen = props => {
                   ? taxAmt?.Tax2Amount
                   : 0;
 
-                if (type === 'increment') {
+                if (type === "increment") {
                   if (taxAmt) {
                     let proQ;
 
                     if (!product.IsParentAddOn) {
                       proQ =
-                        type === 'increment'
+                        type === "increment"
                           ? (newQuantity - 1) * product.OrignalQuantity
                           : newQuantity * product.OrignalQuantity;
                     } else {
                       proQ =
-                        type === 'increment' ? newQuantity - 1 : newQuantity;
+                        type === "increment" ? newQuantity - 1 : newQuantity;
                     }
                     // console.log("proQ !== product.maxQuantity...", proQ, newQuantity, product)
                     if (
                       proQ === product.maxQuantity &&
-                      printType === 'returnBill'
+                      printType === "returnBill"
                     ) {
                       product.Tax1Amount = product.tax;
                     }
@@ -3908,10 +4169,10 @@ const HomeScreen = props => {
                         product?.Quantity + product?.ReturnedQuantity;
                       product.Quantity = newQuantity;
                       let discountAfterDivision = Number(
-                        (item.DiscountAmount / totalQuantity) * newQuantity,
+                        (item.DiscountAmount / totalQuantity) * newQuantity
                       );
                       if (
-                        printType === 'returnBill' &&
+                        printType === "returnBill" &&
                         product.IsParentAddOn &&
                         product.DiscountRate === 0
                       ) {
@@ -3923,7 +4184,7 @@ const HomeScreen = props => {
                               (dr *
                                 (product.PriceWithOutTax * newQuantity +
                                   taxAmt.Tax1Amount)) /
-                                100,
+                                100
                             );
                       } else {
                         discount = product.DiscountAmount;
@@ -3939,11 +4200,11 @@ const HomeScreen = props => {
                           ? Number(
                               product.PriceOriginal * product.Quantity -
                                 discount +
-                                taxAmt.Tax1Amount,
+                                taxAmt.Tax1Amount
                             )
                           : Number(
                               product.PriceOriginal * product.Quantity -
-                                discount,
+                                discount
                             );
                       }
                       product.GrandAmount = Number(GAmount);
@@ -3957,15 +4218,15 @@ const HomeScreen = props => {
                       setLoading(false);
                     }
                   }
-                } else if (type === 'decrement') {
+                } else if (type === "decrement") {
                   let totalQuantity =
                     product?.Quantity + product?.ReturnedQuantity;
                   product.Quantity = newQuantity;
                   let discountAfterDivision = Number(
-                    (item.DiscountAmount / totalQuantity) * newQuantity,
+                    (item.DiscountAmount / totalQuantity) * newQuantity
                   );
                   if (
-                    printType === 'returnBill' &&
+                    printType === "returnBill" &&
                     product.IsParentAddOn &&
                     product.DiscountRate === 0
                   ) {
@@ -3977,7 +4238,7 @@ const HomeScreen = props => {
                           (dr *
                             (product.PriceWithOutTax * newQuantity +
                               taxAmt.Tax1Amount)) /
-                            100,
+                            100
                         );
                   }
                   let GAmount = 0;
@@ -3991,14 +4252,14 @@ const HomeScreen = props => {
                       ? Number(
                           product.PriceOriginal * product.Quantity -
                             discount +
-                            taxAmt.Tax1Amount,
+                            taxAmt.Tax1Amount
                         )
                       : Number(
-                          product.PriceOriginal * product.Quantity - discount,
+                          product.PriceOriginal * product.Quantity - discount
                         );
                   }
                   product.GrandAmount = Number(GAmount);
-                  if (printType === 'returnBill' && !product.IsParentAddOn) {
+                  if (printType === "returnBill" && !product.IsParentAddOn) {
                     discount = Number(0);
                   } else {
                     discount = Number(discount);
@@ -4014,7 +4275,7 @@ const HomeScreen = props => {
         }
       }
     } else {
-      let time = moment().format('HH:mm:ss');
+      let time = moment().format("HH:mm:ss");
       setStartTime(time);
     }
     if (!isAlredySelected) {
@@ -4036,9 +4297,9 @@ const HomeScreen = props => {
           let listOfPG;
           item.Pricefortax = item.PriceOriginal;
 
-          let rr = await getData(SalesFamilySummaryListTable, async cb => {
+          let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
             let groupTaxCodes = cb.filter(
-              x => x.SalesFamilyCode === item.ProductCode,
+              (x) => x.SalesFamilyCode === item.ProductCode
             );
             listOfPG = groupTaxCodes;
             let totaltax1 = 0;
@@ -4050,7 +4311,7 @@ const HomeScreen = props => {
 
             await listOfPG.forEach(async (element, index) => {
               let percentageDiscountAmount = 0;
-              let taxGroupID = '';
+              let taxGroupID = "";
               let itemQty = 0,
                 itemAmount = 0,
                 itemProposedSalesAmount = 0,
@@ -4087,7 +4348,7 @@ const HomeScreen = props => {
                 0,
                 TerminalConfiguration,
                 item.PriceOriginal,
-                item.DiscountRate,
+                item.DiscountRate
               );
 
               if (index === listOfPG.length - 1) {
@@ -4095,14 +4356,14 @@ const HomeScreen = props => {
                   const element = listOfPG[i];
                   await getData(
                     UpdateProductDetailListTable,
-                    productsDetail => {
+                    (productsDetail) => {
                       let findProduct = productsDetail.find(
-                        e => e.ProductBarCode === element.ProductBarCode,
+                        (e) => e.ProductBarCode === element.ProductBarCode
                       );
 
                       if (findProduct) {
                         let isMatch = listOfPG.find(
-                          e => e.ProductBarCode === findProduct.ProductBarCode,
+                          (e) => e.ProductBarCode === findProduct.ProductBarCode
                         );
                         let netQuantity = isMatch?.Quantity * element?.Quantity;
                         findProduct.Quantity = netQuantity;
@@ -4110,7 +4371,7 @@ const HomeScreen = props => {
                         findProduct.SalesInvoiceDetailsID = uuid.v4();
                         innerProductsArray.push(findProduct);
                       }
-                    },
+                    }
                   );
                 }
                 if (innerProductsArray) {
@@ -4158,20 +4419,20 @@ const HomeScreen = props => {
               }
               (item.Tax1Fragment = taxAmt?.Tax1Fragment
                 ? taxAmt.Tax1Fragment
-                : ''),
+                : ""),
                 (item.Tax2Fragment = taxAmt?.Tax2Fragment
                   ? taxAmt.Tax2Fragment
-                  : '');
+                  : "");
               item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
                 ? taxAmt.IsTax1IncludedInPrice
                 : 0;
               item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
                 ? taxAmt.IsTax2IncludedInPrice
                 : 0;
-              item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-              item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : '';
-              item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : '';
-              item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : '';
+              item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+              item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+              item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+              item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
               item.Price = item.Price;
               if (!taxAmt.IsTax1IncludedInPrice)
                 tax1ActualAmountTotal += taxAmt.Tax1Amount
@@ -4230,11 +4491,11 @@ const HomeScreen = props => {
                 (item.Tax2Amount = totaltax2);
               item.Price = Number(item.PriceOriginal);
               item.PriceWithOutTax = Number(
-                item.Price - inclusiveTax / item?.Quantity,
+                item.Price - inclusiveTax / item?.Quantity
               );
               item.PriceUnitlesstax = item.PriceWithOutTax;
               item.IngredientsArray = [];
-              item.IngredientNames = '';
+              item.IngredientNames = "";
               item.tax = Number(tax);
               var amount =
                 item?.GrandAmount !== 0
@@ -4286,23 +4547,23 @@ const HomeScreen = props => {
             0,
             TerminalConfiguration,
             item.PriceOriginal,
-            item.DiscountRate,
+            item.DiscountRate
           );
-          console.log('calculateTaxeGroups...', taxAmt, item);
-          item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-          (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+          console.log("calculateTaxeGroups...", taxAmt, item);
+          item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+          (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
             (item.Tax1Rate = taxAmt.Tax1Percentage ? taxAmt.Tax1Percentage : 0),
             (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
-            (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-            (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+            (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+            (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
             (item.Tax2Rate = taxAmt?.Tax2Percentage
               ? taxAmt?.Tax2Percentage
               : 0),
             (item.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
-          item.Tax1Fragment = taxAmt.Tax1Fragment ? taxAmt.Tax1Fragment : '';
-          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : '';
-          item.Tax1Fragment = taxAmt.Tax1Fragment ? taxAmt.Tax1Fragment : '';
-          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : '';
+          item.Tax1Fragment = taxAmt.Tax1Fragment ? taxAmt.Tax1Fragment : "";
+          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : "";
+          item.Tax1Fragment = taxAmt.Tax1Fragment ? taxAmt.Tax1Fragment : "";
+          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : "";
           if (
             (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
             item?.Tax2Fragment === 2
@@ -4326,7 +4587,7 @@ const HomeScreen = props => {
             ? true
             : false;
           item.IngredientsArray = [];
-          item.IngredientNames = '';
+          item.IngredientNames = "";
           item.tax = Number(tax);
           item.GrandAmount = Number(taxAmt.Price * item.Quantity) + tax;
           item.SalesBillDetailsID = uuid.v4();
@@ -4340,7 +4601,7 @@ const HomeScreen = props => {
           }
         }
       } else {
-        if (type === 'addnos') {
+        if (type === "addnos") {
           sPrice = Number(subPrice + SP);
           tPrice = Number(totalPrice + TP);
           selectedProduct = selectedProduct.concat(proArray);
@@ -4364,13 +4625,13 @@ const HomeScreen = props => {
     if (executeCalculation) {
       localIndex = undefined;
       setTimeout(() => {
-        setStateUpdate(true);
+        // setStateUpdate(true);
         // setLoading(false)
         let p = [...selectedProduct];
         finalCalculation(p);
         let srNo = 1;
         // let array = [...selectedProducts];
-        selectedProduct.forEach(e => {
+        selectedProduct.forEach((e) => {
           if (e.IsParentAddOn) {
             e.srNo = srNo++;
           } else {
@@ -4379,14 +4640,14 @@ const HomeScreen = props => {
         });
         // setSelectedProducts(array);
         setSelectedProducts(selectedProduct);
-        console.log('after adding product', selectedProduct);
+        console.log("after adding product", selectedProduct);
       }, 100);
     }
   };
 
   const onSelectProduct = (item, filterCategoryProducts) => {
     // console.log("onSelectProduct........", item)
-    if (drawerSetupArr.isInitialCashSet === 'false') {
+    if (drawerSetupArr.isInitialCashSet === "false") {
       onNewInvoice();
     } else {
       // onNewInvoice();
@@ -4396,8 +4657,7 @@ const HomeScreen = props => {
         : filterCategoryProducts;
 
       if (item) {
-        console.log('selected item is', item);
-        categoryProduct.forEach(product => {
+        categoryProduct.forEach((product) => {
           if (product?.ProductBarCode === item?.ProductBarCode) {
             product.isSelected = true;
             product.Quantity = item?.Quantity ? item.Quantity : 1;
@@ -4406,12 +4666,12 @@ const HomeScreen = props => {
             newArray.push(product);
           }
         });
-        addProductToList(item, 'increment');
+        addProductToList(item, "increment");
       } else {
         if (selectedProducts.length > 0) {
-          categoryProduct.forEach(product => {
+          categoryProduct.forEach((product) => {
             let cartItems = selectedProducts.find(
-              x => x.ProductBarCode === product.ProductBarCode,
+              (x) => x.ProductBarCode === product.ProductBarCode
             );
             if (cartItems) {
               product.isSelected = true;
@@ -4426,7 +4686,7 @@ const HomeScreen = props => {
       }
       // console.log('categoryProduct.2..', newArray);
       setCategoryProducts(
-        newArray.length > 0 ? newArray : filterCategoryProducts,
+        newArray.length > 0 ? newArray : filterCategoryProducts
       );
     }
   };
@@ -4437,7 +4697,7 @@ const HomeScreen = props => {
       tPrice = totalPrice;
 
     let remainProduct = [...selectedProducts];
-    let addOn = remainProduct.filter(itm => {
+    let addOn = remainProduct.filter((itm) => {
       if (itm.ParentInvoiceDetailsID === item.SalesBillDetailsID) {
         sPrice = sPrice - itm.GrandAmount;
 
@@ -4468,8 +4728,8 @@ const HomeScreen = props => {
     // console.log("rem.............................", rm)
     setNumberOfItems(srNo);
     let p = [...remainProduct];
-    finalCalculation(p, 'delete');
-    remainProduct.forEach(e => {
+    finalCalculation(p, "delete");
+    remainProduct.forEach((e) => {
       if (e.IsParentAddOn) {
         e.srNo = srNo++;
       } else {
@@ -4480,7 +4740,7 @@ const HomeScreen = props => {
     setSelectedProducts(remainProduct);
 
     let number = remainProduct.filter(
-      w => w.IsParentAddOn === 1 || w.IsParentAddOn === true,
+      (w) => w.IsParentAddOn === 1 || w.IsParentAddOn === true
     ).length;
 
     setNumberOfItems(number);
@@ -4501,15 +4761,15 @@ const HomeScreen = props => {
     // }
   };
 
-  const createInvoiceNumber = () => {
-    getData(DrawerSetupTable, cb => {
+  const createInvoiceNumber = async () => {
+    await getData(DrawerSetupTable, (cb) => {
       // console.log(' DrawerSetupTable', cb);
       setDrawerSetupArr(cb[0]);
     });
-    getData(TerminalConfigurationTable, cb => {
+    await getData(TerminalConfigurationTable, (cb) => {
       // console.log('TerminalConfigurationTable', cb[0]?.LastBillNumber);
 
-      let preZero = '0000000';
+      let preZero = "0000000";
       let silceNumber =
         Number(cb[0]?.LastBillNumber) >= 99999
           ? preZero.length - 5
@@ -4524,9 +4784,9 @@ const HomeScreen = props => {
           : preZero.length;
       let invoiceNumber =
         Number(cb[0]?.LastBillNumber) >= 999999
-          ? cb[0].BillPrefix + '-' + (Number(cb[0].LastBillNumber) + 1)
+          ? cb[0].BillPrefix + "-" + (Number(cb[0].LastBillNumber) + 1)
           : cb[0].BillPrefix +
-            '-' +
+            "-" +
             preZero.slice(1 - silceNumber) +
             (Number(cb[0].LastBillNumber) + 1);
 
@@ -4534,21 +4794,21 @@ const HomeScreen = props => {
       setTerminalConfiguration(cb[0]);
     });
     setSalesBillID(uuid.v4());
-    setOptions([
-      {label: props.StringsList._373, value: 'holdInvoice'},
-      {label: props.StringsList._436, value: 'scanner'},
-      {label: props.StringsList._30, value: 'buyer'},
-      {label: props.StringsList._437, value: 'loyaltyCard'},
-    ]);
+    // setOptions([
+    //   { label: props.StringsList._373, value: "holdInvoice" },
+    //   { label: props.StringsList._436, value: "scanner" },
+    //   { label: props.StringsList._30, value: "buyer" },
+    //   { label: props.StringsList._437, value: "loyaltyCard" },
+    // ]);
   };
 
   const createReturnInvoiceNumber = () => {
-    getData(DrawerSetupTable, cb => {
+    getData(DrawerSetupTable, (cb) => {
       // console.log(' DrawerSetupTable', cb);
       setDrawerSetupArr(cb[0]);
     });
-    getData(TerminalConfigurationTable, cb => {
-      let preZero = '0000000';
+    getData(TerminalConfigurationTable, (cb) => {
+      let preZero = "0000000";
       let silceNumber =
         Number(cb[0]?.LastReturnBillNumber) >= 99999
           ? preZero.length - 5
@@ -4564,10 +4824,10 @@ const HomeScreen = props => {
       let invoiceNumber =
         Number(cb[0]?.LastReturnBillNumber) >= 999999
           ? cb[0].BillReturnPrefix +
-            '-' +
+            "-" +
             (Number(cb[0].LastReturnBillNumber) + 1)
           : cb[0].BillReturnPrefix +
-            '-' +
+            "-" +
             preZero.slice(1 - silceNumber) +
             (Number(cb[0].LastReturnBillNumber) + 1);
 
@@ -4582,33 +4842,33 @@ const HomeScreen = props => {
     setOptions(
       userConfiguration.SalesRefundAllowed === 1
         ? [
-            {label: props.StringsList._32, value: 'getHoldInvoice'},
-            {label: props.StringsList._105, value: 'reprint'},
-            {label: props.StringsList._319, value: 'returnBill'},
-            {label: props.StringsList._30, value: 'buyer'},
-            {label: props.StringsList._437, value: 'loyaltyCard'},
+            { label: props.StringsList._32, value: "getHoldInvoice" },
+            { label: props.StringsList._105, value: "reprint" },
+            { label: props.StringsList._319, value: "returnBill" },
+            { label: props.StringsList._30, value: "buyer" },
+            { label: props.StringsList._437, value: "loyaltyCard" },
           ]
         : [
-            {label: props.StringsList._32, value: 'getHoldInvoice'},
-            {label: props.StringsList._30, value: 'buyer'},
-            {label: props.StringsList._437, value: 'loyaltyCard'},
-          ],
+            { label: props.StringsList._32, value: "getHoldInvoice" },
+            { label: props.StringsList._30, value: "buyer" },
+            { label: props.StringsList._437, value: "loyaltyCard" },
+          ]
     );
     setTotalReprintCount(null);
     setLoading(true);
     setUserDiscountLimit(0);
     setPrintType(null);
-    selectedProducts.forEach(item => {
+    selectedProducts.forEach((item) => {
       item.isSelected = false;
     });
-    setCashAmount('');
+    setCashAmount("");
     setSelectedProducts([]);
     setsubPrice(0);
     setglobalDiscountAmount(0);
     setTotalPrice(0);
     //  await getAllCategories();
     setNumberOfItems(0);
-    setSearchText('');
+    setSearchText("");
     setAdvancePaidInCash(0);
     setIngredientsData([]);
     setDueAmount(0);
@@ -4630,8 +4890,8 @@ const HomeScreen = props => {
     setisPromptAlert(false);
     setDisplayAlert(false);
     setisHoldInvoices(false);
-    setMessage('');
-    setHoldInvoiceName('');
+    setMessage("");
+    setHoldInvoiceName("");
     setScanner(false);
     setAlertValue(null);
     setAlertType(null);
@@ -4655,7 +4915,7 @@ const HomeScreen = props => {
     if (!noFamilyFound) {
       getSelectedCategoryProducts();
     } else {
-      getAllCategories('isRestState');
+      getAllCategories("isRestState");
     }
     if (userConfiguration) {
       setUserDiscountLimit(userConfiguration?.DiscountLimit);
@@ -4667,29 +4927,17 @@ const HomeScreen = props => {
   };
 
   const getDrawerSetting = () => {
-    getData(DrawerSetupTable, cb => {
+    getData(DrawerSetupTable, (cb) => {
       setDrawerSetupArr(cb[0]);
     });
   };
 
-  const onNewInvoice = async isCreateInvoice => {
-    //
-    // PrinterNativeModule.readFolder();
-    console.log(
-      'drawerSetupArrdrawerSetupArrdrawerSetupArrdrawerSetupArr',
-      drawerSetupArr,
-    );
-
-    if (drawerSetupArr.isInitialCashSet === 'false') {
+  const onNewInvoice = async (isCreateInvoice) => {
+    if (drawerSetupArr.isInitialCashSet === "false") {
       viewref.current?.slideInRight(280);
       setIsDrawar(!isDrawar);
     } else {
-      PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-      );
       createInvoiceNumber();
-      // ref_searchBar.current.focus();
     }
   };
 
@@ -4699,39 +4947,39 @@ const HomeScreen = props => {
       setOptions(
         userConfiguration.SalesRefundAllowed === 1
           ? [
-              {label: props.StringsList._32, value: 'getHoldInvoice'},
-              {label: props.StringsList._105, value: 'reprint'},
-              {label: props.StringsList._319, value: 'returnBill'},
-              {label: props.StringsList._30, value: 'buyer'},
-              {label: props.StringsList._437, value: 'loyaltyCard'},
+              { label: props.StringsList._32, value: "getHoldInvoice" },
+              { label: props.StringsList._105, value: "reprint" },
+              { label: props.StringsList._319, value: "returnBill" },
+              { label: props.StringsList._30, value: "buyer" },
+              { label: props.StringsList._437, value: "loyaltyCard" },
             ]
           : [
-              {label: props.StringsList._32, value: 'getHoldInvoice'},
-              {label: props.StringsList._30, value: 'buyer'},
-              {label: props.StringsList._437, value: 'loyaltyCard'},
-            ],
+              { label: props.StringsList._32, value: "getHoldInvoice" },
+              { label: props.StringsList._30, value: "buyer" },
+              { label: props.StringsList._437, value: "loyaltyCard" },
+            ]
       );
 
       restState();
     } else {
       // props.navigation.goBack();
 
-      props.navigation.navigate('dashboard');
+      props.navigation.navigate("dashboard");
     }
   };
-  const paymentMethodSelect = async item => {
+  const paymentMethodSelect = async (item) => {
     // console.log('paymentMethodSelect......', paymentsValue, billingType);
     if (billingType || returnInvoiceNumber) {
       if (selectedProducts.length > 0 && paymentsValue) {
         let checkZeroPrice = selectedProducts.some(
-          p => p.PriceOriginal === 0 && p.IsParentAddOn !== false,
+          (p) => p.PriceOriginal === 0 && p.IsParentAddOn !== false
         );
         if (checkZeroPrice || totalPrice === 0) {
           setPaymentsValue(null);
           setMessage(props.StringsList._270);
           setDisplayAlert(true);
         } else {
-          let selP = payments.filter(e => e.PaymentType === paymentsValue);
+          let selP = payments.filter((e) => e.PaymentType === paymentsValue);
           // console.log('setSelectedPyamentMethod', selP[0]);
           setSelectedPyamentMethod(selP[0]);
           if (
@@ -4742,7 +4990,7 @@ const HomeScreen = props => {
             checkLoyalitRewardsFun();
             setCheckLoyalityReward(true);
           } else {
-            if (paymentsValue === '2') {
+            if (paymentsValue === "2") {
               if (buyerInfo) {
                 if (!isPopup) {
                   viewref.current?.slideInRight(280);
@@ -4760,7 +5008,7 @@ const HomeScreen = props => {
                 setDisplayAlert(true);
               }
               // createInvoiceStyle()
-            } else if (paymentsValue === '4' || paymentsValue === '5') {
+            } else if (paymentsValue === "4" || paymentsValue === "5") {
               if (!isPopup) {
                 viewref.current?.slideInRight(280);
                 setPopup(!isPopup);
@@ -4791,28 +5039,28 @@ const HomeScreen = props => {
 
   const paymentProcess = async (ADamount, selP, type) => {
     let ConnectedBluetoothInfo = await AsyncStorage.getItem(
-      'ConnectedBluetoothInfo',
+      "ConnectedBluetoothInfo"
     );
 
     if (ConnectedBluetoothInfo) {
-      console.log('ConnectedBluetoothInfo', ConnectedBluetoothInfo);
-      let printAdress = ConnectedBluetoothInfo?.split('|');
+      console.log("ConnectedBluetoothInfo", ConnectedBluetoothInfo);
+      let printAdress = ConnectedBluetoothInfo?.split("|");
       setPrinterMacAddress(printAdress[1]);
       setPrinterName(printAdress[0]);
     }
-    console.log('paymentProcess........', type);
+    console.log("paymentProcess........", type);
     setLoading(true);
 
     setUriImage(null);
-    if (type !== 'reprint') {
+    if (type !== "reprint") {
       setTimeout(() => {
-        console.log('paymentProcess........setTimeout', type);
+        console.log("paymentProcess........setTimeout", type);
         selectedProductUpdate();
         saleBill(ADamount, selP);
         if (returnInvoiceNumber) {
           updateReturnTerminalConfiguration();
           postBills();
-          Toast.show('Return Invoice Posted Successfully');
+          Toast.show("Return Invoice Posted Successfully");
         } else {
           updateTerminalConfiguration(ADamount);
         }
@@ -4827,7 +5075,7 @@ const HomeScreen = props => {
       }, 0);
     } else {
       setTimeout(() => {
-        console.log('reprint bill style', advancePaidInCash);
+        console.log("reprint bill style", advancePaidInCash);
         // updateTerminalConfiguration(ADamount);
         if (billingStyleId !== 1) {
           isCustomInvoice ? setClientCustomInvoice(true) : setInvoice(true);
@@ -4841,10 +5089,10 @@ const HomeScreen = props => {
     }
   };
 
-  const GetDecimalpart = value => {
+  const GetDecimalpart = (value) => {
     //let value = 1234
     let s = value.toString();
-    let parts = s.split('.');
+    let parts = s.split(".");
     let i1 = parseInt(parts[0]);
     let i2 = parseInt(parts[1]);
     // console.log("GetDecimalpart", i1, i2)
@@ -4853,7 +5101,7 @@ const HomeScreen = props => {
   function replaceValuesInRow(rowContent, dynamicValuesBody, thTags) {
     thTags.forEach((key, i) => {
       const regex = new RegExp(`<td([^>]*)>([^<]*)<\\/td>`);
-      const tdMatches = rowContent.match(new RegExp(regex.source, 'g'));
+      const tdMatches = rowContent.match(new RegExp(regex.source, "g"));
 
       if (tdMatches && tdMatches.length > i) {
         const originalContent = tdMatches[i];
@@ -4861,7 +5109,7 @@ const HomeScreen = props => {
 
         // Check if dynamicValuesBody[key] is not an empty string
         const replacementContent =
-          dynamicValuesBody[key] !== ''
+          dynamicValuesBody[key] !== ""
             ? dynamicValuesBody[key]
             : originalTdContent;
 
@@ -4875,7 +5123,7 @@ const HomeScreen = props => {
   function getHeight(htmlStr, divId) {
     const regex = new RegExp(
       `<div[^>]*id="${divId}"[^>]*style="[^"]*height: ([^;]+)px[^"]*"[^>]*>`,
-      'i',
+      "i"
     );
     const match = htmlStr.match(regex);
 
@@ -4891,7 +5139,7 @@ const HomeScreen = props => {
     qrUrl,
     countNumber,
     update,
-    page,
+    page
   ) => {
     // console.log(
     //   'billingType A4PrinterStyle..',
@@ -4902,11 +5150,11 @@ const HomeScreen = props => {
     //   'product are',
     //   selectedProducts,
     // );
-    console.log('printType', printType);
+    console.log("printType", printType);
     let itemPerPage = 17;
     let printItems = [],
       allProducts = [];
-    if (printType === 'reprint') {
+    if (printType === "reprint") {
       if (
         Array.isArray(lastBillDetail.BillDetails) &&
         lastBillDetail.BillDetails.length > 0
@@ -4925,12 +5173,12 @@ const HomeScreen = props => {
     let pageNo = page;
 
     let date, month, year, billDate;
-    if (printType === 'reprint') {
+    if (printType === "reprint") {
       year = lastBillDetail.BillDate.slice(0, 4);
       month = lastBillDetail.BillDate.slice(4, 6);
       date = lastBillDetail.BillDate.slice(6, 8);
       billDate =
-        date + '/' + month + '/' + year + '  ' + lastBillDetail.BillTime;
+        date + "/" + month + "/" + year + "  " + lastBillDetail.BillTime;
     }
 
     if (countNumber * itemPerPage < allProducts.length) {
@@ -4944,22 +5192,22 @@ const HomeScreen = props => {
     }
 
     let pageId = returnInvoiceNumber
-      ? '403007'
+      ? "403007"
       : billingType?.id === 2
-      ? '4030061'
-      : '403006';
+      ? "4030061"
+      : "403006";
 
     setLoading(true);
     await getDataByMultipaleID(
       A4PrintStylesTable,
-      'PageID',
+      "PageID",
       pageId,
-      'UseDefault',
-      'true',
-      async A4style => {
+      "UseDefault",
+      "true",
+      async (A4style) => {
         if (A4style.length === 0) {
           setLoading(false);
-          alert('There is no A4 printing style available');
+          alert("There is no A4 printing style available");
         } else {
           if (pageNo !== 1 && update) {
             update = `<div style="page-break-after:always!important;">${update}</div>`;
@@ -4967,28 +5215,28 @@ const HomeScreen = props => {
           let updateStyle = update,
             updateHeader = A4style[0].ReportHeader.replace(
               /<i\b[^>]*>.*?<\/i>/g,
-              '',
+              ""
             ),
             updateBody = A4style[0].ReportBody.replace(
               /<i\b[^>]*>.*?<\/i>/g,
-              '',
+              ""
             ),
             updateFooter = A4style[0].ReportFooter.replace(
               /<i\b[^>]*>.*?<\/i>/g,
-              '',
+              ""
             );
 
-          let heightOfHeader = getHeight(updateHeader, 'dvhmain'); // 440;
-          let heightOfFooter = getHeight(updateFooter, 'dvfmain'); // 760;
-          let BodyHeightGiven = getHeight(updateBody, 'dvimain'); // 200;
+          let heightOfHeader = getHeight(updateHeader, "dvhmain"); // 440;
+          let heightOfFooter = getHeight(updateFooter, "dvfmain"); // 760;
+          let BodyHeightGiven = getHeight(updateBody, "dvimain"); // 200;
 
           let IsFooterOnEveryPage =
-            A4style[0].IsFooterOnEveryPage === 'true' ? true : false;
+            A4style[0].IsFooterOnEveryPage === "true" ? true : false;
           let IsHeaderOnEveryPage =
-            A4style[0].IsHeaderOnEveryPage === 'true' ? true : false;
+            A4style[0].IsHeaderOnEveryPage === "true" ? true : false;
 
           let findPrintStyle = A4style.findIndex(
-            x => x.SerialNo > 1 && x.UseDefault === 'true',
+            (x) => x.SerialNo > 1 && x.UseDefault === "true"
           );
           // let bodyFinalHeight = 327;
           // if (
@@ -5008,7 +5256,7 @@ const HomeScreen = props => {
           if (findPrintStyle !== -1) {
             const updatedBodyWithAutoHeightAndFonts = updateBody.replace(
               /id="dvIMain" style=".*?"/,
-              `id="dvIMain" style="width: 1100px; height:auto; margin-top: 11%;margin-bottom: 2%; padding: 0px; background: none rgb(255, 255, 255); font-family: 'proxima nova rg';"`,
+              `id="dvIMain" style="width: 1100px; height:auto; margin-top: 11%;margin-bottom: 2%; padding: 0px; background: none rgb(255, 255, 255); font-family: 'proxima nova rg';"`
             );
 
             updateBody = updatedBodyWithAutoHeightAndFonts;
@@ -5023,48 +5271,48 @@ const HomeScreen = props => {
               //       ',' +
               //       TerminalConfiguration?.CompanyLogo,
               CompanyName_profile:
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration.GoDownName
                   : TerminalConfiguration.CompanyName,
 
               CCRNumber_profile:
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration.GodownCCRNumber
                   : TerminalConfiguration.CCRNumber,
               VATNumber_profile: TerminalConfiguration?.ValueAddedTaxNumber,
               Page_Title_AR: returnInvoiceNumber
-                ? 'استرداد المبيعات'
+                ? "استرداد المبيعات"
                 : billingType?.name2,
               Page_Title_EN: returnInvoiceNumber
-                ? 'استرداد المبيعات'
+                ? "استرداد المبيعات"
                 : billingType?.name,
               InvoiceDate_value:
-                printType === 'reprint' ? billDate : currentDate,
+                printType === "reprint" ? billDate : currentDate,
               CreditDateUpto_value: currentDate,
               InvoiceNumber_value:
-                printType === 'reprint'
+                printType === "reprint"
                   ? lastBillDetail.BillNumber
                   : returnInvoiceNumber !== null
                   ? returnInvoiceNumber
                   : invoiceNumber,
-              BuyerName_value: buyerInfo?.BuyerName ? buyerInfo.BuyerName : '',
-              BuyerCode_value: buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : '',
+              BuyerName_value: buyerInfo?.BuyerName ? buyerInfo.BuyerName : "",
+              BuyerCode_value: buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : "",
               VATNumber_value: buyerInfo?.ValueAddedTaxNumber
                 ? buyerInfo.ValueAddedTaxNumber
-                : '',
+                : "",
               BuyerAddress_value: buyerInfo?.BuyerAddress
                 ? buyerInfo.BuyerAddress
-                : '',
-              CCRNumber_value: buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : '',
+                : "",
+              CCRNumber_value: buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : "",
             };
             const replacePlaceholdersHeader = (html, values) => {
               let logo =
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration?.GoDownLogo
                   : TerminalConfiguration?.CompanyLogo;
               // Use a placeholder format like {key} for dynamic values
               for (const key in values) {
-                const regex = new RegExp(key, 'g');
+                const regex = new RegExp(key, "g");
                 html = html.replace(regex, values[key]);
               }
 
@@ -5077,14 +5325,14 @@ const HomeScreen = props => {
                 const styleAttributeContent = matches[2];
                 console.log(styleAttributeContent);
               } else {
-                console.log('No match found.');
+                console.log("No match found.");
               }
 
               if (qrCodeDivRegex.test(html)) {
                 // Replace {your_image_source_here} with the actual base64-encoded qrUrl
                 html = html.replace(
                   qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${logo}" />$3`,
+                  `$1><img src="data:image/png;base64,${logo}" />$3`
                 );
               }
 
@@ -5100,7 +5348,7 @@ const HomeScreen = props => {
 
             updateHeader = replacePlaceholdersHeader(
               updateHeader,
-              dynamicValuesHeader,
+              dynamicValuesHeader
             );
             const thRegex =
               /<th[^>]*id="([^"]*)"[^>]*>(.*?)<.*?>.*?([^<>]*)<\/th>/gi;
@@ -5112,7 +5360,7 @@ const HomeScreen = props => {
             for (const match of thMatches) {
               const id = match[1];
               const content = match[2];
-              const name = content.trim() || '';
+              const name = content.trim() || "";
               let finalId = Number(id);
               thTags.push(finalId);
             }
@@ -5122,17 +5370,17 @@ const HomeScreen = props => {
 
             const targetRowId = `trRow${2}`;
             const removeRowRegex = new RegExp(
-              `<tr[^>]*\\sid="${targetRowId}"[^>]*>([\\s\\S]*?)<\\/tr>`,
+              `<tr[^>]*\\sid="${targetRowId}"[^>]*>([\\s\\S]*?)<\\/tr>`
             );
             updatedBodyAccumulator = updatedBodyAccumulator.replace(
               removeRowRegex,
-              '',
+              ""
             );
             // let rowHeight = bodyFinalHeight / selectedProducts.length;
             // rowHeight = Number(rowHeight % 3);
             // rowHeight = `${rowHeight}px`;
             const tdElements = thTags
-              .map(tag => {
+              .map((tag) => {
                 return `
                 <td
                   style="
@@ -5146,7 +5394,7 @@ const HomeScreen = props => {
               >
               </td>`;
               })
-              .join('');
+              .join("");
             printItems.forEach((p, index) => {
               srNum = srNum + 1;
               tQ = tQ + p.Quantity;
@@ -5154,36 +5402,36 @@ const HomeScreen = props => {
 
               const dynamicValuesBody = {};
 
-              thTags.forEach(id => {
+              thTags.forEach((id) => {
                 switch (id) {
                   case 12:
                     dynamicValuesBody[id] = Number(p.GrandAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 16:
                     dynamicValuesBody[id] = Number(p.PriceWithOutTax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 11:
                     dynamicValuesBody[id] = Number(p.DiscountAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 28:
                     dynamicValuesBody[id] = Number(p.tax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 22:
                     dynamicValuesBody[id] = Number(taxRate).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 6:
                     dynamicValuesBody[id] = Number(p.PriceOriginal).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 4:
@@ -5205,28 +5453,28 @@ const HomeScreen = props => {
                       : p.ProductName;
                     break;
                   case 2:
-                    dynamicValuesBody[id] = p.ProductCode ? p.ProductCode : '';
+                    dynamicValuesBody[id] = p.ProductCode ? p.ProductCode : "";
                     break;
                   case 1:
                     dynamicValuesBody[id] = srNum;
                     break;
                   default:
                     // Handle other ids or provide a default value
-                    dynamicValuesBody[id] = ''; // Default value, change as needed
+                    dynamicValuesBody[id] = ""; // Default value, change as needed
                 }
               });
 
               const targetRowIdNew = `trRow${srNum}`;
 
               let rowContent = `<tr id="${targetRowIdNew}">${tdElements}</tr>`;
-              const lastIndex = updatedBodyAccumulator.lastIndexOf('</tr>');
+              const lastIndex = updatedBodyAccumulator.lastIndexOf("</tr>");
 
               const existingRowStart = updatedBodyAccumulator.indexOf(
-                `<tr id="${targetRowIdNew}"`,
+                `<tr id="${targetRowIdNew}"`
               );
               const existingRowEnd = updatedBodyAccumulator.indexOf(
-                '</tr>',
-                existingRowStart,
+                "</tr>",
+                existingRowStart
               );
 
               if (existingRowStart !== -1 && existingRowEnd !== -1) {
@@ -5234,7 +5482,7 @@ const HomeScreen = props => {
                 updatedBodyAccumulator =
                   updatedBodyAccumulator.slice(0, existingRowStart) +
                   `${rowContent}` +
-                  updatedBodyAccumulator.slice(existingRowEnd + '</tr>'.length);
+                  updatedBodyAccumulator.slice(existingRowEnd + "</tr>".length);
               } else {
                 // If the row doesn't exist, insert it
                 if (lastIndex !== -1) {
@@ -5248,16 +5496,16 @@ const HomeScreen = props => {
               rowContent = replaceValuesInRow(
                 rowContent,
                 dynamicValuesBody,
-                thTags,
+                thTags
               );
               const rowRegexNew = new RegExp(
-                `<tr[^>]*\\sid="${targetRowIdNew}"[^>]*>([\\s\\S]*?)<\\/tr>`,
+                `<tr[^>]*\\sid="${targetRowIdNew}"[^>]*>([\\s\\S]*?)<\\/tr>`
               );
               const rowMatchNew = updatedBodyAccumulator.match(rowRegexNew);
               if (rowMatchNew && rowMatchNew.length >= 2) {
                 updatedBodyAccumulator = updatedBodyAccumulator.replace(
                   rowMatchNew[0],
-                  `<tr id="${targetRowIdNew}">${rowContent}</tr>`,
+                  `<tr id="${targetRowIdNew}">${rowContent}</tr>`
                   // `<tr id="${targetRowIdNew}" style="height: ${rowHeight};">${rowContent}</tr>`,
                 );
               }
@@ -5267,7 +5515,7 @@ const HomeScreen = props => {
 
             const dynamicValuesFooter = {
               GrandAmount_value: Number(subPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               ),
 
               // GrandAmount_value: numberToEngArbWords(
@@ -5277,7 +5525,7 @@ const HomeScreen = props => {
               //   false,
               // ),
               NetAmount_value: Number(totalPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               ),
               // NetAmount_value: numberToEngArbWords(
               //   Number(totalPrice).toFixed(
@@ -5286,37 +5534,37 @@ const HomeScreen = props => {
               //   true,
               // ),
               TaxGroups_value: Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               ),
               PaymentTypeName_value: I18nManager.isRTL
                 ? selectedPyamentMethod?.PaymentTypeName2
                 : selectedPyamentMethod?.PaymentTypeName,
               NetAmount_words_EN: numberToEngArbWords(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
+                true
               ),
               NetAmount_words_AR: numberToEngArbWords(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
+                false
               ),
-              Instructions_value: customerNotes ? customerNotes : '',
+              Instructions_value: customerNotes ? customerNotes : "",
               Company_BankDetail:
-                TerminalConfiguration?.CompanyBankDetail !== 'null'
+                TerminalConfiguration?.CompanyBankDetail !== "null"
                   ? TerminalConfiguration.CompanyBankDetail
-                  : '',
+                  : "",
               Company_Email: TerminalConfiguration.CompanyEmail,
               SalesAgentName_value: selectedAgent?.SalesAgentName
                 ? selectedAgent?.SalesAgentName
                 : TerminalConfiguration?.SalesAgentName,
               ContactNumber_profile: TerminalConfiguration.CompanyPhone
                 ? TerminalConfiguration.CompanyPhone
-                : '',
+                : "",
               Address_profile:
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration.GoDownAddress
                   : TerminalConfiguration.CompanyAddress,
             };
@@ -5330,7 +5578,7 @@ const HomeScreen = props => {
             const replacePlaceholdersFooter = (html, values) => {
               // Use a placeholder format like {key} for dynamic values
               for (const key in values) {
-                const regex = new RegExp(key, 'g');
+                const regex = new RegExp(key, "g");
                 html = html.replace(regex, values[key]);
               }
 
@@ -5343,14 +5591,14 @@ const HomeScreen = props => {
                 const styleAttributeContent = matches[2];
                 console.log(styleAttributeContent);
               } else {
-                console.log('No match found.');
+                console.log("No match found.");
               }
 
               if (qrCodeDivRegex.test(html)) {
                 // Replace {your_image_source_here} with the actual base64-encoded qrUrl
                 html = html.replace(
                   qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${qrUrl}" style="$2"/>$3`,
+                  `$1><img src="data:image/png;base64,${qrUrl}" style="$2"/>$3`
                 );
               }
 
@@ -5358,102 +5606,102 @@ const HomeScreen = props => {
             };
             updateFooter = replacePlaceholdersFooter(
               updateFooter,
-              dynamicValuesFooter,
+              dynamicValuesFooter
             );
           } else {
             updateHeader = updateHeader.replace(
-              '{{logo}}',
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              "{{logo}}",
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration?.GoDownLogoType +
-                    ',' +
+                    "," +
                     TerminalConfiguration?.GoDownLogo
                 : TerminalConfiguration?.CompanyLogoType +
-                    ',' +
-                    TerminalConfiguration?.CompanyLogo,
+                    "," +
+                    TerminalConfiguration?.CompanyLogo
             );
             updateHeader = updateHeader.replace(
               /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName,
+                : TerminalConfiguration.CompanyName
             );
             updateHeader = updateHeader.replace(
               /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber,
+                : TerminalConfiguration.CCRNumber
             );
             updateHeader = updateHeader.replace(
               /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress,
+                : TerminalConfiguration.CompanyAddress
             );
             // updateHeader = updateHeader.replace(/1060/g, "1100")
             //updateHeader = updateHeader.replace(/20/g, "20")
             updateHeader = updateHeader.replace(
               /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber,
+              TerminalConfiguration?.ValueAddedTaxNumber
             );
 
             updateHeader = updateHeader.replace(
-              '{{InvoiceTitleArabic}}',
-              returnInvoiceNumber ? 'استرداد المبيعات' : billingType?.name2,
+              "{{InvoiceTitleArabic}}",
+              returnInvoiceNumber ? "استرداد المبيعات" : billingType?.name2
             );
             updateHeader = updateHeader.replace(
-              '{{InvoiceTitleEnglish}}',
-              returnInvoiceNumber ? 'Sales Refund' : billingType?.name,
+              "{{InvoiceTitleEnglish}}",
+              returnInvoiceNumber ? "Sales Refund" : billingType?.name
             );
-            updateHeader = updateHeader.replace('{{PDate}}', currentDate);
+            updateHeader = updateHeader.replace("{{PDate}}", currentDate);
             updateHeader = updateHeader.replace(
-              '{{dateDays}}',
-              currentDate.split('/')[0],
-            );
-            updateHeader = updateHeader.replace(
-              '{{dateMonth}}',
-              currentDate.split('/')[1],
+              "{{dateDays}}",
+              currentDate.split("/")[0]
             );
             updateHeader = updateHeader.replace(
-              '{{dateYear}}',
-              currentDate.split(/[/" "]/)[2],
+              "{{dateMonth}}",
+              currentDate.split("/")[1]
+            );
+            updateHeader = updateHeader.replace(
+              "{{dateYear}}",
+              currentDate.split(/[/" "]/)[2]
             );
             updateHeader = updateHeader.replace(
               /{{record_number}}/g,
-              invoiceNumber,
+              invoiceNumber
             );
             updateHeader = updateHeader.replace(
               /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber,
+              returnInvoiceNumber
             );
             updateHeader = updateHeader.replace(
               /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate.split(' ')[0],
+              billDates ? billDates : currentDate.split(" ")[0]
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerName}}',
-              buyerInfo?.BuyerName ? buyerInfo.BuyerName : '',
+              "{{BuyerName}}",
+              buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerCode}}',
-              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : '',
+              "{{BuyerCode}}",
+              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerVat}}',
+              "{{BuyerVat}}",
               buyerInfo?.ValueAddedTaxNumber
                 ? buyerInfo.ValueAddedTaxNumber
-                : '',
+                : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerCCR}}',
-              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : '',
+              "{{BuyerCCR}}",
+              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerPhone}}',
-              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : '',
+              "{{BuyerPhone}}",
+              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerAddress}}',
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : '',
+              "{{BuyerAddress}}",
+              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
             );
 
             let tQ = 0;
@@ -5463,399 +5711,395 @@ const HomeScreen = props => {
               tQ = tQ + p.Quantity;
               //  console.log("A4style[0].ReportHeader......", A4style[0].ReportHeader)
               let body = A4style[0].ReportBody;
-              body = body.replace('{{SerialNumber}}', srNum);
-              body = body.replace('{{ProductCode}}', p.ProductCode);
+              body = body.replace("{{SerialNumber}}", srNum);
+              body = body.replace("{{ProductCode}}", p.ProductCode);
               body = body.replace(
-                '{{Description}}',
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName,
+                "{{Description}}",
+                I18nManager.isRTL ? p.ProductName2 : p.ProductName
               );
               body = body.replace(
-                '{{ProductName}}',
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName,
+                "{{ProductName}}",
+                I18nManager.isRTL ? p.ProductName2 : p.ProductName
               );
               body = body.replace(
-                '{{Quantity}}',
-                Number(p.Quantity).toFixed(2),
+                "{{Quantity}}",
+                Number(p.Quantity).toFixed(2)
               );
               body = body.replace(
-                '{{ProductTax}}',
-                Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount),
+                "{{ProductTax}}",
+                Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount)
               );
               body = body.replace(
-                '{{UnitName}}',
-                I18nManager.isRTL ? p.UOMName2 : p.UOMName,
+                "{{UnitName}}",
+                I18nManager.isRTL ? p.UOMName2 : p.UOMName
               );
               body = body.replace(
-                '{{Price}}',
+                "{{Price}}",
                 Number(p.PriceWithOutTax).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
-              body = body.replace('{{PriceSIG}}', parseInt(p.PriceWithOutTax));
+              body = body.replace("{{PriceSIG}}", parseInt(p.PriceWithOutTax));
               body = body.replace(
-                '{{PricePoints}}',
+                "{{PricePoints}}",
                 GetDecimalpart(
                   Number(p.PriceWithOutTax).toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
-                  ),
-                ),
+                    TerminalConfiguration.DecimalsInAmount
+                  )
+                )
               );
               body = body.replace(
-                '{{PriceQuantity}}',
+                "{{PriceQuantity}}",
                 Number(p.PriceWithOutTax * p.Quantity).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{GrandAmount}}',
+                "{{GrandAmount}}",
                 Number(p.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{GrandAmountSIG}}',
-                parseInt(p.GrandAmount),
+                "{{GrandAmountSIG}}",
+                parseInt(p.GrandAmount)
               );
               body = body.replace(
-                '{{GrandAmountPoints}}',
+                "{{GrandAmountPoints}}",
                 GetDecimalpart(
                   Number(p.GrandAmount).toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
-                  ),
-                ),
+                    TerminalConfiguration.DecimalsInAmount
+                  )
+                )
               );
               body = body.replace(
-                '{{Tax1Rate}}',
+                "{{Tax1Rate}}",
                 Number(p.Tax1Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{Tax2Rate}}',
+                "{{Tax2Rate}}",
                 Number(p.Tax2Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{Tax1Amount}}',
+                "{{Tax1Amount}}",
                 Number(p.Tax1Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{Tax2Amount}}',
+                "{{Tax2Amount}}",
                 Number(p.Tax2Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
-              body = body.replace('{{Tax1Name}}', p.Tax1Name);
-              body = body.replace('{{Tax2Name}}', p.Tax2Name);
+              body = body.replace("{{Tax1Name}}", p.Tax1Name);
+              body = body.replace("{{Tax2Name}}", p.Tax2Name);
               body = body.replace(
-                '{{Discount}}',
+                "{{Discount}}",
                 Number(p.DiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
-              body = body.replace('{{ProductDescription}}', p.IngredientNames);
-              body = body.replace('{{ProductBarCode}}', p.ProductBarCode);
+              body = body.replace("{{ProductDescription}}", p.IngredientNames);
+              body = body.replace("{{ProductBarCode}}", p.ProductBarCode);
 
               updateBody = updateBody + body;
             });
             // updateFooter = updateFooter.replace(/1060/g, "1100")
             //updateFooter = updateFooter.replace(/30%/g, "20%")
             updateFooter = updateFooter.replace(
-              '{{QRImage}}',
-              'data:image/png;base64,' + qrUrl,
+              "{{QRImage}}",
+              "data:image/png;base64," + qrUrl
             );
             updateFooter = updateFooter.replace(
-              '{{CompanyStamp}}',
+              "{{CompanyStamp}}",
               TerminalConfiguration.CompanyStampType +
-                ',' +
-                TerminalConfiguration.CompanyStamp,
+                "," +
+                TerminalConfiguration.CompanyStamp
             );
             updateFooter = updateFooter.replace(
-              '{{AmountWithOutTax}}',
+              "{{AmountWithOutTax}}",
               Number(subPrice - sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GrandAmountSIG}}',
-              parseInt(subPrice),
+              "{{GrandAmountSIG}}",
+              parseInt(subPrice)
             );
             updateFooter = updateFooter.replace(
-              '{{grandAmountPoints}}',
+              "{{grandAmountPoints}}",
               GetDecimalpart(
-                Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
-              ),
+                Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GlobalDiscountAmount}}',
+              "{{GlobalDiscountAmount}}",
               Number(globalDiscountAmount + sumOfProductDiscount).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{TaxGroupAmount}}',
+              "{{TaxGroupAmount}}",
               Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{TaxGroupNames}}',
+              "{{TaxGroupNames}}",
               globalTaxObj?.globalTaxGroupName
                 ? globalTaxObj.globalTaxGroupName
-                : 'Global Tax',
+                : "Global Tax"
             );
             updateFooter = updateFooter.replace(
-              '{{Roundoff}}',
-              (0).toFixed(TerminalConfiguration.DecimalsInAmount),
+              "{{Roundoff}}",
+              (0).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{CashAdvance}}',
+              "{{CashAdvance}}",
               Number(advancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{AdvanceAmount}}',
+              "{{AdvanceAmount}}",
               Number(advancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{CashPaid}}',
+              "{{CashPaid}}",
               Number(
-                advancePaidInCash ? totalPrice - advancePaidInCash : totalPrice,
-              ).toFixed(TerminalConfiguration.DecimalsInAmount),
+                advancePaidInCash ? totalPrice - advancePaidInCash : totalPrice
+              ).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{PaymentMethod}}',
+              "{{PaymentMethod}}",
               I18nManager.isRTL
                 ? selectedPyamentMethod?.PaymentTypeName2
-                : selectedPyamentMethod?.PaymentTypeName,
+                : selectedPyamentMethod?.PaymentTypeName
             );
-            console.log('payment method type', selectedPyamentMethod);
-            updateFooter = updateFooter.replace('{{companyCurrency}}', '');
+            console.log("payment method type", selectedPyamentMethod);
+            updateFooter = updateFooter.replace("{{companyCurrency}}", "");
             updateFooter = updateFooter.replace(
-              '{{NetAmount}}',
-              Number(totalPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+              "{{NetAmount}}",
+              Number(totalPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{CompanyEmail}}',
-              TerminalConfiguration.CompanyEmail,
+              "{{CompanyEmail}}",
+              TerminalConfiguration.CompanyEmail
             );
             updateFooter = updateFooter.replace(
-              '{{NetAmountSIG}}',
-              parseInt(totalPrice),
+              "{{NetAmountSIG}}",
+              parseInt(totalPrice)
             );
             updateFooter = updateFooter.replace(
-              '{{netAmountPoints}}',
+              "{{netAmountPoints}}",
               GetDecimalpart(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
-              ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{TotalQty}}',
-              Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount),
+              "{{TotalQty}}",
+              Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{TotalItems}}',
-              selectedProducts.length,
+              "{{TotalItems}}",
+              selectedProducts.length
             );
             updateFooter = updateFooter.replace(
-              '{{NetAmountAR}}',
+              "{{NetAmountAR}}",
               numberToEngArbWords(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GrandAmountEN}}',
+              "{{GrandAmountEN}}",
               numberToEngArbWords(
                 Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GrandAmountAR}}',
+              "{{GrandAmountAR}}",
               numberToEngArbWords(
                 Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{AmountWithOutTaxEN}}',
+              "{{AmountWithOutTaxEN}}",
               numberToEngArbWords(
                 Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{AmountWithOutTaxAR}}',
+              "{{AmountWithOutTaxAR}}",
               numberToEngArbWords(
                 Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GlobalDiscountAmountEN}}',
+              "{{GlobalDiscountAmountEN}}",
               numberToEngArbWords(
                 Number(globalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GlobalDiscountAmountAR}}',
+              "{{GlobalDiscountAmountAR}}",
               numberToEngArbWords(
                 Number(globalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{NetAmountEN}}',
+              "{{NetAmountEN}}",
               numberToEngArbWords(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{TaxGroupAmount}}',
+              "{{TaxGroupAmount}}",
               Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             // updateFooter = updateFooter.replace(
             //   '{{TaxGroupAmount}}',
             //   globalTax.toFixed(TerminalConfiguration.DecimalsInAmount),
             // );
             updateFooter = updateFooter.replace(
-              '{{TaxGroupNames}}',
+              "{{TaxGroupNames}}",
               globalTaxObj?.globalTaxGroupName
                 ? globalTaxObj.globalTaxGroupName
-                : 'ضريبة القيمة المضافة %15 ',
+                : "ضريبة القيمة المضافة %15 "
             );
             updateFooter = updateFooter.replace(
-              '{{TaxGroupAmountSIG}}',
-              parseInt(globalTax),
+              "{{TaxGroupAmountSIG}}",
+              parseInt(globalTax)
             );
             updateFooter = updateFooter.replace(
-              '{{taxGroupPoints}}',
+              "{{taxGroupPoints}}",
               GetDecimalpart(
                 Number(globalTax).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
-              ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              )
             );
-            updateFooter = updateFooter.replace('{{TaxGroupsAR}}', '');
-            updateFooter = updateFooter.replace('{{TaxGroupsEN}}', '');
+            updateFooter = updateFooter.replace("{{TaxGroupsAR}}", "");
+            updateFooter = updateFooter.replace("{{TaxGroupsEN}}", "");
             updateFooter = updateFooter.replace(
               /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress,
+                : TerminalConfiguration.CompanyAddress
             );
             updateFooter = updateFooter.replace(
               /{{SalesAgentName}}/g,
               selectedAgent?.SalesAgentName
                 ? selectedAgent?.SalesAgentName
-                : TerminalConfiguration?.SalesAgentName,
+                : TerminalConfiguration?.SalesAgentName
             );
 
             updateFooter = updateFooter.replace(
               /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName,
+                : TerminalConfiguration.CompanyName
             );
             updateFooter = updateFooter.replace(
               /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber,
+                : TerminalConfiguration.CCRNumber
             );
 
             updateFooter = updateFooter.replace(
               /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber,
+              TerminalConfiguration?.ValueAddedTaxNumber
             );
 
-            updateFooter = updateFooter.replace('{{PDate}}', currentDate);
+            updateFooter = updateFooter.replace("{{PDate}}", currentDate);
             updateFooter = updateFooter.replace(
-              '{{dateDays}}',
-              currentDate.split('/')[0],
+              "{{dateDays}}",
+              currentDate.split("/")[0]
             );
             updateFooter = updateFooter.replace(
-              '{{dateMonth}}',
-              currentDate.split('/')[1],
+              "{{dateMonth}}",
+              currentDate.split("/")[1]
             );
             updateFooter = updateFooter.replace(
-              '{{dateYear}}',
-              currentDate.split(/[/" "]/)[2],
+              "{{dateYear}}",
+              currentDate.split(/[/" "]/)[2]
             );
             updateFooter = updateFooter.replace(
               /{{record_number}}/g,
-              invoiceNumber,
+              invoiceNumber
             );
             updateFooter = updateFooter.replace(
               /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber,
+              returnInvoiceNumber
             );
             updateFooter = updateFooter.replace(
               /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate,
+              billDates ? billDates : currentDate
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerName}}',
-              buyerInfo?.BuyerName ? buyerInfo.BuyerName : '',
+              "{{BuyerName}}",
+              buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerCode}}',
-              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : '',
+              "{{BuyerCode}}",
+              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerVat}}',
+              "{{BuyerVat}}",
               buyerInfo?.ValueAddedTaxNumber
                 ? buyerInfo.ValueAddedTaxNumber
-                : '',
+                : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerCCR}}',
-              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : '',
+              "{{BuyerCCR}}",
+              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerPhone}}',
-              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : '',
+              "{{BuyerPhone}}",
+              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerAddress}}',
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : '',
+              "{{BuyerAddress}}",
+              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
             );
             //  updateFooter = updateFooter.replace(/{{CompanyAddress}}/g, saleAgent)
 
-            console.log('updateStyleupdateStyleupdateStyle', updateStyle);
+            console.log("updateStyleupdateStyleupdateStyle", updateStyle);
           }
 
           let check = countNumber * itemPerPage < allProducts.length;
@@ -5882,14 +6126,14 @@ const HomeScreen = props => {
             // }
 
             updateStyle =
-              updateStyle === ''
+              updateStyle === ""
                 ? updateHeader +
                   updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : '')
+                  (IsFooterOnEveryPage === true ? updateFooter : "")
                 : updateStyle +
                   updateHeader +
                   updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : '');
+                  (IsFooterOnEveryPage === true ? updateFooter : "");
 
             let c = countNumber + 1;
             pageNo = page + 1;
@@ -5902,11 +6146,11 @@ const HomeScreen = props => {
                 updateStyle + updateHeader + updateBody + updateFooter;
             } else {
               updateStyle =
-                updateStyle === ''
+                updateStyle === ""
                   ? updateHeader + updateBody + updateFooter
                   : updateStyle + updateHeader + updateBody + updateFooter;
             }
-            console.log('updateStyle1', updateStyle);
+            console.log("updateStyle1", updateStyle);
             await RNPrint.print({
               html: updateStyle,
             });
@@ -5915,7 +6159,7 @@ const HomeScreen = props => {
 
         setLoading(false);
         onSaveInvoice();
-      },
+      }
     );
   };
   const A4RePrinterStyle = async (
@@ -5924,7 +6168,7 @@ const HomeScreen = props => {
     countNumber,
     update,
     detail,
-    page,
+    page
   ) => {
     // console.log(
     //   'billingType A4PrinterStyle..',
@@ -5950,30 +6194,30 @@ const HomeScreen = props => {
       let startingIndex = countNumber * itemPerPage - itemPerPage;
       printItems = lastBillDetail?.BillDetails.slice(
         startingIndex,
-        lastBillDetail?.BillDetails?.length,
+        lastBillDetail?.BillDetails?.length
       );
     }
-    console.log('printItems....', printItems);
+    console.log("printItems....", printItems);
 
     let pageId = returnInvoiceNumber
-      ? '403007'
+      ? "403007"
       : billingType?.id === 2
-      ? '4030061'
-      : '403006';
+      ? "4030061"
+      : "403006";
 
     // console.log("pageId....", pageId)
     setLoading(true);
     await getDataByMultipaleID(
       A4PrintStylesTable,
-      'PageID',
+      "PageID",
       pageId,
-      'UseDefault',
-      'true',
-      async A4style => {
+      "UseDefault",
+      "true",
+      async (A4style) => {
         //  console.log("A4style", A4style)
         if (A4style.length === 0) {
           setLoading(false);
-          alert('There is no A4 printing style available');
+          alert("There is no A4 printing style available");
         } else {
           if (pageNo !== 1 && update) {
             update = `<div style="page-break-after:always!important;">${update}</div>`;
@@ -5981,28 +6225,28 @@ const HomeScreen = props => {
           let updateStyle = update,
             updateHeader = A4style[0].ReportHeader.replace(
               /<i\b[^>]*>.*?<\/i>/g,
-              '',
+              ""
             ),
             updateBody = A4style[0].ReportBody.replace(
               /<i\b[^>]*>.*?<\/i>/g,
-              '',
+              ""
             ),
             updateFooter = A4style[0].ReportFooter.replace(
               /<i\b[^>]*>.*?<\/i>/g,
-              '',
+              ""
             );
 
-          let heightOfHeader = getHeight(updateHeader, 'dvhmain'); // 440;
-          let heightOfFooter = getHeight(updateFooter, 'dvfmain'); // 760;
-          let BodyHeightGiven = getHeight(updateBody, 'dvimain'); // 200;
+          let heightOfHeader = getHeight(updateHeader, "dvhmain"); // 440;
+          let heightOfFooter = getHeight(updateFooter, "dvfmain"); // 760;
+          let BodyHeightGiven = getHeight(updateBody, "dvimain"); // 200;
 
           let IsFooterOnEveryPage =
-            A4style[0].IsFooterOnEveryPage === 'true' ? true : false;
+            A4style[0].IsFooterOnEveryPage === "true" ? true : false;
           let IsHeaderOnEveryPage =
-            A4style[0].IsHeaderOnEveryPage === 'true' ? true : false;
+            A4style[0].IsHeaderOnEveryPage === "true" ? true : false;
 
           let findPrintStyle = A4style.findIndex(
-            x => x.SerialNo > 1 && x.UseDefault === 'true',
+            (x) => x.SerialNo > 1 && x.UseDefault === "true"
           );
           // let bodyFinalHeight = 510;
           // if (
@@ -6022,7 +6266,7 @@ const HomeScreen = props => {
           if (findPrintStyle !== -1) {
             const updatedBodyWithAutoHeightAndFonts = updateBody.replace(
               /id="dvIMain" style=".*?"/,
-              `id="dvIMain" style="width: 1100px; height: auto; margin-top:80px; padding: 0px; background: none rgb(255, 255, 255); font-family: 'proxima nova rg';"`,
+              `id="dvIMain" style="width: 1100px; height: auto; margin-top:80px; padding: 0px; background: none rgb(255, 255, 255); font-family: 'proxima nova rg';"`
             );
 
             updateBody = updatedBodyWithAutoHeightAndFonts;
@@ -6037,48 +6281,48 @@ const HomeScreen = props => {
               //       ',' +
               //       TerminalConfiguration?.CompanyLogo,
               CompanyName_profile:
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration.GoDownName
                   : TerminalConfiguration.CompanyName,
 
               CCRNumber_profile:
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration.GodownCCRNumber
                   : TerminalConfiguration.CCRNumber,
               VATNumber_profile: TerminalConfiguration?.ValueAddedTaxNumber,
               Page_Title_AR: returnInvoiceNumber
-                ? 'استرداد المبيعات'
+                ? "استرداد المبيعات"
                 : billingType?.name2,
               Page_Title_EN: returnInvoiceNumber
-                ? 'استرداد المبيعات'
+                ? "استرداد المبيعات"
                 : billingType?.name,
               InvoiceDate_value: lastBillDetail.BillDate,
               CreditDateUpto_value: currentDate,
               InvoiceNumber_value: lastBillDetail.BillNumber,
               BuyerName_value: lastBillDetail?.BuyerName
                 ? lastBillDetail.BuyerName
-                : '',
+                : "",
               BuyerCode_value: lastBillDetail?.BuyerCode
                 ? lastBillDetail.BuyerCode
-                : '',
+                : "",
               VATNumber_value: lastBillDetail?.ValueAddedTaxNumber
                 ? lastBillDetail.ValueAddedTaxNumber
-                : '',
+                : "",
               BuyerAddress_value: lastBillDetail?.BuyerAddress
                 ? lastBillDetail.BuyerAddress
-                : '',
+                : "",
               CCRNumber_value: lastBillDetail?.CCRNumber
                 ? lastBillDetail.CCRNumber
-                : '',
+                : "",
             };
             const replacePlaceholdersHeader = (html, values) => {
               let logo =
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration?.GoDownLogo
                   : TerminalConfiguration?.CompanyLogo;
               // Use a placeholder format like {key} for dynamic values
               for (const key in values) {
-                const regex = new RegExp(key, 'g');
+                const regex = new RegExp(key, "g");
                 html = html.replace(regex, values[key]);
               }
 
@@ -6091,14 +6335,14 @@ const HomeScreen = props => {
                 const styleAttributeContent = matches[2];
                 console.log(styleAttributeContent);
               } else {
-                console.log('No match found.');
+                console.log("No match found.");
               }
 
               if (qrCodeDivRegex.test(html)) {
                 // Replace {your_image_source_here} with the actual base64-encoded qrUrl
                 html = html.replace(
                   qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${logo}" />$3`,
+                  `$1><img src="data:image/png;base64,${logo}" />$3`
                 );
               }
 
@@ -6114,7 +6358,7 @@ const HomeScreen = props => {
 
             updateHeader = replacePlaceholdersHeader(
               updateHeader,
-              dynamicValuesHeader,
+              dynamicValuesHeader
             );
             const thRegex =
               /<th[^>]*id="([^"]*)"[^>]*>(.*?)<.*?>.*?([^<>]*)<\/th>/gi;
@@ -6126,7 +6370,7 @@ const HomeScreen = props => {
             for (const match of thMatches) {
               const id = match[1];
               const content = match[2];
-              const name = content.trim() || '';
+              const name = content.trim() || "";
               let finalId = Number(id);
               thTags.push(finalId);
             }
@@ -6136,17 +6380,17 @@ const HomeScreen = props => {
 
             const targetRowId = `trRow${2}`;
             const removeRowRegex = new RegExp(
-              `<tr[^>]*\\sid="${targetRowId}"[^>]*>([\\s\\S]*?)<\\/tr>`,
+              `<tr[^>]*\\sid="${targetRowId}"[^>]*>([\\s\\S]*?)<\\/tr>`
             );
             updatedBodyAccumulator = updatedBodyAccumulator.replace(
               removeRowRegex,
-              '',
+              ""
             );
             // let rowHeight = bodyFinalHeight / selectedProducts.length;
             // rowHeight = Number(rowHeight % 3);
             // rowHeight = `${rowHeight}px`;
             const tdElements = thTags
-              .map(tag => {
+              .map((tag) => {
                 return `
                 <td
                   style="
@@ -6160,7 +6404,7 @@ const HomeScreen = props => {
               >
               </td>`;
               })
-              .join('');
+              .join("");
             printItems.forEach((p, index) => {
               srNum = srNum + 1;
               tQ = tQ + p.Quantity;
@@ -6168,36 +6412,36 @@ const HomeScreen = props => {
 
               const dynamicValuesBody = {};
 
-              thTags.forEach(id => {
+              thTags.forEach((id) => {
                 switch (id) {
                   case 12:
                     dynamicValuesBody[id] = Number(p.GrandAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 16:
                     dynamicValuesBody[id] = Number(p.PriceWithOutTax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 11:
                     dynamicValuesBody[id] = Number(p.DiscountAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 28:
                     dynamicValuesBody[id] = Number(p.tax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 22:
                     dynamicValuesBody[id] = Number(taxRate).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 6:
                     dynamicValuesBody[id] = Number(p.PriceOriginal).toFixed(
-                      TerminalConfiguration.DecimalsInAmount,
+                      TerminalConfiguration.DecimalsInAmount
                     );
                     break;
                   case 4:
@@ -6219,28 +6463,28 @@ const HomeScreen = props => {
                       : p.ProductName;
                     break;
                   case 2:
-                    dynamicValuesBody[id] = p.ProductCode ? p.ProductCode : '';
+                    dynamicValuesBody[id] = p.ProductCode ? p.ProductCode : "";
                     break;
                   case 1:
                     dynamicValuesBody[id] = srNum;
                     break;
                   default:
                     // Handle other ids or provide a default value
-                    dynamicValuesBody[id] = ''; // Default value, change as needed
+                    dynamicValuesBody[id] = ""; // Default value, change as needed
                 }
               });
 
               const targetRowIdNew = `trRow${srNum}`;
 
               let rowContent = `<tr id="${targetRowIdNew}">${tdElements}</tr>`;
-              const lastIndex = updatedBodyAccumulator.lastIndexOf('</tr>');
+              const lastIndex = updatedBodyAccumulator.lastIndexOf("</tr>");
 
               const existingRowStart = updatedBodyAccumulator.indexOf(
-                `<tr id="${targetRowIdNew}"`,
+                `<tr id="${targetRowIdNew}"`
               );
               const existingRowEnd = updatedBodyAccumulator.indexOf(
-                '</tr>',
-                existingRowStart,
+                "</tr>",
+                existingRowStart
               );
 
               if (existingRowStart !== -1 && existingRowEnd !== -1) {
@@ -6248,7 +6492,7 @@ const HomeScreen = props => {
                 updatedBodyAccumulator =
                   updatedBodyAccumulator.slice(0, existingRowStart) +
                   `${rowContent}` +
-                  updatedBodyAccumulator.slice(existingRowEnd + '</tr>'.length);
+                  updatedBodyAccumulator.slice(existingRowEnd + "</tr>".length);
               } else {
                 // If the row doesn't exist, insert it
                 if (lastIndex !== -1) {
@@ -6262,16 +6506,16 @@ const HomeScreen = props => {
               rowContent = replaceValuesInRow(
                 rowContent,
                 dynamicValuesBody,
-                thTags,
+                thTags
               );
               const rowRegexNew = new RegExp(
-                `<tr[^>]*\\sid="${targetRowIdNew}"[^>]*>([\\s\\S]*?)<\\/tr>`,
+                `<tr[^>]*\\sid="${targetRowIdNew}"[^>]*>([\\s\\S]*?)<\\/tr>`
               );
               const rowMatchNew = updatedBodyAccumulator.match(rowRegexNew);
               if (rowMatchNew && rowMatchNew.length >= 2) {
                 updatedBodyAccumulator = updatedBodyAccumulator.replace(
                   rowMatchNew[0],
-                  `<tr id="${targetRowIdNew}">${rowContent}</tr>`,
+                  `<tr id="${targetRowIdNew}">${rowContent}</tr>`
                   // `<tr id="${targetRowIdNew}" style="height: ${rowHeight};">${rowContent}</tr>`,
                 );
               }
@@ -6281,7 +6525,7 @@ const HomeScreen = props => {
 
             const dynamicValuesFooter = {
               GrandAmount_value: Number(subPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               ),
 
               // GrandAmount_value: numberToEngArbWords(
@@ -6291,7 +6535,7 @@ const HomeScreen = props => {
               //   false,
               // ),
               NetAmount_value: Number(totalPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               ),
               // NetAmount_value: numberToEngArbWords(
               //   Number(totalPrice).toFixed(
@@ -6300,37 +6544,37 @@ const HomeScreen = props => {
               //   true,
               // ),
               TaxGroups_value: Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
+                TerminalConfiguration.DecimalsInAmount
               ),
               PaymentTypeName_value: I18nManager.isRTL
                 ? selectedPyamentMethod?.PaymentTypeName2
                 : selectedPyamentMethod?.PaymentTypeName,
               NetAmount_words_EN: numberToEngArbWords(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
+                true
               ),
               NetAmount_words_AR: numberToEngArbWords(
                 Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
+                false
               ),
-              Instructions_value: customerNotes ? customerNotes : '',
+              Instructions_value: customerNotes ? customerNotes : "",
               Company_BankDetail:
-                TerminalConfiguration?.CompanyBankDetail !== 'null'
+                TerminalConfiguration?.CompanyBankDetail !== "null"
                   ? TerminalConfiguration.CompanyBankDetail
-                  : '',
+                  : "",
               Company_Email: TerminalConfiguration.CompanyEmail,
               SalesAgentName_value: selectedAgent?.SalesAgentName
                 ? selectedAgent?.SalesAgentName
                 : TerminalConfiguration?.SalesAgentName,
               ContactNumber_profile: TerminalConfiguration.CompanyPhone
                 ? TerminalConfiguration.CompanyPhone
-                : '',
+                : "",
               Address_profile:
-                TerminalConfiguration?.IsGodownInfo === 'true'
+                TerminalConfiguration?.IsGodownInfo === "true"
                   ? TerminalConfiguration.GoDownAddress
                   : TerminalConfiguration.CompanyAddress,
             };
@@ -6344,7 +6588,7 @@ const HomeScreen = props => {
             const replacePlaceholdersFooter = (html, values) => {
               // Use a placeholder format like {key} for dynamic values
               for (const key in values) {
-                const regex = new RegExp(key, 'g');
+                const regex = new RegExp(key, "g");
                 html = html.replace(regex, values[key]);
               }
 
@@ -6357,14 +6601,14 @@ const HomeScreen = props => {
                 const styleAttributeContent = matches[2];
                 console.log(styleAttributeContent);
               } else {
-                console.log('No match found.');
+                console.log("No match found.");
               }
 
               if (qrCodeDivRegex.test(html)) {
                 // Replace {your_image_source_here} with the actual base64-encoded qrUrl
                 html = html.replace(
                   qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${qrUrl}" style="$2"/>$3`,
+                  `$1><img src="data:image/png;base64,${qrUrl}" style="$2"/>$3`
                 );
               }
 
@@ -6372,101 +6616,101 @@ const HomeScreen = props => {
             };
             updateFooter = replacePlaceholdersFooter(
               updateFooter,
-              dynamicValuesFooter,
+              dynamicValuesFooter
             );
           } else {
             updateHeader = updateHeader.replace(
-              '{{logo}}',
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              "{{logo}}",
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration?.GoDownLogoType +
-                    ',' +
+                    "," +
                     TerminalConfiguration?.GoDownLogo
                 : TerminalConfiguration?.CompanyLogoType +
-                    ',' +
-                    TerminalConfiguration?.CompanyLogo,
+                    "," +
+                    TerminalConfiguration?.CompanyLogo
             );
             updateHeader = updateHeader.replace(
               /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName,
+                : TerminalConfiguration.CompanyName
             );
             updateHeader = updateHeader.replace(
               /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber,
+                : TerminalConfiguration.CCRNumber
             );
             updateHeader = updateHeader.replace(
               /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress,
+                : TerminalConfiguration.CompanyAddress
             );
             // updateHeader = updateHeader.replace(/1060/g, "1100")
             //updateHeader = updateHeader.replace(/20/g, "20")
             updateHeader = updateHeader.replace(
               /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber,
+              TerminalConfiguration?.ValueAddedTaxNumber
             );
 
             updateHeader = updateHeader.replace(
-              '{{InvoiceTitleArabic}}',
-              returnInvoiceNumber ? 'استرداد المبيعات' : billingType?.name2,
+              "{{InvoiceTitleArabic}}",
+              returnInvoiceNumber ? "استرداد المبيعات" : billingType?.name2
             );
             updateHeader = updateHeader.replace(
-              '{{InvoiceTitleEnglish}}',
-              returnInvoiceNumber ? 'Sales Refund' : billingType?.name,
+              "{{InvoiceTitleEnglish}}",
+              returnInvoiceNumber ? "Sales Refund" : billingType?.name
             );
-            updateHeader = updateHeader.replace('{{PDate}}', currentDate);
+            updateHeader = updateHeader.replace("{{PDate}}", currentDate);
             updateHeader = updateHeader.replace(
-              '{{dateDays}}',
-              currentDate.split('/')[0],
-            );
-            updateHeader = updateHeader.replace(
-              '{{dateMonth}}',
-              currentDate.split('/')[1],
+              "{{dateDays}}",
+              currentDate.split("/")[0]
             );
             updateHeader = updateHeader.replace(
-              '{{dateYear}}',
-              currentDate.split(/[/" "]/)[2],
+              "{{dateMonth}}",
+              currentDate.split("/")[1]
+            );
+            updateHeader = updateHeader.replace(
+              "{{dateYear}}",
+              currentDate.split(/[/" "]/)[2]
             );
 
             updateHeader = updateHeader.replace(
               /{{record_number}}/g,
-              bdetail.BillNumber,
+              bdetail.BillNumber
             );
             updateHeader = updateHeader.replace(
               /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber,
+              returnInvoiceNumber
             );
             updateHeader = updateHeader.replace(
               /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate.split(' ')[0],
+              billDates ? billDates : currentDate.split(" ")[0]
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerName}}',
-              bdetail.BuyerName,
+              "{{BuyerName}}",
+              bdetail.BuyerName
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerCode}}',
-              bdetail?.BuyerCode ? bdetail.BuyerCode : '',
+              "{{BuyerCode}}",
+              bdetail?.BuyerCode ? bdetail.BuyerCode : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerVat}}',
-              bdetail?.BuyerVAT ? bdetail.BuyerVAT : '',
+              "{{BuyerVat}}",
+              bdetail?.BuyerVAT ? bdetail.BuyerVAT : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerCCR}}',
-              buyerInfo?.BuyerCCR ? buyerInfo.BuyerCCR : '',
+              "{{BuyerCCR}}",
+              buyerInfo?.BuyerCCR ? buyerInfo.BuyerCCR : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerPhone}}',
-              buyerInfo?.BuyerPhone ? buyerInfo.BuyerPhone : '',
+              "{{BuyerPhone}}",
+              buyerInfo?.BuyerPhone ? buyerInfo.BuyerPhone : ""
             );
             updateHeader = updateHeader.replace(
-              '{{BuyerAddress}}',
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : '',
+              "{{BuyerAddress}}",
+              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
             );
 
             // updateHeader = updateHeader.replace(
@@ -6516,142 +6760,142 @@ const HomeScreen = props => {
               tQ = tQ + p.Quantity;
               //  console.log("A4style[0].ReportHeader......", A4style[0].ReportHeader)
               let body = A4style[0].ReportBody;
-              body = body.replace('{{SerialNumber}}', srNum);
-              body = body.replace('{{ProductCode}}', p.ProductCode);
+              body = body.replace("{{SerialNumber}}", srNum);
+              body = body.replace("{{ProductCode}}", p.ProductCode);
               body = body.replace(
-                '{{Description}}',
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName,
+                "{{Description}}",
+                I18nManager.isRTL ? p.ProductName2 : p.ProductName
               );
               body = body.replace(
-                '{{ProductName}}',
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName,
+                "{{ProductName}}",
+                I18nManager.isRTL ? p.ProductName2 : p.ProductName
               );
               body = body.replace(
-                '{{Quantity}}',
-                Number(p.Quantity).toFixed(2),
+                "{{Quantity}}",
+                Number(p.Quantity).toFixed(2)
               );
               body = body.replace(
-                '{{ProductTax}}',
-                Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount),
+                "{{ProductTax}}",
+                Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount)
               );
               body = body.replace(
-                '{{UnitName}}',
-                I18nManager.isRTL ? p.UOMName2 : p.UOMName,
+                "{{UnitName}}",
+                I18nManager.isRTL ? p.UOMName2 : p.UOMName
               );
               body = body.replace(
-                '{{Price}}',
+                "{{Price}}",
                 Number(p.PriceWithOutTax).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
-              body = body.replace('{{PriceSIG}}', parseInt(p.PriceWithOutTax));
+              body = body.replace("{{PriceSIG}}", parseInt(p.PriceWithOutTax));
               body = body.replace(
-                '{{PricePoints}}',
+                "{{PricePoints}}",
                 GetDecimalpart(
                   Number(p.PriceWithOutTax).toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
-                  ),
-                ),
+                    TerminalConfiguration.DecimalsInAmount
+                  )
+                )
               );
               body = body.replace(
-                '{{PriceQuantity}}',
+                "{{PriceQuantity}}",
                 Number(p.PriceWithOutTax * p.Quantity).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{GrandAmount}}',
+                "{{GrandAmount}}",
                 Number(p.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{GrandAmountSIG}}',
-                parseInt(p.GrandAmount),
+                "{{GrandAmountSIG}}",
+                parseInt(p.GrandAmount)
               );
               body = body.replace(
-                '{{GrandAmountPoints}}',
+                "{{GrandAmountPoints}}",
                 GetDecimalpart(
                   Number(p.GrandAmount).toFixed(
-                    TerminalConfiguration.DecimalsInAmount,
-                  ),
-                ),
+                    TerminalConfiguration.DecimalsInAmount
+                  )
+                )
               );
               body = body.replace(
-                '{{Tax1Rate}}',
+                "{{Tax1Rate}}",
                 Number(p.Tax1Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{Tax2Rate}}',
+                "{{Tax2Rate}}",
                 Number(p.Tax2Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{Tax1Amount}}',
+                "{{Tax1Amount}}",
                 Number(p.Tax1Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
               body = body.replace(
-                '{{Tax2Amount}}',
+                "{{Tax2Amount}}",
                 Number(p.Tax2Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
-              body = body.replace('{{Tax1Name}}', p.Tax1Name);
-              body = body.replace('{{Tax2Name}}', p.Tax2Name);
+              body = body.replace("{{Tax1Name}}", p.Tax1Name);
+              body = body.replace("{{Tax2Name}}", p.Tax2Name);
               body = body.replace(
-                '{{Discount}}',
+                "{{Discount}}",
                 Number(p.DiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
               );
-              body = body.replace('{{ProductDescription}}', p.IngredientNames);
-              body = body.replace('{{ProductBarCode}}', p.ProductBarCode);
+              body = body.replace("{{ProductDescription}}", p.IngredientNames);
+              body = body.replace("{{ProductBarCode}}", p.ProductBarCode);
 
               updateBody = updateBody + body;
             });
             lastBillDetail = bdetail;
-            console.log('product tax of all products', prodTax);
+            console.log("product tax of all products", prodTax);
             // updateFooter = updateFooter.replace(/1060/g, "1100")
             //updateFooter = updateFooter.replace(/30%/g, "20%")
             updateFooter = updateFooter.replace(
-              '{{QRImage}}',
-              'data:image/png;base64,' + qrUrl,
+              "{{QRImage}}",
+              "data:image/png;base64," + qrUrl
             );
             updateFooter = updateFooter.replace(
-              '{{CompanyStamp}}',
+              "{{CompanyStamp}}",
               TerminalConfiguration.CompanyStampType +
-                ',' +
-                TerminalConfiguration.CompanyStamp,
+                "," +
+                TerminalConfiguration.CompanyStamp
             );
             lastBillDetail = bdetail;
             updateFooter = updateFooter.replace(
-              '{{AmountWithOutTax}}',
+              "{{AmountWithOutTax}}",
               Number(lastBillDetail.GrandAmount - prodTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GrandAmountSIG}}',
-              parseInt(lastBillDetail.GrandAmount),
+              "{{GrandAmountSIG}}",
+              parseInt(lastBillDetail.GrandAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{grandAmountPoints}}',
+              "{{grandAmountPoints}}",
               GetDecimalpart(
                 Number(lastBillDetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
-              ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GlobalDiscountAmount}}',
+              "{{GlobalDiscountAmount}}",
               Number(lastBillDetail.GlobalDiscountAmount + prodDis).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             // updateFooter = updateFooter.replace(
             //   '{{TaxGroupAmount}}',
@@ -6661,10 +6905,10 @@ const HomeScreen = props => {
             // );
 
             updateFooter = updateFooter.replace(
-              '{{TaxGroupAmount}}',
+              "{{TaxGroupAmount}}",
               Number(
-                bdetail.GlobalTax1Amount + bdetail.GlobalTax2Amount + prodTax,
-              ).toFixed(TerminalConfiguration.DecimalsInAmount),
+                bdetail.GlobalTax1Amount + bdetail.GlobalTax2Amount + prodTax
+              ).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             // updateFooter = updateFooter.replace(
             //   '{{TaxGroupNames}}',
@@ -6673,131 +6917,131 @@ const HomeScreen = props => {
             //     : 'Global Tax',
             // );
             updateFooter = updateFooter.replace(
-              '{{Roundoff}}',
-              (0).toFixed(TerminalConfiguration.DecimalsInAmount),
+              "{{Roundoff}}",
+              (0).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{CashAdvance}}',
+              "{{CashAdvance}}",
               Number(lastBillDetail.AdvancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{AdvanceAmount}}',
+              "{{AdvanceAmount}}",
               Number(lastBillDetail.AdvancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{CashPaid}}',
+              "{{CashPaid}}",
               Number(
                 lastBillDetail.AdvancePaidInCash
                   ? lastBillDetail.NetAmount - lastBillDetail.AdvancePaidInCash
-                  : lastBillDetail.NetAmount,
-              ).toFixed(TerminalConfiguration.DecimalsInAmount),
+                  : lastBillDetail.NetAmount
+              ).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{PaymentMethod}}',
-              bdetail?.PaymentTypeName,
+              "{{PaymentMethod}}",
+              bdetail?.PaymentTypeName
             );
-            updateFooter = updateFooter.replace('{{companyCurrency}}', '');
+            updateFooter = updateFooter.replace("{{companyCurrency}}", "");
             updateFooter = updateFooter.replace(
-              '{{NetAmount}}',
+              "{{NetAmount}}",
               Number(lastBillDetail.NetAmount).toFixed(
-                TerminalConfiguration.DecimalsInAmount,
-              ),
+                TerminalConfiguration.DecimalsInAmount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{NetAmountSIG}}',
-              parseInt(lastBillDetail.NetAmount),
+              "{{NetAmountSIG}}",
+              parseInt(lastBillDetail.NetAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{netAmountPoints}}',
+              "{{netAmountPoints}}",
               GetDecimalpart(
                 Number(lastBillDetail.NetAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
-                ),
-              ),
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{TotalQty}}',
-              Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount),
+              "{{TotalQty}}",
+              Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
             updateFooter = updateFooter.replace(
-              '{{TotalItems}}',
-              bdetail.length,
+              "{{TotalItems}}",
+              bdetail.length
             );
             updateFooter = updateFooter.replace(
-              '{{NetAmountAR}}',
+              "{{NetAmountAR}}",
               numberToEngArbWords(
                 Number(bdetail.NetAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GrandAmountEN}}',
+              "{{GrandAmountEN}}",
               numberToEngArbWords(
                 Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GrandAmountAR}}',
+              "{{GrandAmountAR}}",
               numberToEngArbWords(
                 Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{AmountWithOutTaxEN}}',
+              "{{AmountWithOutTaxEN}}",
               numberToEngArbWords(
                 Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{AmountWithOutTaxAR}}',
+              "{{AmountWithOutTaxAR}}",
               numberToEngArbWords(
                 Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GlobalDiscountAmountEN}}',
+              "{{GlobalDiscountAmountEN}}",
               numberToEngArbWords(
                 Number(bdetail.GlobalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{GlobalDiscountAmountAR}}',
+              "{{GlobalDiscountAmountAR}}",
               numberToEngArbWords(
                 Number(bdetail.GlobalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                false,
-              ),
+                false
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{NetAmountEN}}',
+              "{{NetAmountEN}}",
               numberToEngArbWords(
                 Number(bdetail.NetAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount,
+                  TerminalConfiguration.DecimalsInAmount
                 ),
-                true,
-              ),
+                true
+              )
             );
             // updateFooter = updateFooter.replace(
             //   '{{TaxGroupAmount}}',
@@ -6807,110 +7051,110 @@ const HomeScreen = props => {
             // );
             lastBillDetail = bdetail;
             updateFooter = updateFooter.replace(
-              '{{TaxGroupNames}}',
+              "{{TaxGroupNames}}",
               globalTaxObj?.globalTaxGroupName
                 ? globalTaxObj.globalTaxGroupName
-                : 'ضريبة القيمة المضافة %15 ',
+                : "ضريبة القيمة المضافة %15 "
             );
             updateFooter = updateFooter.replace(
-              '{{TaxGroupAmountSIG}}',
+              "{{TaxGroupAmountSIG}}",
               parseInt(
                 lastBillDetail.GlobalTax1Amount +
-                  lastBillDetail.GlobalTax2Amount,
-              ),
+                  lastBillDetail.GlobalTax2Amount
+              )
             );
             updateFooter = updateFooter.replace(
-              '{{taxGroupPoints}}',
+              "{{taxGroupPoints}}",
               GetDecimalpart(
                 Number(
                   lastBillDetail.GlobalTax1Amount +
-                    lastBillDetail.GlobalTax2Amount,
-                ).toFixed(TerminalConfiguration.DecimalsInAmount),
-              ),
+                    lastBillDetail.GlobalTax2Amount
+                ).toFixed(TerminalConfiguration.DecimalsInAmount)
+              )
             );
-            updateFooter = updateFooter.replace('{{TaxGroupsAR}}', '');
-            updateFooter = updateFooter.replace('{{TaxGroupsEN}}', '');
+            updateFooter = updateFooter.replace("{{TaxGroupsAR}}", "");
+            updateFooter = updateFooter.replace("{{TaxGroupsEN}}", "");
             updateFooter = updateFooter.replace(
               /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress,
+                : TerminalConfiguration.CompanyAddress
             );
             updateFooter = updateFooter.replace(
               /{{SalesAgentName}}/g,
               selectedAgent?.SalesAgentName
                 ? selectedAgent?.SalesAgentName
-                : TerminalConfiguration?.SalesAgentName,
+                : TerminalConfiguration?.SalesAgentName
             );
 
             updateFooter = updateFooter.replace(
               /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName,
+                : TerminalConfiguration.CompanyName
             );
             updateFooter = updateFooter.replace(
               /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === 'true'
+              TerminalConfiguration?.IsGodownInfo === "true"
                 ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber,
+                : TerminalConfiguration.CCRNumber
             );
 
             updateFooter = updateFooter.replace(
               /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber,
+              TerminalConfiguration?.ValueAddedTaxNumber
             );
 
-            updateFooter = updateFooter.replace('{{PDate}}', currentDate);
+            updateFooter = updateFooter.replace("{{PDate}}", currentDate);
             updateFooter = updateFooter.replace(
-              '{{dateDays}}',
-              currentDate.split('/')[0],
+              "{{dateDays}}",
+              currentDate.split("/")[0]
             );
             updateFooter = updateFooter.replace(
-              '{{dateMonth}}',
-              currentDate.split('/')[1],
+              "{{dateMonth}}",
+              currentDate.split("/")[1]
             );
             updateFooter = updateFooter.replace(
-              '{{dateYear}}',
-              currentDate.split(/[/" "]/)[2],
+              "{{dateYear}}",
+              currentDate.split(/[/" "]/)[2]
             );
             updateFooter = updateFooter.replace(
               /{{record_number}}/g,
-              lastBillDetail.BillNumber,
+              lastBillDetail.BillNumber
             );
             updateFooter = updateFooter.replace(
               /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber,
+              returnInvoiceNumber
             );
             updateFooter = updateFooter.replace(
               /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate,
+              billDates ? billDates : currentDate
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerName}}',
-              buyerInfo?.BuyerName ? buyerInfo.BuyerName : '',
+              "{{BuyerName}}",
+              buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerCode}}',
-              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : '',
+              "{{BuyerCode}}",
+              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerVat}}',
+              "{{BuyerVat}}",
               buyerInfo?.ValueAddedTaxNumber
                 ? buyerInfo.ValueAddedTaxNumber
-                : '',
+                : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerCCR}}',
-              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : '',
+              "{{BuyerCCR}}",
+              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerPhone}}',
-              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : '',
+              "{{BuyerPhone}}",
+              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
             );
             updateFooter = updateFooter.replace(
-              '{{BuyerAddress}}',
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : '',
+              "{{BuyerAddress}}",
+              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
             );
           }
 
@@ -6938,14 +7182,14 @@ const HomeScreen = props => {
             // }
 
             updateStyle =
-              updateStyle === ''
+              updateStyle === ""
                 ? updateHeader +
                   updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : '')
+                  (IsFooterOnEveryPage === true ? updateFooter : "")
                 : updateStyle +
                   updateHeader +
                   updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : '');
+                  (IsFooterOnEveryPage === true ? updateFooter : "");
 
             let c = countNumber + 1;
             pageNo = page + 1;
@@ -6956,7 +7200,7 @@ const HomeScreen = props => {
               c,
               updateStyle,
               bdetail,
-              pageNo,
+              pageNo
             );
           } else {
             console.log(updateStyle);
@@ -6965,11 +7209,11 @@ const HomeScreen = props => {
                 updateStyle + updateHeader + updateBody + updateFooter;
             } else {
               updateStyle =
-                updateStyle === ''
+                updateStyle === ""
                   ? updateHeader + updateBody + updateFooter
                   : updateStyle + updateHeader + updateBody + updateFooter;
             }
-            console.log('updateStyle1', updateStyle);
+            console.log("updateStyle1", updateStyle);
             await RNPrint.print({
               html: updateStyle,
             });
@@ -6986,7 +7230,7 @@ const HomeScreen = props => {
         setLoading(false);
         onSaveInvoice();
         lastBillDetail = null;
-      },
+      }
     );
   };
   useMemo(() => {
@@ -7000,49 +7244,49 @@ const HomeScreen = props => {
   const otherOptions = async () => {
     // console.log("paymentsValue in buyer optionsValue", optionsValue)
 
-    if (optionsValue === 'holdInvoice') {
+    if (optionsValue === "holdInvoice") {
       setPrintType(null);
       if (selectedProducts.length > 0) {
         setMessage(props.StringsList._78);
-        setAlertType('holdInvoice');
+        setAlertType("holdInvoice");
         setDisplayAlert(true);
         setisPromptAlert(true);
         // holdInvoiceFun();
       } else {
         let msg = errorMessages.GetCounterMessage(
-          'noItemUnableHold',
-          props.StringsList,
+          "noItemUnableHold",
+          props.StringsList
         );
         setMessage(msg);
         setDisplayAlert(true);
         seOptionsValue(null);
       }
-    } else if (optionsValue === 'getHoldInvoice') {
+    } else if (optionsValue === "getHoldInvoice") {
       setPrintType(null);
       setisHoldInvoices(true);
       seOptionsValue(null);
       // getHoldInvoiveFun();
-    } else if (optionsValue === 'scanner') {
+    } else if (optionsValue === "scanner") {
       setPrintType(null);
       setScanner(true);
       seOptionsValue(null);
-    } else if (optionsValue === 'returnBill') {
-      setPrintType('returnBill');
+    } else if (optionsValue === "returnBill") {
+      setPrintType("returnBill");
       setMessage(props.StringsList._63);
-      setAlertType('returnInvoice');
+      setAlertType("returnInvoice");
       let num = await getLastInvoiceNumber();
       setAlertValue(num);
       setDisplayAlert(true);
       setisPromptAlert(true);
-    } else if (optionsValue === 'reprint') {
-      setPrintType('reprint');
+    } else if (optionsValue === "reprint") {
+      setPrintType("reprint");
       let num = await getLastInvoiceNumber();
       setAlertValue(num);
       setMessage(props.StringsList._63);
-      setAlertType('reprint');
+      setAlertType("reprint");
       setDisplayAlert(true);
       setisPromptAlert(true);
-    } else if (optionsValue === 'buyer') {
+    } else if (optionsValue === "buyer") {
       setPrintType(null);
       //  console.log("paymentsValue in buyer", paymentsValue, isBuyer, buyerViewRef, viewref)
       if (!isBuyer) {
@@ -7054,7 +7298,7 @@ const HomeScreen = props => {
         seOptionsValue(null);
         buyerViewRef.current?.fadeOutRight().then(() => setisBuyer(!isBuyer));
       }
-    } else if (optionsValue === 'loyaltyCard') {
+    } else if (optionsValue === "loyaltyCard") {
       setPrintType(null);
       // console.log("paymentsValue in buyer", redeemPoints)
       if (!isLoyaltyCard) {
@@ -7071,11 +7315,11 @@ const HomeScreen = props => {
   };
 
   const getLastInvoiceNumber = async () => {
-    let number = '';
-    await getData(TerminalConfigurationTable, cb => {
+    let number = "";
+    await getData(TerminalConfigurationTable, (cb) => {
       // console.log('TerminalConfigurationTable', cb[0]?.LastBillNumber);
 
-      let preZero = '0000000';
+      let preZero = "0000000";
       let silceNumber =
         Number(cb[0]?.LastBillNumber) >= 100000
           ? preZero.length - 5
@@ -7091,9 +7335,9 @@ const HomeScreen = props => {
 
       let invoiceNumber =
         Number(cb[0]?.LastBillNumber) >= 999999
-          ? cb[0].BillPrefix + '-' + Number(cb[0].LastBillNumber)
+          ? cb[0].BillPrefix + "-" + Number(cb[0].LastBillNumber)
           : cb[0].BillPrefix +
-            '-' +
+            "-" +
             preZero.slice(1 - silceNumber) +
             Number(cb[0].LastBillNumber);
       number = invoiceNumber;
@@ -7103,52 +7347,52 @@ const HomeScreen = props => {
   };
 
   const onChangeText = (type, text, item) => {
-    if (type === 'holdInvoice') {
+    if (type === "holdInvoice") {
       setHoldInvoiceName(text);
       setAlertValue(text);
-    } else if (type === 'returnInvoice' || type === 'reprint') {
+    } else if (type === "returnInvoice" || type === "reprint") {
       setAlertValue(text);
-    } else if (type === 'searchText') {
+    } else if (type === "searchText") {
       setSearchText(text);
-    } else if (type === 'ingredient') {
+    } else if (type === "ingredient") {
       setIngredientText(text);
       setAlertValue(text);
     } else {
       if (!isNaN(text)) {
-        console.log('the value of this is', text);
+        console.log("the value of this is", text);
         setmanuallyCount(Number(text));
       } else {
-        console.log('the value of this is', text);
+        console.log("the value of this is", text);
         setmanuallyCount(Number(0));
       }
     }
   };
 
   const onEndEditing = (type, item) => {
-    if (type === 'manuallyCount') {
+    if (type === "manuallyCount") {
       onManuallyAddCount(item);
-    } else if (type === 'DiscountAmount') {
-      onManuallyAddDiscount(item, 'DiscountAmount');
-    } else if (type === 'DiscountRate') {
-      onManuallyAddDiscount(item, 'DiscountRate');
-    } else if (type === 'globalDiscount') {
+    } else if (type === "DiscountAmount") {
+      onManuallyAddDiscount(item, "DiscountAmount");
+    } else if (type === "DiscountRate") {
+      onManuallyAddDiscount(item, "DiscountRate");
+    } else if (type === "globalDiscount") {
       globalDiscountAmountFun(type);
-    } else if (type === 'globalDiscountP') {
+    } else if (type === "globalDiscountP") {
       globalDiscountAmountFun(type);
-    } else if (type === 'cashPaid') {
+    } else if (type === "cashPaid") {
       cashPaidAmountFun();
-    } else if (type === 'changePrice') {
+    } else if (type === "changePrice") {
       onManuallyChangePrice(item);
     }
   };
 
-  const searchTextFun = e => {
+  const searchTextFun = (e) => {
     //  console.log("searchText", searchText)
 
     let text = searchText.toLowerCase();
     let filteredName = [];
     //console.log('text...', text || text !== '');
-    if (text && text !== '') {
+    if (text && text !== "") {
       //console.log("searchText..", text.length)
       setbarCodeText(text);
 
@@ -7156,12 +7400,12 @@ const HomeScreen = props => {
         setLoading(true);
         onSuccessScan(text);
         ref_searchBar.current.focus();
-        setSearchText('');
+        setSearchText("");
       } else {
-        getData(UpdateProductDetailListTable, productsDetail => {
+        getData(UpdateProductDetailListTable, (productsDetail) => {
           // console.log('all products,  ', productsDetail);
 
-          productsDetail.forEach(item => {
+          productsDetail.forEach((item) => {
             if (
               item.ProductName.toLowerCase().includes(text) ||
               item.ProductCode.toLowerCase().includes(text) ||
@@ -7185,49 +7429,49 @@ const HomeScreen = props => {
   const toggleSearchScan = () => {
     setBarCode(!barCode);
     ref_searchBar.current.focus();
-    setbarCodeText('');
+    setbarCodeText("");
     //  Keyboard.dismiss()
   };
-
-  const onCapture = uri => {
+  const onCapture = useCallback((uri) => {
     captureRef(viewShotRef.current, {
-      format: 'png',
+      format: "png",
       quality: 1.0,
     }).then(
-      urii => {
+      (urii) => {
+        console.log("===>", urii);
         // setUriImage(urii);
       },
-      error => console.error('Oops, snapshot failed', error),
+      (error) => console.error("Oops, snapshot failed", error)
     );
-  };
+  }, []);
 
   const onQRImage = () => {
     // console.log('invoice info object.............');
     captureRef(qrRef2.current, {
-      format: 'png',
+      format: "png",
       quality: 1.0,
       height: sizeHelper.height,
       width: sizeHelper.width,
     }).then(
-      async urii => {
+      async (urii) => {
         setUriImage(urii);
         console.log(
-          'invoice info object',
+          "invoice info object",
           globalDiscountAmount,
-          sumOfProductDiscount,
+          sumOfProductDiscount
         );
         // console.log('setUriImage object.............', urii);
         let invoiceTypeE = !companyVATRegistor
-          ? ' Ordinary sales invoice'
+          ? " Ordinary sales invoice"
           : totalPrice < 1000
-          ? 'Simplified tax invoice'
-          : 'Tax invoice';
+          ? "Simplified tax invoice"
+          : "Tax invoice";
         let invoiceTypeA = !companyVATRegistor
-          ? 'فاتورة مبيعات عادية'
+          ? "فاتورة مبيعات عادية"
           : totalPrice < 1000
-          ? 'فاتورة ضريبية مبسطة'
-          : 'فاتورة ضريبية';
-        let currentDate = moment().format('DD/MM/YYYY HH:mm:ss');
+          ? "فاتورة ضريبية مبسطة"
+          : "فاتورة ضريبية";
+        let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
 
         //         let whiteSpaceName = "";
         //         if (w[w.length - 1].length < 12) {
@@ -7236,28 +7480,28 @@ const HomeScreen = props => {
         //           whiteSpaceName = whiteSpaceName.slice(w[w.length - 1].length, whiteSpaceName.length)
         //           // console.log("whiteSpace after trim", whiteSpaceName.length)
         //         }
-        let whiteSpace = '            '; // 12
+        let whiteSpace = "            "; // 12
         let totalAmountSpace = whiteSpace.slice(
           totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length,
-          whiteSpace.length,
+          whiteSpace.length
         );
         let subPriceSpce = whiteSpace.slice(
           (subPrice - sumOfProductDiscount - sumOfProductTax).toFixed(
-            TerminalConfiguration.DecimalsInAmount,
+            TerminalConfiguration.DecimalsInAmount
           ).length,
-          totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length,
+          totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length
         );
         let taxSpace = whiteSpace.slice(
           (globalTax + sumOfProductTax).toFixed(
-            TerminalConfiguration.DecimalsInAmount,
+            TerminalConfiguration.DecimalsInAmount
           ).length,
-          totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length,
+          totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length
         );
         let discountSpace = whiteSpace.slice(
           (globalDiscountAmount + sumOfProductDiscount).toFixed(
-            TerminalConfiguration.DecimalsInAmount,
+            TerminalConfiguration.DecimalsInAmount
           ).length,
-          totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length,
+          totalPrice.toFixed(TerminalConfiguration.DecimalsInAmount).length
         );
         let invoiceInfoObj = [
           {
@@ -7266,7 +7510,7 @@ const HomeScreen = props => {
             tagNo: terminalSetup.StartFrom,
             invoiceNumber: invoiceNumber,
             totalPrice: totalPrice.toFixed(
-              TerminalConfiguration.DecimalsInAmount,
+              TerminalConfiguration.DecimalsInAmount
             ),
             subPrice: (
               subPrice -
@@ -7280,7 +7524,7 @@ const HomeScreen = props => {
             TerminalCode: TerminalConfiguration?.TerminalCode,
             // sumOfProductTax:sumOfProductTax,
             totalTax: (globalTax + sumOfProductTax).toFixed(
-              TerminalConfiguration.DecimalsInAmount,
+              TerminalConfiguration.DecimalsInAmount
             ),
             totalDiscount: (
               globalDiscountAmount + sumOfProductDiscount
@@ -7291,7 +7535,7 @@ const HomeScreen = props => {
             taxSpace: taxSpace,
             discountSpace: discountSpace,
             currentDate: currentDate,
-            ar: I18nManager.isRTL ? 'ar' : 'en',
+            ar: I18nManager.isRTL ? "ar" : "en",
             ...TerminalConfiguration,
             invoiceType: I18nManager.isRTL ? invoiceTypeA : invoiceTypeE,
             companyVAT: `${props.StringsList._180} : ${TerminalConfiguration.ValueAddedTaxNumber}`,
@@ -7311,31 +7555,31 @@ const HomeScreen = props => {
         // createInvoiceStyle(base64data)
         // console.log('qrRef2, snapshot qrRef2', base64data)
       },
-      error => console.error('Oops, snapshot failed', error),
+      (error) => console.error("Oops, snapshot failed", error)
     );
   };
 
   const printerSelection = (invoiceInfoObj, urii) => {
-    let currentDate = moment().format('DD/MM/YYYY HH:mm:ss');
+    let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
     if (billingStyleId === 1) {
       if (qrRef.current) {
         // qrRef.current.toDataURL(qrUrl => {
-        A4PrinterStyle(currentDate, qrRef.current, 1, '', 1);
+        A4PrinterStyle(currentDate, qrRef.current, 1, "", 1);
       }
       // });
     } else if (printerMacAddress) {
-      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, '[]');
+      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, "[]");
     }
   };
 
   const ReprinterSelection = (invoiceInfoObj, urii) => {
-    let currentDate = moment().format('DD/MM/YYYY HH:mm:ss');
+    let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
     if (billingStyleId === 1) {
       if (qrRef.current) {
-        A4RePrinterStyle(currentDate, qrRef.current, 1, '', lastBillDetail, 1);
+        A4RePrinterStyle(currentDate, qrRef.current, 1, "", lastBillDetail, 1);
       }
     } else if (printerMacAddress) {
-      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, '[]');
+      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, "[]");
     }
   };
   async function hasAndroidPermission() {
@@ -7344,16 +7588,16 @@ const HomeScreen = props => {
         const [hasReadMediaImagesPermission, hasReadMediaVideoPermission] =
           await Promise.all([
             PermissionsAndroid.check(
-              PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+              PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
             ),
             PermissionsAndroid.check(
-              PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+              PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO
             ),
           ]);
         return hasReadMediaImagesPermission && hasReadMediaVideoPermission;
       } else {
         return PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
         );
       }
     };
@@ -7376,7 +7620,7 @@ const HomeScreen = props => {
         );
       } else {
         const status = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
         );
         return status === PermissionsAndroid.RESULTS.GRANTED;
       }
@@ -7385,13 +7629,13 @@ const HomeScreen = props => {
     return await getRequestPermissionPromise();
   }
   async function saveToGallery() {
-    if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
+    if (Platform.OS === "android" && !(await hasAndroidPermission())) {
       return;
     }
 
     CameraRoll.save(uriImage, {
-      type: 'photo',
-      album: 'Bnody',
+      type: "photo",
+      album: "Bnody",
     });
   }
   // const saveToGallery = async () => {
@@ -7402,12 +7646,12 @@ const HomeScreen = props => {
   //   });
   // };
 
-  const onSaveInvoice = type => {
-    console.log('onSaveInvoice');
+  const onSaveInvoice = (type) => {
+    console.log("onSaveInvoice");
     setClientCustomInvoice(false);
     setInvoice(false);
-    if (type === 'save') {
-      console.log('save on gallery');
+    if (type === "save") {
+      console.log("save on gallery");
       saveToGallery(false);
       setInvoice(false);
       setInvoiceNumber(null);
@@ -7419,13 +7663,13 @@ const HomeScreen = props => {
     }
   };
 
-  const onClickSetting = type => {
+  const onClickSetting = (type) => {
     //console.log(' onClickSetting ', type);
     switch (type) {
-      case 'terminalSetup':
+      case "terminalSetup":
         setTerminalSetup(true);
         break;
-      case 'pairPrinterFamily':
+      case "pairPrinterFamily":
         setPairPrinterFamily(true);
         break;
 
@@ -7438,8 +7682,8 @@ const HomeScreen = props => {
     let ADPay = ADamount ? ADamount : advancePaidInCash;
     let earnPoint = 0;
     if (buyerInfo?.LoyaltyCard) earnPoint = await invoiceEarnPoints();
-    let currentDate = moment().format('YYYYMMDD');
-    let time = moment().format('HH:mm:ss');
+    let currentDate = moment().format("YYYYMMDD");
+    let time = moment().format("HH:mm:ss");
     let obj = {
       salesBillID: salesBillID,
       billNumber: returnInvoiceNumber ? returnInvoiceNumber : invoiceNumber,
@@ -7448,7 +7692,7 @@ const HomeScreen = props => {
       billType: returnInvoiceNumber ? 2 : 1,
       paymentType: selP ? selP.PaymentType : selectedPyamentMethod?.PaymentType,
       godownCode: TerminalConfiguration?.GoDownCode,
-      cardDetails: '',
+      cardDetails: "",
       salesagentCode: selectedAgent?.SalesAgentCode
         ? selectedAgent.SalesAgentCode
         : TerminalConfiguration?.SalesAgentCode,
@@ -7458,17 +7702,17 @@ const HomeScreen = props => {
       grandAmount: subPrice,
       globalDiscountRate: globalDiscountRate,
       globalDiscountAmount: globalDiscountAmount,
-      globalTax1Code: globalTaxObj?.Tax1Code ? globalTaxObj.Tax1Code : '',
-      globalTax1Name: globalTaxObj?.Tax1Name ? globalTaxObj.Tax1Name : '',
+      globalTax1Code: globalTaxObj?.Tax1Code ? globalTaxObj.Tax1Code : "",
+      globalTax1Name: globalTaxObj?.Tax1Name ? globalTaxObj.Tax1Name : "",
       globalTax1Rate: globalTaxObj?.Tax1Percentage
         ? globalTaxObj.Tax1Percentage
-        : '',
+        : "",
       globalTax1Amount: globalTaxObj?.Tax1Amount ? globalTaxObj.Tax1Amount : 0,
-      globalTax2Code: globalTaxObj?.Tax2Code ? globalTaxObj.Tax2Code : '',
-      globalTax2Name: globalTaxObj?.Tax2Name ? globalTaxObj.Tax2Name : '',
+      globalTax2Code: globalTaxObj?.Tax2Code ? globalTaxObj.Tax2Code : "",
+      globalTax2Name: globalTaxObj?.Tax2Name ? globalTaxObj.Tax2Name : "",
       globalTax2Rate: globalTaxObj?.Tax2Percentage
         ? globalTaxObj.Tax2Percentage
-        : '',
+        : "",
       globalTax2Amount: globalTaxObj?.Tax2Amount ? globalTaxObj.Tax2Amount : 0,
       surplusChargesAmount: 0,
       netAmount: totalPrice - ADPay,
@@ -7477,11 +7721,11 @@ const HomeScreen = props => {
       roundOffAmount: totalPrice - ADPay,
       roundOffDifference: 0.0,
       posUserID: TerminalConfiguration?.UserCode,
-      returnedBillNumber: returnInvoiceNumber ? invoiceNumber : '',
+      returnedBillNumber: returnInvoiceNumber ? invoiceNumber : "",
       returnedFiscalSpanID: returnInvoiceNumber
         ? TerminalConfiguration?.FiscalSpanID
-        : '',
-      returnedBillDate: returnInvoiceNumber ? currentDate : '',
+        : "",
+      returnedBillDate: returnInvoiceNumber ? currentDate : "",
       isProcessed: false,
       isUploaded: false,
       startTime: startTime,
@@ -7491,7 +7735,7 @@ const HomeScreen = props => {
       creditAmount: creditAmount,
       globalTaxGroupID: globalTaxObj?.globalTaxGroupID
         ? globalTaxObj.globalTaxGroupID
-        : '',
+        : "",
       isGlobalTax1IncludedInPrice: globalTaxObj?.IsTax1IncludedInPrice
         ? globalTaxObj.IsTax1IncludedInPrice
         : false,
@@ -7502,24 +7746,24 @@ const HomeScreen = props => {
       paymentTypeName: selP
         ? selP?.PaymentTypeName
         : selectedPyamentMethod?.PaymentTypeName,
-      BillDetails: '',
-      buyerCode: buyerInfo?.BuyerCode ? buyerInfo?.BuyerCode : '',
-      buyerName: buyerInfo?.BuyerName ? buyerInfo?.BuyerName : '',
+      BillDetails: "",
+      buyerCode: buyerInfo?.BuyerCode ? buyerInfo?.BuyerCode : "",
+      buyerName: buyerInfo?.BuyerName ? buyerInfo?.BuyerName : "",
       buyerVAT: buyerInfo?.ValueAddedTaxNumber
         ? buyerInfo?.ValueAddedTaxNumber
-        : '',
-      buyerCCR: buyerInfo?.CCRNumber ? buyerInfo?.CCRNumber : '',
-      buyerPhone: buyerInfo?.PrimaryPhone ? buyerInfo?.PrimaryPhone : '',
-      buyerAddress: buyerInfo?.BuyerAddress ? buyerInfo?.BuyerAddress : '',
+        : "",
+      buyerCCR: buyerInfo?.CCRNumber ? buyerInfo?.CCRNumber : "",
+      buyerPhone: buyerInfo?.PrimaryPhone ? buyerInfo?.PrimaryPhone : "",
+      buyerAddress: buyerInfo?.BuyerAddress ? buyerInfo?.BuyerAddress : "",
       loyaltyCode: buyerInfo?.LoyaltyCard
         ? buyerInfo?.LoyaltyCard.LoyaltyCode
-        : '',
+        : "",
       isLoyaltyInvoice: redeemPoints > 0 ? true : false,
-      deliveryType: '',
-      deliveryTypeNote: customerNotes ? customerNotes : '',
-      totalPTax1Name: '',
+      deliveryType: "",
+      deliveryTypeNote: customerNotes ? customerNotes : "",
+      totalPTax1Name: "",
       totalTax1Amount: 0,
-      totalPTax2Name: '',
+      totalPTax2Name: "",
       totalTax2Amount: 0,
       totalGlobalTaxAmount: globalTax,
       totalTaxAmount: 0,
@@ -7529,7 +7773,7 @@ const HomeScreen = props => {
       status: earnPoint > 0 ? 1 : status,
       rewardType: rewardType,
     };
-    console.log('sale bill object...', obj);
+    console.log("sale bill object...", obj);
     InsertSaleBills(obj);
     databaseBackup();
   };
@@ -7537,7 +7781,7 @@ const HomeScreen = props => {
   const selectedProductUpdate = async () => {
     let updateSelectProducts = [];
     let tempArray = [];
-    selectedProducts.filter(async product => {
+    selectedProducts.filter(async (product) => {
       let EarnedPoint = 0;
       if (buyerInfo?.LoyaltyCard) EarnedPoint = await proCatEarnPoints(product);
 
@@ -7560,7 +7804,9 @@ const HomeScreen = props => {
         obj.taxName = product.Tax1Name;
         tempArray.push(obj);
       } else {
-        let isTaxNew = tempArray.findIndex(x => x.taxCode === product.Tax1Code);
+        let isTaxNew = tempArray.findIndex(
+          (x) => x.taxCode === product.Tax1Code
+        );
         if (isTaxNew == -1) {
           let obj = {};
           obj.tax = product.Tax1Amount;
@@ -7581,20 +7827,20 @@ const HomeScreen = props => {
         SalesBillID: salesBillID,
         BillNumber: returnInvoiceNumber ? returnInvoiceNumber : invoiceNumber,
         FiscalSpanID: TerminalConfiguration?.FiscalSpanID,
-        Description: product?.Description ? product?.Description : '',
+        Description: product?.Description ? product?.Description : "",
         BillType: returnInvoiceNumber ? 2 : 1,
         SerialNumber: Number(product.SerialNumber ? product.SerialNumber : 0),
-        ProductCode: product.ProductCode ? product.ProductCode : '',
-        ProductName: product.ProductName ? product.ProductName : '',
-        ProductName2: product.ProductName2 ? product.ProductName2 : '',
+        ProductCode: product.ProductCode ? product.ProductCode : "",
+        ProductName: product.ProductName ? product.ProductName : "",
+        ProductName2: product.ProductName2 ? product.ProductName2 : "",
         ProductType: product.ProductType,
         Quantity: product.IsParentAddOn
           ? product.Quantity
           : product.Quantity * product.OrignalQuantity,
         UOMType: product.UOMType ? product.UOMType : 0,
-        UOMCode: product.UOMCode ? product.UOMCode : '',
+        UOMCode: product.UOMCode ? product.UOMCode : "",
         UOMFragment: Number(product.UOMFragment ? product.UOMFragment : 0),
-        UOMCode: product.UOMCode ? product.UOMCode : '',
+        UOMCode: product.UOMCode ? product.UOMCode : "",
         UOMName: product.UOMName,
         Price: price,
         PriceOriginal: product.IsParentAddOn
@@ -7613,62 +7859,62 @@ const HomeScreen = props => {
           product.IsTax2IncludedInPrice === true
             ? true
             : false,
-        Tax1Code: product.Tax1Code ? product.Tax1Code : '',
-        Tax1Name: product.Tax1Name ? product.Tax1Name : '',
+        Tax1Code: product.Tax1Code ? product.Tax1Code : "",
+        Tax1Name: product.Tax1Name ? product.Tax1Name : "",
         Tax1Rate: product.Tax1Rate ? product.Tax1Rate : 0,
         Tax1Amount: Number(
           product.Tax1Amount
             ? product.Tax1Amount.toFixed(TerminalConfiguration.DecimalsInAmount)
-            : 0,
+            : 0
         ),
         Tax1Fragment: product.Tax1Fragment ? product.Tax1Fragment : 0,
-        Tax2Code: product.Tax2Code ? product.Tax2Code : '',
-        Tax2Name: product.Tax2Name ? product.Tax2Name : '',
+        Tax2Code: product.Tax2Code ? product.Tax2Code : "",
+        Tax2Name: product.Tax2Name ? product.Tax2Name : "",
         Tax2Rate: product.Tax2Rate ? product.Tax2Rate : 0,
         Tax2Amount: product.Tax2Amount ? product.Tax2Amount : 0,
         Tax2Fragment: product.Tax2Fragment ? product.Tax2Fragment : 0,
         GrandAmount: product.GrandAmount.toFixed(
-          TerminalConfiguration.DecimalsInAmount,
+          TerminalConfiguration.DecimalsInAmount
         ),
-        GroupDataID: product.GroupDataID ? product.GroupDataID : '',
+        GroupDataID: product.GroupDataID ? product.GroupDataID : "",
         ProductBarCode: product.ProductBarCode,
         ReturnSalesInvoiceDetailID: returnInvoiceNumber
           ? product.SalesInvoiceDetailsID
-          : '',
+          : "",
         DeliveryStatus: false,
-        DeliveryDate: '',
-        DeliveryTime: '',
-        DeliveryNote: '',
-        DeliveredDate: '',
-        DeliveredTime: '',
-        Remarks: '',
+        DeliveryDate: "",
+        DeliveryTime: "",
+        DeliveryNote: "",
+        DeliveredDate: "",
+        DeliveredTime: "",
+        Remarks: "",
         SalesAgentCode: TerminalConfiguration.SalesAgentCode
           ? TerminalConfiguration.SalesAgentCode
-          : '',
+          : "",
         IsParentAddOn:
           product.IsParentAddOn === 1 || product.IsParentAddOn === true
             ? true
             : false,
-        AddOnGroupCode: product.AddOnGroupCode ? product.AddOnGroupCode : '',
+        AddOnGroupCode: product.AddOnGroupCode ? product.AddOnGroupCode : "",
         ParentInvoiceDetailsID: product.ParentInvoiceDetailsID
           ? product.ParentInvoiceDetailsID
-          : '',
+          : "",
         OrignalQuantity: product.IsParentAddOn ? 0 : product.Quantity,
         AddonProductDetailcode: product.AddonProductDetailcode
           ? product.AddonProductDetailcode
-          : '',
-        Ingredients: String(product.Ingredients ? product.Ingredients : ''),
+          : "",
+        Ingredients: String(product.Ingredients ? product.Ingredients : ""),
         EarnedPoints: EarnedPoint,
         RedeemPoints: Number(product.RedeemPoints ? product.RedeemPoints : 0),
         Status: EarnedPoint > 0 ? 1 : 0,
         ProductCategoryCode: String(
-          product.ProductCategoryCode ? product.ProductCategoryCode : '',
+          product.ProductCategoryCode ? product.ProductCategoryCode : ""
         ),
         AddOnParentSalesInvoiceDetailsID:
           product.AddOnParentSalesInvoiceDetailsID
             ? product.AddOnParentSalesInvoiceDetailsID
-            : '',
-        HoldFromSale: product?.HoldFromSale ? product.HoldFromSale : '',
+            : "",
+        HoldFromSale: product?.HoldFromSale ? product.HoldFromSale : "",
         PriceType: Number(product.PriceType ? product.PriceType : 0),
       };
 
@@ -7677,144 +7923,303 @@ const HomeScreen = props => {
       updateSelectProducts.push(pro);
     });
     setProductTaxes(tempArray);
-    console.log('total taxes ', tempArray);
-    console.log('....0003');
+    console.log("total taxes ", tempArray);
+    console.log("....0003");
     // console.log('updateSelectProducts...', updateSelectProducts);
   };
 
   const onClickIn = () => {
-    console.log('onClickIn');
+    console.log("onClickIn");
     setLoading(true);
   };
   const databaseBackup = async () => {
     let newBillList = [];
-    let uri = await AsyncStorage.getItem('FILE_URI');
-    console.log('FILE_URI', uri);
-    await getData(SaleBillsTable, async cb => {
+    let uri = await AsyncStorage.getItem("FILE_URI");
+    console.log("FILE_URI", uri);
+    await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
         if (
-          (cb[i].isUploaded == 'false' || !cb[i].isUploaded) &&
-          (cb[i].isProcessed == 'false' || !cb[i].isProcessed)
+          (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
+          (cb[i].isProcessed == "false" || !cb[i].isProcessed)
         ) {
           //console.log('sale bills ', cb[i].isUploaded);
           await getDataById(
             SaleBillDetailsTable,
-            'salesBillID',
+            "salesBillID",
             cb[i].salesBillID,
-            billProducts => {
+            (billProducts) => {
               // console.log("billProducts....", billProducts)
               // cb[i].BillDetails = billProducts;
               (cb[i].isProcessed = false), (cb[i].isUploaded = true);
               cb[i].BillDetails = billProducts;
               (cb[i].isGlobalTax1IncludedInPrice =
-                cb[i].isGlobalTax1IncludedInPrice === 'false' ? false : true),
+                cb[i].isGlobalTax1IncludedInPrice === "false" ? false : true),
                 (cb[i].isGlobalTax2IncludedInPrice =
-                  cb[i].isGlobalTax2IncludedInPrice === 'false' ? false : true),
+                  cb[i].isGlobalTax2IncludedInPrice === "false" ? false : true),
                 (cb[i].isLoyaltyInvoice =
-                  cb[i].isLoyaltyInvoice === 'false' ? false : true);
+                  cb[i].isLoyaltyInvoice === "false" ? false : true);
 
               newBillList.push(cb[i]);
-            },
+            }
           );
         }
       }
-      console.log('New Bill list ...', newBillList);
+      console.log("New Bill list ...", newBillList);
       try {
-        const OsVer = Platform.constants['Release'];
-        if (OsVer >= 11) {
-          let path = '/storage/emulated/0/Documents/Bnody POS/Invoices.txt';
-          if (await RNFS.exists(path)) {
-            // console.log('File already exists',await RNFS.exists(path));
-            PermissionFile.deleteFile(uri);
-            setTimeout(() => {
-              PermissionFile.overWriteAbove29(
-                JSON.stringify(newBillList),
-                err => {
-                  if (err) {
-                    console.log('Permission Error', err);
+        if (Platform.OS === "android") {
+          const folderPath = "/storage/emulated/0/Documents/Bnody POS";
+          const filePath = `${folderPath}/Invoices.txt`;
+
+          try {
+            const folderExists = await RNFS.exists(folderPath);
+            const folderFileExists = await RNFS.exists(filePath);
+            if (!folderExists && !folderFileExists) {
+              try {
+                console.log("Folder and File not found");
+                await AsyncStorage.removeItem("FOLDER_PATH");
+                await AsyncStorage.removeItem("FILE_URI");
+                const dir = await ScopedStorage.openDocumentTree(true);
+                const bnodyDir = await ScopedStorage.createDirectory(
+                  dir.uri,
+                  "Bnody POS"
+                );
+                await AsyncStorage.setItem("FOLDER_PATH", bnodyDir.uri);
+                const filePath = await ScopedStorage.writeFile(
+                  bnodyDir.uri,
+                  newBillList,
+                  "invoices.txt",
+                  "text/plain",
+                  "utf8"
+                );
+                console.log("filePath", filePath);
+                await AsyncStorage.setItem("FILE_URI", filePath);
+                console.log("Folder & File created successfully:", bnodyDir);
+                await AsyncStorage.setItem("FOLDER_URI", bnodyDir.uri);
+                Toast.show("Folder & Invoice File Created", {
+                  duration: Toast.durations.LONG,
+                  position: Toast.positions.BOTTOM,
+                  shadow: true,
+                  animation: true,
+                  hideOnPress: true,
+                  delay: 0,
+                });
+              } catch (error) {
+                console.error("Folder and File not created", error);
+              }
+            } else if (folderExists && !folderFileExists) {
+              await AsyncStorage.removeItem("FILE_URI");
+              try {
+                console.log("folder already exists file not found");
+                const bnodyDir = await AsyncStorage.getItem("FOLDER_PATH");
+                console.log("bnodyDir", bnodyDir);
+                const filePath = await ScopedStorage.writeFile(
+                  bnodyDir,
+                  newBillList,
+                  "invoices.txt",
+                  "text/plain",
+                  "utf8"
+                );
+                console.log("filePath", filePath);
+                await AsyncStorage.setItem("FILE_URI", filePath);
+                Toast.show("Invoice File Created", {
+                  duration: Toast.durations.LONG,
+                  position: Toast.positions.BOTTOM,
+                  shadow: true,
+                  animation: true,
+                  hideOnPress: true,
+                  delay: 0,
+                });
+              } catch (error) {
+                console.error(
+                  "folder already exists file creation error",
+                  error
+                );
+              }
+            } else {
+              if (folderFileExists) {
+                let path =
+                  "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+                await AsyncStorage.removeItem("FILE_URI");
+                try {
+                  console.log("folder already exists file not found");
+                  const bnodyDir = await AsyncStorage.getItem("FOLDER_PATH");
+                  console.log("bnodyDir", bnodyDir);
+                  const isDeleted = await ScopedStorage.deleteFile(path).then(
+                    () => {
+                      Toast.show("Invoice File Deleted after posting", {
+                        duration: Toast.durations.SHORT,
+                        position: Toast.positions.BOTTOM,
+                        shadow: true,
+                        animation: true,
+                        hideOnPress: true,
+                        delay: 0,
+                      });
+                    }
+                  );
+                  if (isDeleted) {
+                    const filePath = await ScopedStorage.writeFile(
+                      bnodyDir,
+                      newBillList,
+                      "invoices.txt",
+                      "text/plain",
+                      "utf8"
+                    );
+                    console.log("filePath", filePath);
+                    await AsyncStorage.setItem("FILE_URI", filePath);
+                    Toast.show("Invoice File Created", {
+                      duration: Toast.durations.LONG,
+                      position: Toast.positions.BOTTOM,
+                      shadow: true,
+                      animation: true,
+                      hideOnPress: true,
+                      delay: 0,
+                    });
                   }
-                },
-                success => {
-                  if (success) {
-                    console.log('Access granted!');
-                  }
-                },
-              );
-              setBillNeedPost(true);
-            }, 1000);
-          } else {
-            PermissionFile.overWriteAbove29(
-              JSON.stringify(newBillList),
-              err => {
-                if (err) {
-                  console.log('Permission Error', err);
+                } catch (error) {
+                  console.error(
+                    "folder already exists file creation error",
+                    error
+                  );
                 }
-              },
-              success => {
-                if (success) {
-                  // You can use RN-fetch-blog to download files and storge into download Manager
-                  console.log('Access granted!');
-                }
-              },
-            );
-            setBillNeedPost(true);
+              }
+            }
+          } catch (error) {
+            console.log("Error:", error);
           }
         } else {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-            {
-              title: 'Permissions for write access',
-              message: 'Give permission to your storage to write a file',
-              buttonPositive: 'ok',
-            },
-          );
-          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-            let path = '/storage/emulated/0/Downloads/Bnody POS/Invoices.txt';
-            if (RNFS.exists(path)) {
-              // console.log('File already exists',await RNFS.exists(path));
-              PermissionFile.deleteFile(uri);
-              setTimeout(() => {
-                PermissionFile.overWriteAPI29(
-                  JSON.stringify(newBillList),
-                  err => {
-                    if (err) {
-                      console.log('Permission Error', err);
-                    }
-                  },
-                  success => {
-                    if (success) {
-                      // You can use RN-fetch-blog to download files and storge into download Manager
-                      console.log('Access granted!');
-                    }
-                  },
-                );
-                setBillNeedPost(true);
-              }, 1000);
+          try {
+            const folderName = "Bnody POS";
+            const fileName = "invoices.txt";
+
+            const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
+
+            console.log("libraryDirectoryPath:", libraryDirectoryPath);
+
+            const folderPath = `${libraryDirectoryPath}/${folderName}`;
+            const filePath = `${folderPath}/${fileName}`;
+
+            console.log("folderPath:", folderPath);
+            console.log("filePath:", filePath);
+
+            const folderExists = await RNFS.exists(folderPath);
+            if (!folderExists) {
+              await RNFS.mkdir(folderPath);
+              console.log("Folder created successfully:", folderPath);
             } else {
-              PermissionFile.overWriteAPI29(
-                JSON.stringify(newBillList),
-                err => {
-                  if (err) {
-                    console.log('Permission Error', err);
-                  }
-                },
-                success => {
-                  if (success) {
-                    // You can use RN-fetch-blog to download files and storge into download Manager
-                    console.log('Access granted!');
-                  }
-                },
-              );
-              setBillNeedPost(true);
+              console.log("Folder already exists:", folderPath);
             }
-          } else {
-            console.log('permission denied');
+
+            const fileExists = await RNFS.exists(filePath);
+            if (fileExists) {
+              await RNFS.unlink(filePath);
+              console.log("File deleted successfully:", filePath);
+            }
+
+            await RNFS.writeFile(filePath, JSON.stringify(newBillList), "utf8");
+            console.log("File created successfully:", filePath);
+          } catch (error) {
+            console.error("Error creating folder and file:", error);
           }
         }
-      } catch (err) {
-        console.warn(err);
+      } catch (error) {
+        console.log("Error:", error);
       }
+      // try {
+      //   const OsVer = Platform.constants["Release"];
+      //   if (OsVer >= 11) {
+      //     let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+      //     if (await RNFS.exists(path)) {
+      //       // console.log('File already exists',await RNFS.exists(path));
+      //       PermissionFile.deleteFile(uri);
+      //       setTimeout(() => {
+      //         PermissionFile.overWriteAbove29(
+      //           JSON.stringify(newBillList),
+      //           (err) => {
+      //             if (err) {
+      //               console.log("Permission Error", err);
+      //             }
+      //           },
+      //           (success) => {
+      //             if (success) {
+      //               console.log("Access granted!");
+      //             }
+      //           }
+      //         );
+      //         setBillNeedPost(true);
+      //       }, 1000);
+      //     } else {
+      //       PermissionFile.overWriteAbove29(
+      //         JSON.stringify(newBillList),
+      //         (err) => {
+      //           if (err) {
+      //             console.log("Permission Error", err);
+      //           }
+      //         },
+      //         (success) => {
+      //           if (success) {
+      //             // You can use RN-fetch-blog to download files and storge into download Manager
+      //             console.log("Access granted!");
+      //           }
+      //         }
+      //       );
+      //       setBillNeedPost(true);
+      //     }
+      //   } else {
+      //     const granted = await PermissionsAndroid.request(
+      //       PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+      //       PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+      //       {
+      //         title: "Permissions for write access",
+      //         message: "Give permission to your storage to write a file",
+      //         buttonPositive: "ok",
+      //       }
+      //     );
+      //     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      //       let path = "/storage/emulated/0/Downloads/Bnody POS/Invoices.txt";
+      //       if (RNFS.exists(path)) {
+      //         // console.log('File already exists',await RNFS.exists(path));
+      //         PermissionFile.deleteFile(uri);
+      //         setTimeout(() => {
+      //           PermissionFile.overWriteAPI29(
+      //             JSON.stringify(newBillList),
+      //             (err) => {
+      //               if (err) {
+      //                 console.log("Permission Error", err);
+      //               }
+      //             },
+      //             (success) => {
+      //               if (success) {
+      //                 // You can use RN-fetch-blog to download files and storge into download Manager
+      //                 console.log("Access granted!");
+      //               }
+      //             }
+      //           );
+      //           setBillNeedPost(true);
+      //         }, 1000);
+      //       } else {
+      //         PermissionFile.overWriteAPI29(
+      //           JSON.stringify(newBillList),
+      //           (err) => {
+      //             if (err) {
+      //               console.log("Permission Error", err);
+      //             }
+      //           },
+      //           (success) => {
+      //             if (success) {
+      //               // You can use RN-fetch-blog to download files and storge into download Manager
+      //               console.log("Access granted!");
+      //             }
+      //           }
+      //         );
+      //         setBillNeedPost(true);
+      //       }
+      //     } else {
+      //       console.log("permission denied");
+      //     }
+      //   }
+      // } catch (err) {
+      //   console.warn(err);
+      // }
     });
   };
   const globalDiscountAmountFun = (type, sAmount, tAmount, recalling) => {
@@ -7823,12 +8228,12 @@ const HomeScreen = props => {
     let disAmt =
       sAmount > 0 && globalDiscountRate > 0
         ? globalDiscountRate
-        : recalling === 'recalling'
+        : recalling === "recalling"
         ? 0
         : manuallyCount;
 
-    if (type === 'globalDiscount') {
-      if (subA > disAmt || recalling === 'recalling') {
+    if (type === "globalDiscount") {
+      if (subA > disAmt || recalling === "recalling") {
         //  console.log("disAmt..........", manuallyCount)
 
         let tPrice;
@@ -7838,7 +8243,7 @@ const HomeScreen = props => {
         setAdvancePaidInCash(0); //);
         setDueAmount(0);
         if (selectedGlobalTaxObj) {
-          globalTaxFun(selectedGlobalTaxObj, subA, '', tolA, disAmt);
+          globalTaxFun(selectedGlobalTaxObj, subA, "", tolA, disAmt);
         } else {
           setTotalPrice(tPrice);
         }
@@ -7858,13 +8263,13 @@ const HomeScreen = props => {
         setAdvancePaidInCash(0); //);
         setDueAmount(0);
         console.log(
-          'globalDiscountAmountFun......',
+          "globalDiscountAmountFun......",
           pDiscount,
           disAmt,
-          globalDiscountRate,
+          globalDiscountRate
         );
         if (selectedGlobalTaxObj) {
-          globalTaxFun(selectedGlobalTaxObj, subA, '', tolA, pDiscount);
+          globalTaxFun(selectedGlobalTaxObj, subA, "", tolA, pDiscount);
         } else {
           setTotalPrice(tPrice);
         }
@@ -7879,9 +8284,9 @@ const HomeScreen = props => {
   const globalTaxFun = async (itm, type, n, totalAmount, disAmount) => {
     // console.log('globalTaxFunglobalTaxFunglobalTaxFun', itm);
     setLoading(true);
-    if (itm.TaxFamilyCode !== 'None') {
+    if (itm.TaxFamilyCode !== "None") {
       let tPrice = totalAmount ? totalAmount : totalPrice;
-      let subPr = type === 'returnInvoice' ? subPrice : type;
+      let subPr = type === "returnInvoice" ? subPrice : type;
       let disA =
         disAmount || disAmount === 0 ? disAmount : globalDiscountAmount;
       setSelectedGlobalTaxObj(itm);
@@ -7897,7 +8302,7 @@ const HomeScreen = props => {
         TerminalConfiguration,
         0,
         0,
-        true,
+        true
       );
       taxAmt.globalTaxGroupID = itm.TaxFamilyCode;
       taxAmt.globalTaxGroupName = itm.TaxFamilyName;
@@ -7923,7 +8328,7 @@ const HomeScreen = props => {
       setLoading(false);
     } else {
       let tPrice = totalPrice - globalTax;
-      console.log('globalTax else', tPrice);
+      console.log("globalTax else", tPrice);
       setTotalPrice(tPrice);
       setSelectedGlobalTaxObj(null);
       setGlobalTaxObj(null);
@@ -7932,7 +8337,7 @@ const HomeScreen = props => {
     }
   };
 
-  const cashPaidAmountFun = amount => {
+  const cashPaidAmountFun = (amount) => {
     // if (amount - totalPrice >= 0) {
     let am = amount ? amount : 0;
     let duePrice;
@@ -7957,7 +8362,7 @@ const HomeScreen = props => {
           // creditAmount: creditAmount,
           totalPrice: totalPrice,
           advancePaidInCash: advancePaidInCash,
-          date: moment().format('DD/MM/YYYY'),
+          date: moment().format("DD/MM/YYYY"),
           selectedProducts: JSON.stringify(selectedProducts),
         },
       ];
@@ -7965,17 +8370,17 @@ const HomeScreen = props => {
       setOptions(
         userConfiguration.SalesRefundAllowed === 1
           ? [
-              {label: props.StringsList._32, value: 'getHoldInvoice'},
-              {label: props.StringsList._105, value: 'reprint'},
-              {label: props.StringsList._319, value: 'returnBill'},
-              {label: props.StringsList._30, value: 'buyer'},
-              {label: props.StringsList._437, value: 'loyaltyCard'},
+              { label: props.StringsList._32, value: "getHoldInvoice" },
+              { label: props.StringsList._105, value: "reprint" },
+              { label: props.StringsList._319, value: "returnBill" },
+              { label: props.StringsList._30, value: "buyer" },
+              { label: props.StringsList._437, value: "loyaltyCard" },
             ]
           : [
-              {label: props.StringsList._32, value: 'getHoldInvoice'},
-              {label: props.StringsList._30, value: 'buyer'},
-              {label: props.StringsList._437, value: 'loyaltyCard'},
-            ],
+              { label: props.StringsList._32, value: "getHoldInvoice" },
+              { label: props.StringsList._30, value: "buyer" },
+              { label: props.StringsList._437, value: "loyaltyCard" },
+            ]
       );
       restState();
     } else {
@@ -7984,13 +8389,13 @@ const HomeScreen = props => {
     }
   };
 
-  const getHoldInvoiveFun = async holdInvoiceNumber => {
+  const getHoldInvoiveFun = async (holdInvoiceNumber) => {
     setLoading(true);
     await getDataById(
       HoldInvoiceTable,
-      'invoiceNumber',
+      "invoiceNumber",
       holdInvoiceNumber,
-      cb => {
+      (cb) => {
         // console.log('holdInvoice..', cb);
 
         if (cb.length > 0) {
@@ -8012,23 +8417,23 @@ const HomeScreen = props => {
         }
         setLoading(false);
       },
-      3,
+      3
     );
-    DeleteColumnById(HoldInvoiceTable, 'invoiceNumber', holdInvoiceNumber);
+    DeleteColumnById(HoldInvoiceTable, "invoiceNumber", holdInvoiceNumber);
   };
 
-  const onSuccessScan = async itm => {
+  const onSuccessScan = async (itm) => {
     let productBar = itm?.data ? itm.data : itm;
-    console.log(' Reward List Table outer', productBar);
+    console.log(" Reward List Table outer", productBar);
     setLoading(true);
     await getDataById(
       UpdateProductDetailListTable,
-      'ProductBarCode',
+      "ProductBarCode",
       productBar,
-      async pro => {
-        console.log(' on Successfully  Scan', selectedProducts);
+      async (pro) => {
+        console.log(" on Successfully  Scan", selectedProducts);
         if (pro.length > 0) {
-          let product = selectedProducts.filter(res => {
+          let product = selectedProducts.filter((res) => {
             if (
               pro[0]?.ProductBarCode === res?.ProductBarCode &&
               pro[0]?.PriceOriginal === res?.PriceOriginal
@@ -8036,9 +8441,9 @@ const HomeScreen = props => {
               return res;
             }
           });
-          console.log('on Successfully  Scan product', pro);
+          console.log("on Successfully  Scan product", pro);
           let addPro = product.length > 0 ? product[0] : pro[0];
-          await addProductToList(addPro, 'increment');
+          await addProductToList(addPro, "increment");
           setToggle(true);
           // setRewardType(1)
         } else {
@@ -8046,7 +8451,7 @@ const HomeScreen = props => {
           setDisplayAlert(true);
         }
         setLoading(false);
-      },
+      }
     );
   };
 
@@ -8359,54 +8764,54 @@ const HomeScreen = props => {
 
   // }
 
-  const getReturnBill = async type => {
+  const getReturnBill = async (type) => {
     setLoading(true);
     setPrintType(type);
-    let accessToken = await AsyncStorage.getItem('ACCESS_TOKEN');
+    let accessToken = await AsyncStorage.getItem("ACCESS_TOKEN");
 
     var localeInfo = RNLocalize.getLocales();
     var languageTag = localeInfo[0].languageTag;
 
     let decodeToken = base64.decode(accessToken);
-    console.log('decode token', decodeToken, languageTag);
+    console.log("decode token", decodeToken, languageTag);
     let nw = decodeToken.substring(0, decodeToken.length - 5);
     let UpdateToken = nw + languageTag;
     let decodeUpadedToken = base64.encode(UpdateToken);
-    console.log('access token ', decodeUpadedToken);
+    console.log("access token ", decodeUpadedToken);
 
     const response = await props.dispatch(
       ServerCall(
         decodeUpadedToken,
         `SalesBill/FetchSalesBill?billNumber=${alertValue}`,
-        'GET',
-      ),
+        "GET"
+      )
     );
-    console.log('FetchSalesBill....', response);
-    setAlertValue('');
+    console.log("FetchSalesBill....", response);
+    setAlertValue("");
     seOptionsValue(null);
 
     if (response) {
       setReturnBill(response);
-      console.log('ReturnedQuantity....', response.BillDate);
-      if (type === 'reprint' && response.TotalRePrintCount) {
+      console.log("ReturnedQuantity....", response.BillDate);
+      if (type === "reprint" && response.TotalRePrintCount) {
         setTotalReprintCount(response.TotalRePrintCount);
       }
 
       if (response?.BillDetails?.length > 0) {
         lastBillDetail = response;
-        let products = response.BillDetails.filter(async item => {
+        let products = response.BillDetails.filter(async (item) => {
           let returnQ = item?.ReturnedQuantity / item?.UOMFragment;
           item.ReturnedQuantity = returnQ;
           let Quantity =
-            type === 'returnInvoice'
+            type === "returnInvoice"
               ? item.Quantity - item.ReturnedQuantity
               : item.Quantity;
           if (Quantity > 0) {
             let addonPQ = response.BillDetails.filter(
-              r =>
-                r.SalesBillDetailsID === item.AddOnParentSalesInvoiceDetailsID,
+              (r) =>
+                r.SalesBillDetailsID === item.AddOnParentSalesInvoiceDetailsID
             );
-            console.log('addonPQaddonPQaddonPQ', addonPQ);
+            console.log("addonPQaddonPQaddonPQ", addonPQ);
 
             if (addonPQ.length > 0) {
               let OQty = item.Quantity / addonPQ[0].Quantity;
@@ -8424,14 +8829,14 @@ const HomeScreen = props => {
                 0,
                 TerminalConfiguration,
                 item.PriceOriginal,
-                0,
+                0
               );
               item.Tax1Fragment = taxAmt.Tax1Fragment
                 ? taxAmt.Tax1Fragment
-                : '';
+                : "";
               item.Tax2Fragment = taxAmt.Tax2Fragment
                 ? taxAmt.Tax2Fragment
-                : '';
+                : "";
               if (item.Tax1Fragment == 2 || item.Tax2Fragment == 2) {
                 taxAmt.Tax1Amount = taxAmt.Tax1Amount * Quantity;
               }
@@ -8463,236 +8868,252 @@ const HomeScreen = props => {
                 tax2ActualAmountTotal = 0;
               let listOfPG;
               item.Pricefortax = item.PriceOriginal;
-              let rr = await getData(SalesFamilySummaryListTable, async cb => {
-                let groupTaxCodes = cb.filter(
-                  x => x.SalesFamilyCode === item.ProductCode,
-                );
-                listOfPG = groupTaxCodes;
-                let totaltax1 = 0;
-                let totaltax2 = 0;
-                let myArray = [];
-                let colloctivePrice = 0,
-                  inclusiveTax = 0;
-                await listOfPG.forEach(async (element, index) => {
-                  let percentageDiscountAmount = 0;
-                  let taxGroupID = '';
-                  let itemQty = 0,
-                    itemAmount = 0,
-                    itemProposedSalesAmount = 0,
-                    itemDiscountAmount = 0,
-                    netQty = 0;
-                  if (
-                    item.DiscountAmount >
-                    item.Quantity * item.PriceOriginal
-                  ) {
-                    item.DiscountAmount = 0;
-                  }
-                  if (item.DiscountRate > 0) {
-                    percentageDiscountAmount =
-                      (item.PriceOriginal * item.Quantity * item.DiscountRate) /
-                      100;
-                  } else {
-                    percentageDiscountAmount = item.DiscountAmount;
-                  }
-                  let amountBeforeDiscount = item.PriceOriginal * item.Quantity;
-                  taxGroupID = element.SaleTaxFamilyCode;
-                  itemQty = element.Quantity;
-                  itemAmount = element.Price;
-
-                  netQty = item.Quantity * itemQty;
-
-                  itemProposedSalesAmount =
-                    (itemAmount * amountBeforeDiscount) / item.Pricefortax;
-
-                  if (amountBeforeDiscount > 0)
-                    itemDiscountAmount =
-                      (itemProposedSalesAmount * percentageDiscountAmount) /
-                      amountBeforeDiscount;
-
-                  let taxAmt = await calculateTaxeGroups(
-                    netQty,
-                    itemProposedSalesAmount,
-                    itemDiscountAmount,
-                    taxGroupID,
-                    1,
-                    null,
-                    0,
-                    TerminalConfiguration,
-                    item.PriceOriginal,
-                    item.DiscountRate,
+              let rr = await getData(
+                SalesFamilySummaryListTable,
+                async (cb) => {
+                  let groupTaxCodes = cb.filter(
+                    (x) => x.SalesFamilyCode === item.ProductCode
                   );
-                  if (taxAmt.IsTax1IncludedInPrice === true) {
-                    inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-                  }
-                  if (taxAmt.IsTax2IncludedInPrice === true) {
-                    inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-                  }
-                  let productGroupTaxInfoObj = {
-                    ProductBarCode: item?.ProductBarCode,
-                    newTaxAmount: taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0 + taxAmt.Tax2Amount
-                      ? taxAmt.Tax2Amount
-                      : 0,
-                    isFixedTax:
-                      taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
-                        ? true
-                        : false,
-                    unitPrice: taxAmt.IsTax1IncludedInPrice
-                      ? taxAmt.Price
-                      : element.Price,
-                    proposedPrice: element.Price,
-                    taxRate: taxAmt?.Tax1Percentage ? taxAmt.Tax1Percentage : 0,
-                    isInclusiveTax:
-                      taxAmt?.IsTax1IncludedInPrice === true ||
-                      taxAmt?.IsTax2IncludedInPrice === true
-                        ? true
-                        : false,
-                  };
-                  colloctivePrice += element.Price;
-                  myArray.push(productGroupTaxInfoObj);
-                  if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
-                    taxAmt.Tax1Amount = taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0;
-                    taxAmt.Tax2Amount = taxAmt.Tax2Amount
-                      ? taxAmt.Tax2Amount
-                      : 0;
-                  }
-                  (item.Tax1Fragment = taxAmt?.Tax1Fragment
-                    ? taxAmt.Tax1Fragment
-                    : ''),
-                    (item.Tax2Fragment = taxAmt?.Tax2Fragment
-                      ? taxAmt.Tax2Fragment
-                      : '');
-                  item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
-                    ? taxAmt.IsTax1IncludedInPrice
-                    : 0;
-                  item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
-                    ? taxAmt.IsTax2IncludedInPrice
-                    : 0;
-                  item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-                  item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : '';
-                  item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : '';
-                  item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : '';
-                  item.Price = item.Price;
-                  if (!taxAmt.IsTax1IncludedInPrice)
-                    tax1ActualAmountTotal += taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0;
-                  else
-                    taxAmountIncludedInPrice += taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0;
-                  if (!taxAmt.IsTax2IncludedInPrice)
-                    tax2ActualAmountTotal += taxAmt.Tax2Amount
-                      ? taxAmt.Tax2Amount
-                      : 0;
-                  else
-                    taxAmountIncludedInPrice += taxAmt.Tax2Amount
-                      ? taxAmt.Tax2Amount
-                      : 0;
-                  tax1AmountTotal += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-                  tax2AmountTotal += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-                  if (
-                    taxAmountIncludedInPrice > 0 ||
-                    taxAmt.Tax1Amount > 0 ||
-                    taxAmt.Tax2Amount > 0
-                  ) {
-                    let amountAfterTax =
-                      amountBeforeDiscount - taxAmountIncludedInPrice;
-                    if (amountAfterTax > 0)
-                      taxAmt.Price = amountAfterTax / (item.Quantity * 1);
-                    else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-                  } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
-                    //It means All the group items dont have tax group id
-                    if (amountBeforeDiscount > 0)
-                      taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
-                    else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-                  }
-                  item.Price = taxAmt.Price;
-                  item.Tax1Amount = item.Tax1Amount;
-                  item.Tax2Amount = item.Tax2Amount;
-                  totaltax1 = taxAmt.Tax1Amount
-                    ? totaltax1 + taxAmt.Tax1Amount
-                    : totaltax1 + 0;
-                  totaltax2 = taxAmt.Tax2Amount
-                    ? totaltax2 + taxAmt.Tax2Amount
-                    : totaltax2 + 0;
-                  let tax = totaltax1 + totaltax2;
-                  item.Tax1Code = taxAmt.Tax1Code;
-                  (item.Tax1Rate = taxAmt.Tax1Percentage
-                    ? taxAmt.Tax1Percentage
-                    : 0),
-                    (item.Tax2Rate = taxAmt.Tax2Percentage
-                      ? taxAmt.Tax2Percentage
-                      : 0),
-                    (item.IngredientsArray = []);
-                  item.IngredientNames = '';
-                  item.tax = Number(tax);
-                  item.productGroupTaxInfoObj = myArray;
-                  item.colloctivePrice = colloctivePrice;
-                  let totalTax = 0,
-                    totalPrice = 0;
-                  item.productGroupTaxInfoObj.forEach(element => {
-                    let itemProposedAmount =
-                      ((element.proposedPrice * item.Quantity) /
-                        (item.Pricefortax * item.Quantity)) *
-                      (item.PriceOriginal * item.Quantity);
-                    let itemDiscountWeight =
-                      (itemProposedAmount /
-                        (item.PriceOriginal * item.Quantity)) *
-                      percentageDiscountAmount;
-                    let afterDiscountAmount = 0;
-                    if (element.isInclusiveTax) {
-                      let inclTax =
-                        (itemProposedAmount / (100 + element.taxRate)) *
-                        element.taxRate;
-                      let pureAmount = itemProposedAmount - inclTax;
-                      afterDiscountAmount = pureAmount - itemDiscountWeight;
+                  listOfPG = groupTaxCodes;
+                  let totaltax1 = 0;
+                  let totaltax2 = 0;
+                  let myArray = [];
+                  let colloctivePrice = 0,
+                    inclusiveTax = 0;
+                  await listOfPG.forEach(async (element, index) => {
+                    let percentageDiscountAmount = 0;
+                    let taxGroupID = "";
+                    let itemQty = 0,
+                      itemAmount = 0,
+                      itemProposedSalesAmount = 0,
+                      itemDiscountAmount = 0,
+                      netQty = 0;
+                    if (
+                      item.DiscountAmount >
+                      item.Quantity * item.PriceOriginal
+                    ) {
+                      item.DiscountAmount = 0;
+                    }
+                    if (item.DiscountRate > 0) {
+                      percentageDiscountAmount =
+                        (item.PriceOriginal *
+                          item.Quantity *
+                          item.DiscountRate) /
+                        100;
                     } else {
-                      afterDiscountAmount =
-                        itemProposedAmount - itemDiscountWeight;
+                      percentageDiscountAmount = item.DiscountAmount;
                     }
-                    if (!element.isFixedTax) {
-                      let taxPrice =
-                        (element.taxRate / 100) * afterDiscountAmount;
-                      totalPrice += afterDiscountAmount + taxPrice;
-                      totalTax += taxPrice;
+                    let amountBeforeDiscount =
+                      item.PriceOriginal * item.Quantity;
+                    taxGroupID = element.SaleTaxFamilyCode;
+                    itemQty = element.Quantity;
+                    itemAmount = element.Price;
+
+                    netQty = item.Quantity * itemQty;
+
+                    itemProposedSalesAmount =
+                      (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+
+                    if (amountBeforeDiscount > 0)
+                      itemDiscountAmount =
+                        (itemProposedSalesAmount * percentageDiscountAmount) /
+                        amountBeforeDiscount;
+
+                    let taxAmt = await calculateTaxeGroups(
+                      netQty,
+                      itemProposedSalesAmount,
+                      itemDiscountAmount,
+                      taxGroupID,
+                      1,
+                      null,
+                      0,
+                      TerminalConfiguration,
+                      item.PriceOriginal,
+                      item.DiscountRate
+                    );
+                    if (taxAmt.IsTax1IncludedInPrice === true) {
+                      inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
                     }
-                    if (element.isFixedTax) {
-                      let fixtax = element.newTaxAmount * item.Quantity;
-                      totalPrice += fixtax + afterDiscountAmount;
-                      totalTax = totalTax + fixtax;
+                    if (taxAmt.IsTax2IncludedInPrice === true) {
+                      inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                    }
+                    let productGroupTaxInfoObj = {
+                      ProductBarCode: item?.ProductBarCode,
+                      newTaxAmount: taxAmt.Tax1Amount
+                        ? taxAmt.Tax1Amount
+                        : 0 + taxAmt.Tax2Amount
+                        ? taxAmt.Tax2Amount
+                        : 0,
+                      isFixedTax:
+                        taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
+                          ? true
+                          : false,
+                      unitPrice: taxAmt.IsTax1IncludedInPrice
+                        ? taxAmt.Price
+                        : element.Price,
+                      proposedPrice: element.Price,
+                      taxRate: taxAmt?.Tax1Percentage
+                        ? taxAmt.Tax1Percentage
+                        : 0,
+                      isInclusiveTax:
+                        taxAmt?.IsTax1IncludedInPrice === true ||
+                        taxAmt?.IsTax2IncludedInPrice === true
+                          ? true
+                          : false,
+                    };
+                    colloctivePrice += element.Price;
+                    myArray.push(productGroupTaxInfoObj);
+                    if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
+                      taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                        ? taxAmt.Tax1Amount
+                        : 0;
+                      taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                        ? taxAmt.Tax2Amount
+                        : 0;
+                    }
+                    (item.Tax1Fragment = taxAmt?.Tax1Fragment
+                      ? taxAmt.Tax1Fragment
+                      : ""),
+                      (item.Tax2Fragment = taxAmt?.Tax2Fragment
+                        ? taxAmt.Tax2Fragment
+                        : "");
+                    item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
+                      ? taxAmt.IsTax1IncludedInPrice
+                      : 0;
+                    item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
+                      ? taxAmt.IsTax2IncludedInPrice
+                      : 0;
+                    item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                    item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+                    item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+                    item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
+                    item.Price = item.Price;
+                    if (!taxAmt.IsTax1IncludedInPrice)
+                      tax1ActualAmountTotal += taxAmt.Tax1Amount
+                        ? taxAmt.Tax1Amount
+                        : 0;
+                    else
+                      taxAmountIncludedInPrice += taxAmt.Tax1Amount
+                        ? taxAmt.Tax1Amount
+                        : 0;
+                    if (!taxAmt.IsTax2IncludedInPrice)
+                      tax2ActualAmountTotal += taxAmt.Tax2Amount
+                        ? taxAmt.Tax2Amount
+                        : 0;
+                    else
+                      taxAmountIncludedInPrice += taxAmt.Tax2Amount
+                        ? taxAmt.Tax2Amount
+                        : 0;
+                    tax1AmountTotal += taxAmt.Tax1Amount
+                      ? taxAmt.Tax1Amount
+                      : 0;
+                    tax2AmountTotal += taxAmt.Tax2Amount
+                      ? taxAmt.Tax2Amount
+                      : 0;
+                    if (
+                      taxAmountIncludedInPrice > 0 ||
+                      taxAmt.Tax1Amount > 0 ||
+                      taxAmt.Tax2Amount > 0
+                    ) {
+                      let amountAfterTax =
+                        amountBeforeDiscount - taxAmountIncludedInPrice;
+                      if (amountAfterTax > 0)
+                        taxAmt.Price = amountAfterTax / (item.Quantity * 1);
+                      else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+                    } else if (
+                      taxAmt.Tax1Amount == 0 &&
+                      taxAmt.Tax2Amount == 0
+                    ) {
+                      //It means All the group items dont have tax group id
+                      if (amountBeforeDiscount > 0)
+                        taxAmt.Price =
+                          amountBeforeDiscount / (item.Quantity * 1);
+                      else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+                    }
+                    item.Price = taxAmt.Price;
+                    item.Tax1Amount = item.Tax1Amount;
+                    item.Tax2Amount = item.Tax2Amount;
+                    totaltax1 = taxAmt.Tax1Amount
+                      ? totaltax1 + taxAmt.Tax1Amount
+                      : totaltax1 + 0;
+                    totaltax2 = taxAmt.Tax2Amount
+                      ? totaltax2 + taxAmt.Tax2Amount
+                      : totaltax2 + 0;
+                    let tax = totaltax1 + totaltax2;
+                    item.Tax1Code = taxAmt.Tax1Code;
+                    (item.Tax1Rate = taxAmt.Tax1Percentage
+                      ? taxAmt.Tax1Percentage
+                      : 0),
+                      (item.Tax2Rate = taxAmt.Tax2Percentage
+                        ? taxAmt.Tax2Percentage
+                        : 0),
+                      (item.IngredientsArray = []);
+                    item.IngredientNames = "";
+                    item.tax = Number(tax);
+                    item.productGroupTaxInfoObj = myArray;
+                    item.colloctivePrice = colloctivePrice;
+                    let totalTax = 0,
+                      totalPrice = 0;
+                    item.productGroupTaxInfoObj.forEach((element) => {
+                      let itemProposedAmount =
+                        ((element.proposedPrice * item.Quantity) /
+                          (item.Pricefortax * item.Quantity)) *
+                        (item.PriceOriginal * item.Quantity);
+                      let itemDiscountWeight =
+                        (itemProposedAmount /
+                          (item.PriceOriginal * item.Quantity)) *
+                        percentageDiscountAmount;
+                      let afterDiscountAmount = 0;
+                      if (element.isInclusiveTax) {
+                        let inclTax =
+                          (itemProposedAmount / (100 + element.taxRate)) *
+                          element.taxRate;
+                        let pureAmount = itemProposedAmount - inclTax;
+                        afterDiscountAmount = pureAmount - itemDiscountWeight;
+                      } else {
+                        afterDiscountAmount =
+                          itemProposedAmount - itemDiscountWeight;
+                      }
+                      if (!element.isFixedTax) {
+                        let taxPrice =
+                          (element.taxRate / 100) * afterDiscountAmount;
+                        totalPrice += afterDiscountAmount + taxPrice;
+                        totalTax += taxPrice;
+                      }
+                      if (element.isFixedTax) {
+                        let fixtax = element.newTaxAmount * item.Quantity;
+                        totalPrice += fixtax + afterDiscountAmount;
+                        totalTax = totalTax + fixtax;
+                      }
+                    });
+                    tax1AmountTotal = totalTax;
+                    if (index === item.groupTaxCodes.length - 1) {
+                      let totalQuantity = Quantity + item.ReturnedQuantity;
+                      item.tax =
+                        ((item.Tax1Amount + item.Tax2Amount) / totalQuantity) *
+                        Quantity;
+                      item.GrandAmount =
+                        (item.GrandAmount * Quantity) / totalQuantity; //(item.PriceWithOutTax * Quantity) + item.tax
+                      item.Tax1Amount = item.tax;
+                      if (item?.IsTax1IncludedInPrice) {
+                        item.Price = Number(item.PriceOriginal);
+                        item.PriceWithOutTax = Number(
+                          item.Price - inclusiveTax / item?.Quantity
+                        );
+                        item.PriceUnitlesstax = item.PriceWithOutTax;
+                        item.webperamount = item.PriceWithOutTax;
+                      } else {
+                        item.Price = Number(item.PriceOriginal);
+                        item.PriceWithOutTax = Number(item?.Price);
+                        item.PriceUnitlesstax = item.PriceWithOutTax;
+                        item.webperamount = item.PriceWithOutTax;
+                      }
                     }
                   });
-                  tax1AmountTotal = totalTax;
-                  if (index === item.groupTaxCodes.length - 1) {
-                    let totalQuantity = Quantity + item.ReturnedQuantity;
-                    item.tax =
-                      ((item.Tax1Amount + item.Tax2Amount) / totalQuantity) *
-                      Quantity;
-                    item.GrandAmount =
-                      (item.GrandAmount * Quantity) / totalQuantity; //(item.PriceWithOutTax * Quantity) + item.tax
-                    item.Tax1Amount = item.tax;
-                    if (item?.IsTax1IncludedInPrice) {
-                      item.Price = Number(item.PriceOriginal);
-                      item.PriceWithOutTax = Number(
-                        item.Price - inclusiveTax / item?.Quantity,
-                      );
-                      item.PriceUnitlesstax = item.PriceWithOutTax;
-                      item.webperamount = item.PriceWithOutTax;
-                    } else {
-                      item.Price = Number(item.PriceOriginal);
-                      item.PriceWithOutTax = Number(item?.Price);
-                      item.PriceUnitlesstax = item.PriceWithOutTax;
-                      item.webperamount = item.PriceWithOutTax;
-                    }
-                  }
-                });
-                item.groupTaxCodes = groupTaxCodes;
-                item.ReturnedQuantity = returnQ;
-              });
+                  item.groupTaxCodes = groupTaxCodes;
+                  item.ReturnedQuantity = returnQ;
+                }
+              );
             } else {
               let taxAmt;
               item.maxQuantity = Quantity;
@@ -8702,7 +9123,7 @@ const HomeScreen = props => {
               let Amount = Number(item.PriceOriginal) * Quantity;
               let totalQuantity = Quantity + item.ReturnedQuantity;
               let discountAfterDivision = Number(
-                (item.DiscountAmount / totalQuantity) * Quantity,
+                (item.DiscountAmount / totalQuantity) * Quantity
               );
               taxAmt = await calculateTaxeGroups(
                 Quantity,
@@ -8714,16 +9135,16 @@ const HomeScreen = props => {
                 0,
                 TerminalConfiguration,
                 item.PriceOriginal,
-                item.DiscountRate,
+                item.DiscountRate
               );
               item.DiscountAmount = discountAfterDivision;
               // }
               item.Tax1Fragment = taxAmt.Tax1Fragment
                 ? taxAmt.Tax1Fragment
-                : '';
+                : "";
               item.Tax2Fragment = taxAmt.Tax2Fragment
                 ? taxAmt.Tax2Fragment
-                : '';
+                : "";
               item.OrignalQuantity = 1;
               if (item.Tax1Fragment == 2 || item.Tax2Fragment == 2) {
                 taxAmt.Tax1Amount = taxAmt.Tax1Amount * item.Quantity;
@@ -8758,14 +9179,14 @@ const HomeScreen = props => {
 
         if (products.length > 0) {
           let GT = globalTaxList.filter(
-            e => response.GlobalTaxGroupID === e.TaxFamilyCode,
+            (e) => response.GlobalTaxGroupID === e.TaxFamilyCode
           );
           // console.log('GTGTGTGT', GT);
           setSelectedGlobalTaxObj(GT[0]);
           setInvoiceNumber(response.BillNumber);
           setReturnProducts(products);
 
-          if (type === 'returnInvoice') {
+          if (type === "returnInvoice") {
             setisReturnInvoice(true);
             createReturnInvoiceNumber();
             // console.log('kjsahkjfhksdhkfh', response.BillNumber);
@@ -8780,36 +9201,36 @@ const HomeScreen = props => {
             year = current.getFullYear();
 
             const currentDate = `${year}${
-              month < 10 ? '0' + month : month + 1
-            }${date < 10 ? '0' + date : date}`;
+              month < 10 ? "0" + month : month + 1
+            }${date < 10 ? "0" + date : date}`;
 
-            let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
+            let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
 
             let body = {
-              BuyerName: '',
+              BuyerName: "",
               ReturnCode: 0,
               BuyerCode: null,
               PrimaryPhone: response.BuyerCode,
-              CCRNumber: '',
-              ValueAddedTaxNumber: '',
-              BuyerAddress: '',
-              Operation: 'search',
+              CCRNumber: "",
+              ValueAddedTaxNumber: "",
+              BuyerAddress: "",
+              Operation: "search",
               CurrentDate: currentDate,
               LoyaltyCard: null,
             };
 
             const response1 = await props.dispatch(
-              ServerCall(UserLogin, 'Buyer/CreateBuyer', body),
+              ServerCall(UserLogin, "Buyer/CreateBuyer", body)
             );
             if (response1.success) {
               setBuyerInfo(response1);
             }
           }
 
-          if (type === 'reprint') {
+          if (type === "reprint") {
             setAdvancePaidInCash(Number(response.AdvancePaidInCash)); //);
             let selP = payments.filter(
-              e => e.PaymentType === String(response.PaymentType),
+              (e) => e.PaymentType === String(response.PaymentType)
             );
             // console.log('setSelectedPyamentMethod', payments, selP);
             setSelectedPyamentMethod(selP[0]);
@@ -8819,9 +9240,9 @@ const HomeScreen = props => {
             month = response.BillDate.slice(4, 6);
             date = response.BillDate.slice(6, 8);
             let billDate =
-              date + '/' + month + '/' + year + '  ' + response.BillTime;
+              date + "/" + month + "/" + year + "  " + response.BillTime;
             setBillDate(billDate);
-            console.log('billDate..', billDate);
+            console.log("billDate..", billDate);
             selectedAllProducts(products, response, GT[0], type);
           }
         } else {
@@ -8838,39 +9259,39 @@ const HomeScreen = props => {
     }
   };
 
-  const reacallFunc = type => {
-    console.log('reacallFunc', type);
-    if (type === 'holdInvoice') {
+  const reacallFunc = (type) => {
+    console.log("reacallFunc", type);
+    if (type === "holdInvoice") {
       holdInvoiceFun();
-    } else if (type === 'returnInvoice' || type === 'reprint') {
+    } else if (type === "returnInvoice" || type === "reprint") {
       getReturnBill(type);
-    } else if (type === 'ingredient') {
+    } else if (type === "ingredient") {
       addIngredientFun();
-    } else if (type === 'billingType') {
-      if (alertType === 'reprint') {
-        paymentProcess('', '', 'reprint');
+    } else if (type === "billingType") {
+      if (alertType === "reprint") {
+        paymentProcess("", "", "reprint");
       } else {
         paymentMethodSelect();
       }
       setisBillingType(false);
 
-      selectBillingType({name: 'Set'});
-    } else if ('cashpaid') {
-      paymentProcess('', '');
+      selectBillingType({ name: "Set" });
+    } else if ("cashpaid") {
+      paymentProcess("", "");
     }
   };
 
-  const selectBillingType = item => {
+  const selectBillingType = (item) => {
     let d = [...billingTypeData];
-    console.log('billingType...', item);
-    d.forEach(e => {
+    console.log("billingType...", item);
+    d.forEach((e) => {
       if (item.name === e.name) {
         e.isSelected = true;
       } else {
         e.isSelected = false;
       }
     });
-    if (item.name !== 'Set') {
+    if (item.name !== "Set") {
       setBillingType(item);
     }
     setBillingTypeData(d);
@@ -8882,7 +9303,7 @@ const HomeScreen = props => {
       tPrice = Number(itm.GrandAmount - itm.DiscountAmount);
     proArray.push(itm);
 
-    let addons = retunProducts.filter(async pro => {
+    let addons = retunProducts.filter(async (pro) => {
       if (itm.SalesBillDetailsID === pro.AddOnParentSalesInvoiceDetailsID) {
         // console.log(
         //   'pro.Quantitypro.Quantitypro.Quantitypro.Quantity',
@@ -8904,7 +9325,7 @@ const HomeScreen = props => {
       }
     });
     if (addons.length > 0) {
-      await addProductToList(itm, 'addnos', index, proArray, sPrice, tPrice);
+      await addProductToList(itm, "addnos", index, proArray, sPrice, tPrice);
     } else {
       await addProductToList(itm, type, index);
     }
@@ -8918,11 +9339,11 @@ const HomeScreen = props => {
         iArry = [];
       await getDataById(
         LoyaltyDetailListTable,
-        'LoyaltyCode',
+        "LoyaltyCode",
         buyerInfo.LoyaltyCard.LoyaltyCode,
-        loyalty => {
+        (loyalty) => {
           // console.log("Loyalty Detail List Table", loyalty)
-          loyalty.forEach(e => {
+          loyalty.forEach((e) => {
             if (e.CalculationType === 1) {
               pArry.push(e);
             } else if (e.CalculationType === 2) {
@@ -8935,16 +9356,16 @@ const HomeScreen = props => {
           setEarnPointIArry(iArry);
           setEarnPointCArry(cArry);
           setLoyaltyDetailList(loyalty);
-        },
+        }
       );
       await getDataById(
         LoyaltyRewardsListTable,
-        'LoyaltyCode',
+        "LoyaltyCode",
         buyerInfo.LoyaltyCard.LoyaltyCode,
-        loyalty => {
+        (loyalty) => {
           // console.log("Loyalty Reward List Table", loyalty)
           setLoyaltyRewardsList(loyalty);
-        },
+        }
       );
     }
   }, [buyerInfo]);
@@ -8953,14 +9374,13 @@ const HomeScreen = props => {
     // console.log('ghahagga', 'hfhhfhfhfhgfghfhhfggfhfhd');
     if (loyaltyRewardsList?.length > 0 && redeemPoints > 0) {
       let rewards = loyaltyRewardsList.filter(
-        res =>
-          redeemPoints >= res.RewardCostFrom &&
-          redeemPoints <= res.RewardCostTo,
+        (res) =>
+          redeemPoints >= res.RewardCostFrom && redeemPoints <= res.RewardCostTo
       );
       // console.log("rewards..........", rewards)
       let excludeProSum = 0;
-      let excludeProducts = loyaltyRewardsList.filter(res => {
-        selectedProducts.forEach(s => {
+      let excludeProducts = loyaltyRewardsList.filter((res) => {
+        selectedProducts.forEach((s) => {
           if (res.ExcludeProductBarCode === s.ProductBarCode) {
             excludeProSum = excludeProSum + s.GrandAmount;
             // console.log("exclude Product sum..55.", excludeProSum)
@@ -8971,24 +9391,24 @@ const HomeScreen = props => {
       setStatus(2);
       if (Array.isArray(rewards) && rewards.length > 0) {
         if (rewards.length > 1) {
-          Alert.alert('Loyalty Inovice', 'Please select open option', [
+          Alert.alert("Loyalty Inovice", "Please select open option", [
             {
-              text: 'Free Product',
+              text: "Free Product",
               onPress: () => {
-                let reward = rewards.filter(res => res.ProductBarCode !== '');
+                let reward = rewards.filter((res) => res.ProductBarCode !== "");
                 // console.log("free product ", reward)
                 freeProductReward(reward);
               },
             },
             {
-              text: 'Cancel',
-              onPress: () => console.log('Cancel Pressed'),
-              style: 'cancel',
+              text: "Cancel",
+              onPress: () => console.log("Cancel Pressed"),
+              style: "cancel",
             },
             {
-              text: 'Invoice Discount',
+              text: "Invoice Discount",
               onPress: () => {
-                let reward = rewards.filter(res => res.ProductBarCode === '');
+                let reward = rewards.filter((res) => res.ProductBarCode === "");
                 invoiceDiscountReward(reward[0], excludeProSum);
                 // console.log("Invoice Discount ", reward)
               },
@@ -8997,15 +9417,15 @@ const HomeScreen = props => {
 
           // invoiceDiscountReward(rewards)
         } else {
-          if (rewards[0].ProductBarCode !== '') {
-            let PReward = rewards.filter(res => res.ProductBarCode !== '');
+          if (rewards[0].ProductBarCode !== "") {
+            let PReward = rewards.filter((res) => res.ProductBarCode !== "");
             freeProductReward(PReward);
           } else {
             invoiceDiscountReward(rewards[0], excludeProSum);
           }
         }
       } else {
-        Alert.alert('Loyalty Info', 'No Reward Available');
+        Alert.alert("Loyalty Info", "No Reward Available");
       }
     }
   }
@@ -9018,9 +9438,9 @@ const HomeScreen = props => {
       // console.log(" Reward List ProductBarCode", e)
       await getDataById(
         UpdateProductDetailListTable,
-        'ProductBarCode',
+        "ProductBarCode",
         e.ProductBarCode,
-        async pro => {
+        async (pro) => {
           let P = pro[0];
           let taxAmt = await calculateTaxeGroups(
             1,
@@ -9032,14 +9452,14 @@ const HomeScreen = props => {
             0,
             TerminalConfiguration,
             P.PriceOriginal,
-            P.DiscountRate,
+            P.DiscountRate
           );
-          P.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : '';
-          (P.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ''),
+          P.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+          (P.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
             (P.Tax1Rate = taxAmt.Tax1Percentage ? taxAmt.Tax1Percentage : 0),
             (P.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
-            (P.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ''),
-            (P.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ''),
+            (P.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+            (P.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
             (P.Tax2Rate = taxAmt?.Tax2Percentage ? taxAmt?.Tax2Percentage : 0),
             (P.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
 
@@ -9054,7 +9474,7 @@ const HomeScreen = props => {
           P.DiscountAmount = P.PriceOriginal;
           selectedP.push(P);
           setRewardType(1);
-        },
+        }
       );
     }
     setSelectedProducts(selectedP);
@@ -9065,8 +9485,8 @@ const HomeScreen = props => {
       amountGD = globalDiscountAmount,
       tax = globalTax;
     if (
-      rewards.IsDiscountIncluded === 'true' &&
-      rewards.IsTaxIncluded === 'true'
+      rewards.IsDiscountIncluded === "true" &&
+      rewards.IsTaxIncluded === "true"
     ) {
       if (totalPrice - excludeProSum >= rewards.MinInvoiceAmount) {
         tAmount = tAmount - rewards.Discount;
@@ -9076,8 +9496,8 @@ const HomeScreen = props => {
         setRewardType(2);
       }
     } else if (
-      rewards.IsDiscountIncluded === 'false' &&
-      rewards.IsTaxIncluded === 'true'
+      rewards.IsDiscountIncluded === "false" &&
+      rewards.IsTaxIncluded === "true"
     ) {
       if (totalPrice - amountGD - excludeProSum >= rewards.MinInvoiceAmount) {
         tAmount = tAmount - rewards.Discount;
@@ -9087,8 +9507,8 @@ const HomeScreen = props => {
         setRewardType(2);
       }
     } else if (
-      rewards.IsDiscountIncluded === 'true' &&
-      rewards.IsTaxIncluded === 'false'
+      rewards.IsDiscountIncluded === "true" &&
+      rewards.IsTaxIncluded === "false"
     ) {
       if (totalPrice - tax - excludeProSum >= rewards.MinInvoiceAmount) {
         tAmount = tAmount - rewards.Discount;
@@ -9098,8 +9518,8 @@ const HomeScreen = props => {
         setRewardType(2);
       }
     } else if (
-      rewards.IsDiscountIncluded === 'false' &&
-      rewards.IsTaxIncluded === 'false'
+      rewards.IsDiscountIncluded === "false" &&
+      rewards.IsTaxIncluded === "false"
     ) {
       if (subPrice - excludeProSum >= rewards.MinInvoiceAmount) {
         tAmount = tAmount - rewards.Discount;
@@ -9109,23 +9529,24 @@ const HomeScreen = props => {
         setRewardType(2);
       }
     } else {
-      alert('invoice amount must be greater then Reward minimum amount');
+      alert("invoice amount must be greater then Reward minimum amount");
     }
   };
 
-  const invoiceEarnPoints = async cb => {
+  const invoiceEarnPoints = async (cb) => {
     let tAmount = totalPrice,
       amountGD = globalDiscountAmount,
       tax = globalTax;
     let invEP = EarnPointIArry.find(
-      e => totalPrice >= e.InvoiceAmountFrom && totalPrice <= e.InvoiceAmountTo,
+      (e) =>
+        totalPrice >= e.InvoiceAmountFrom && totalPrice <= e.InvoiceAmountTo
     );
     // console.log("invoiceEarnPointsinvoiceEarnPoints", invEP)
     if (!invEP) {
       return 0;
     }
 
-    if (invEP.IsDiscountIncluded === 'true' && invEP.IsTaxIncluded === 'true') {
+    if (invEP.IsDiscountIncluded === "true" && invEP.IsTaxIncluded === "true") {
       if (
         totalPrice >= invEP.InvoiceAmountFrom &&
         totalPrice <= invEP.InvoiceAmountTo
@@ -9135,8 +9556,8 @@ const HomeScreen = props => {
         return 0;
       }
     } else if (
-      invEP.IsDiscountIncluded === 'false' &&
-      invEP.IsTaxIncluded === 'true'
+      invEP.IsDiscountIncluded === "false" &&
+      invEP.IsTaxIncluded === "true"
     ) {
       if (
         totalPrice - amountGD >= invEP.InvoiceAmountFrom &&
@@ -9147,8 +9568,8 @@ const HomeScreen = props => {
         return 0;
       }
     } else if (
-      invEP.IsDiscountIncluded === 'true' &&
-      invEP.IsTaxIncluded === 'false'
+      invEP.IsDiscountIncluded === "true" &&
+      invEP.IsTaxIncluded === "false"
     ) {
       if (
         totalPrice - tax >= invEP.InvoiceAmountFrom &&
@@ -9159,8 +9580,8 @@ const HomeScreen = props => {
         return 0;
       }
     } else if (
-      invEP.IsDiscountIncluded === 'false' &&
-      invEP.IsTaxIncluded === 'false'
+      invEP.IsDiscountIncluded === "false" &&
+      invEP.IsTaxIncluded === "false"
     ) {
       if (
         subPrice >= invEP.InvoiceAmountFrom &&
@@ -9176,13 +9597,13 @@ const HomeScreen = props => {
     }
   };
 
-  const proCatEarnPoints = async pro => {
+  const proCatEarnPoints = async (pro) => {
     let catMatch = EarnPointCArry.find(
-      e => e.CategoryCode === pro.ProductCategoryCode,
+      (e) => e.CategoryCode === pro.ProductCategoryCode
     );
     let proMatch = EarnPointPArry.find(
-      e =>
-        e.ProductBarCode === pro.ProductBarCode && e.Quantity === pro.Quantity,
+      (e) =>
+        e.ProductBarCode === pro.ProductBarCode && e.Quantity === pro.Quantity
     );
     let erP;
     // console.log("product.EarnedPoints + EarnPointPArry.PointsEarned", proMatch, catMatch, pro)
@@ -9205,35 +9626,35 @@ const HomeScreen = props => {
   };
 
   const onClickPowerOff = async () => {
-    Alert.alert('Bnody POS', props.StringsList._443, [
+    Alert.alert("Bnody POS", props.StringsList._443, [
       {
-        text: 'yes',
+        text: "yes",
         onPress: async () => {
           setLoading(true);
-          if (drawerSetupArr.isInitialCashSet === 'true') {
+          if (drawerSetupArr.isInitialCashSet === "true") {
             setisLogout(true);
           }
-          let loginUserInfo = await AsyncStorage.getItem('LOGIN_USER_INFO');
+          let loginUserInfo = await AsyncStorage.getItem("LOGIN_USER_INFO");
           loginUserInfo = JSON.parse(loginUserInfo);
           // console.log('access token ', loginUserInfo);
           setTimeout(async () => {
             const response = await props.dispatch(
-              ServerCall('', 'AuthorizeUser/SignOut', loginUserInfo),
+              ServerCall("", "AuthorizeUser/SignOut", loginUserInfo)
             );
             setisLogout(false);
             ResetDrawerSetup();
             // console.log('user logout response.. ', response);
             // http://bnodyapi.bnody.com/api/AuthorizeUser/SignOut
-            props.navigation.replace('Auth');
-            await AsyncStorage.removeItem('ACCESS_TOKEN');
+            props.navigation.replace("Auth");
+            await AsyncStorage.removeItem("ACCESS_TOKEN");
             setLoading(false);
           }, 1000);
         },
       },
       {
-        text: 'Cancel',
+        text: "Cancel",
 
-        style: 'cancel',
+        style: "cancel",
       },
     ]);
   };
@@ -9246,12 +9667,12 @@ const HomeScreen = props => {
     let returnBills = response ? response : returnBill;
     let selectedGlobalTax = tax ? tax : selectedGlobalTaxObj;
     // console.log('return billsssssss', returnBills);
-    retunProduct.forEach(pro => {
+    retunProduct.forEach((pro) => {
       tPrice = tPrice + pro.GrandAmount;
       sPrice = sPrice + pro.GrandAmount;
     });
     //  console.log("retunProducts...", selectedGlobalTaxObj)
-    if (type === 'reprint') {
+    if (type === "reprint") {
       setsubPrice(returnBills.GrandAmount);
       setTotalPrice(returnBills.RoundOffAmount + response.AdvancePaidInCash);
       setglobalDiscountAmount(returnBills.GlobalDiscountAmount);
@@ -9259,30 +9680,30 @@ const HomeScreen = props => {
       lastBillDetail.BillDetails = retunProduct;
       setSelectedProducts(lastBillDetail.BillDetails);
       let number = retunProduct.filter(
-        w => w.IsParentAddOn === 1 || w.IsParentAddOn === true,
+        (w) => w.IsParentAddOn === 1 || w.IsParentAddOn === true
       ).length;
       setNumberOfItems(number);
       setisReturnInvoice(false);
 
-      paymentProcess(returnBill.AdvancePaidInCash, '', 'reprint');
+      paymentProcess(returnBill.AdvancePaidInCash, "", "reprint");
     } else {
       if (
         returnBills.GlobalTax1Amount > 0 ||
         returnBills.GlobalDiscountRate > 0
       ) {
         if (returnBills.GlobalDiscountRate > 0) {
-          console.log('GlobalDiscountRate');
-          globalDiscountAmountFun('', sPrice, tPrice, 'recalling');
+          console.log("GlobalDiscountRate");
+          globalDiscountAmountFun("", sPrice, tPrice, "recalling");
         } else if (returnBills.GlobalDiscountAmount > 0) {
-          console.log('GlobalDiscountAmount');
+          console.log("GlobalDiscountAmount");
           globalDiscountAmountFun(
-            'globalDiscount',
+            "globalDiscount",
             sPrice,
             tPrice,
-            'recalling',
+            "recalling"
           );
         } else if (returnBills.GlobalTax1Amount > 0) {
-          globalTaxFun(selectedGlobalTax, sPrice, '', tPrice);
+          globalTaxFun(selectedGlobalTax, sPrice, "", tPrice);
         }
         setsubPrice(sPrice);
       } else {
@@ -9292,15 +9713,17 @@ const HomeScreen = props => {
 
       let array = [];
 
-      let parntProducts = retunProduct.filter(x => x.IsParentAddOn === true);
-      let addonnProducts = retunProduct.filter(x => x.IsParentAddOn === false);
+      let parntProducts = retunProduct.filter((x) => x.IsParentAddOn === true);
+      let addonnProducts = retunProduct.filter(
+        (x) => x.IsParentAddOn === false
+      );
       for (let index = 0; index < parntProducts.length; index++) {
         const element = parntProducts[index];
         if (array.length === 0 && element.IsParentAddOn === true) {
           array.push(element);
           let Addonsofthis = addonnProducts.filter(
-            x =>
-              x.AddOnParentSalesInvoiceDetailsID === element.SalesBillDetailsID,
+            (x) =>
+              x.AddOnParentSalesInvoiceDetailsID === element.SalesBillDetailsID
           );
           if (Addonsofthis) {
             for (let x = 0; x < Addonsofthis.length; x++) {
@@ -9310,8 +9733,8 @@ const HomeScreen = props => {
           }
         } else {
           let itemAddons = addonnProducts.filter(
-            x =>
-              x.AddOnParentSalesInvoiceDetailsID === element.SalesBillDetailsID,
+            (x) =>
+              x.AddOnParentSalesInvoiceDetailsID === element.SalesBillDetailsID
           );
           if (itemAddons) {
             array.push(element);
@@ -9327,23 +9750,23 @@ const HomeScreen = props => {
       setSelectedProducts(array);
       // setSelectedProducts(retunProduct);
       let number = retunProduct.filter(
-        w => w.IsParentAddOn === 1 || w.IsParentAddOn === true,
+        (w) => w.IsParentAddOn === 1 || w.IsParentAddOn === true
       ).length;
       setNumberOfItems(number);
       setisReturnInvoice(false);
     }
   };
 
-  const deleteHoldedInvoice = holdInvoiceNumber => {
-    DeleteColumnById(HoldInvoiceTable, 'invoiceNumber', holdInvoiceNumber);
+  const deleteHoldedInvoice = (holdInvoiceNumber) => {
+    DeleteColumnById(HoldInvoiceTable, "invoiceNumber", holdInvoiceNumber);
   };
 
   const productAssignSaleAgent = (items, value, item) => {
     // console.log('productAssignSaleAgent', items, value, item);
-    let selectedAgent = items.filter(res => res.value === value);
-    console.log('selectedAgent', selectedAgent);
+    let selectedAgent = items.filter((res) => res.value === value);
+    console.log("selectedAgent", selectedAgent);
     let selectedPro = [...selectedProducts];
-    selectedPro.forEach(pro => {
+    selectedPro.forEach((pro) => {
       if (pro.SalesBillDetailsID === item.SalesBillDetailsID) {
         pro.SalesAgentCode = selectedAgent[0].SalesAgentCode;
         pro.value = value;
@@ -9533,11 +9956,13 @@ const HomeScreen = props => {
       customerNotesOpen={customerNotesOpen}
       setCustomerNotesOpen={setCustomerNotesOpen}
       totalReprintCount={totalReprintCount}
+      isSearch={true}
+      isDashboard={false}
     />
   );
 };
 
-const mapStateToProps = state => {
+const mapStateToProps = (state) => {
   return {
     TerminalConfiguration: state.user.SaveAllData.TerminalConfiguration,
     ProductsInfo: state.user.SaveAllData.ProductsInfo,
@@ -9545,7 +9970,7 @@ const mapStateToProps = state => {
   };
 };
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   dispatch,
 });
 

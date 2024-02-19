@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,114 +9,96 @@ import {
   FlatList,
   I18nManager,
   Keyboard,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import Menu, {MenuOptions, MenuOption, MenuTrigger} from 'react-native-menu';
-import i18n from 'i18n-js';
+  Platform,
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import Menu, {
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from "react-native-popup-menu";
+import sizeHelper from "../helpers/sizeHelper";
+import AppColor from "../constant/AppColor";
+import BnodyLogo from "../assets/svg/bnodyLogo.svg";
 
-import sizeHelper from '../helpers/sizeHelper';
-import AppColor from '../constant/AppColor';
-import BnodyLogo from '../assets/svg/bnodyLogo.svg';
-
-const Header = ({
-  isSearch,
-  isDashboard,
-  onPressCamera,
-  onInvoiceClick,
-  title,
-  TerminalConfiguration,
-  searchTextFun,
-  searchText,
-  StringsList,
-  onClickSetting,
-  invoiceNumber,
-  onClickPowerOff,
-  disabled,
-  onChangeText,
-  isEditable,
-  ref_searchBar,
-  toggleSearchScan,
-  barCode,
-  barCodeText,
-  returnInvoiceNumber,
-}) => {
+const Header = ({ props }) => {
   const suitcaseArray = [
     {
-      id: 'pairPrinter',
-      title: StringsList?._36,
+      id: "saleBilType",
+      title: props.StringsList._174,
       icon: (
         <Icon
-          name={'print'}
+          name={"print"}
           size={
             sizeHelper.screenWidth > 450
               ? sizeHelper.calWp(30)
               : sizeHelper.calWp(35)
           }
-          color={'#7e9a49'}
+          color={"#ba569c"}
         />
       ),
-      color: '#7e9a49',
-    },
-    {
-      id: 'saleBilType',
-      title: StringsList._174,
-      icon: (
-        <Icon
-          name={'print'}
-          size={
-            sizeHelper.screenWidth > 450
-              ? sizeHelper.calWp(30)
-              : sizeHelper.calWp(35)
-          }
-          color={'#ba569c'}
-        />
-      ),
-      color: '#ba569c',
+      color: "#ba569c",
     },
     // {
 
     {
-      id: 'billingType',
-      title: 'Billing Type',
+      id: "billingType",
+      title: "Billing Type",
       icon: (
         <Icon
-          name={'print'}
+          name={"print"}
           size={
             sizeHelper.screenWidth > 450
               ? sizeHelper.calWp(30)
               : sizeHelper.calWp(35)
           }
-          color={'#7e9a49'}
+          color={"#7e9a49"}
         />
       ),
-      color: '#7e9a49',
+      color: "#7e9a49",
     },
     {
-      id: 'terminalSetup',
-      title: StringsList?._35,
+      id: "terminalSetup",
+      title: props.StringsList?._35,
       icon: (
         <Icon
-          name={'print'}
+          name={"print"}
           size={
             sizeHelper.screenWidth > 450
               ? sizeHelper.calWp(30)
               : sizeHelper.calWp(35)
           }
-          color={'#fb865a'}
+          color={"#fb865a"}
         />
       ),
-      color: '#fb865a',
+      color: "#fb865a",
+    },
+    {
+      id: "pairPrinter",
+      title: props.StringsList?._36,
+      icon: (
+        <Icon
+          name={"print"}
+          size={
+            sizeHelper.screenWidth > 450
+              ? sizeHelper.calWp(30)
+              : sizeHelper.calWp(35)
+          }
+          color={"#7e9a49"}
+        />
+      ),
+      color: "#7e9a49",
     },
   ];
 
   const renderTouchable = () => <TouchableOpacity></TouchableOpacity>;
 
   const TopNavigation = () => (
-    <View style={{marginEnd: sizeHelper.calWp(30)}}>
-      <Menu onSelect={value => onClickSetting(value)}>
+    <View style={{ marginEnd: sizeHelper.calWp(30) }}>
+      <Menu onSelect={(value) => props.onClickSetting(value)}>
         <MenuTrigger renderTouchable={renderTouchable}>
           <Icon
-            name={'suitcase'}
+            name={"suitcase"}
             size={
               sizeHelper.screenWidth > 450
                 ? sizeHelper.calWp(30)
@@ -126,26 +108,21 @@ const Header = ({
           />
         </MenuTrigger>
         <MenuOptions
-          style={{backgroundColor: 'green'}}
+          style={{ backgroundColor: "white" }}
           optionsContainerStyle={{
-            width: 'auto',
-
-            // backgroundColor: AppColor.green,
+            width: "auto",
             marginTop: sizeHelper.calWp(32),
-            // borderRadius: sizeHelper.calWp(2),
-            // elevation: 20,
-            // alignSelf: 'center',
             marginEnd: I18nManager.isRTL
               ? sizeHelper.calWp(200) - sizeHelper.screenWidth
               : 0,
-            // paddingHorizontal: sizeHelper.calWp(10),
-            // alignSelf: 'right'
-          }}>
+          }}
+        >
           {suitcaseArray.map((item, index) => (
             <MenuOption
               renderTouchable={renderTouchable}
               key={item.id}
-              value={item.id}>
+              value={item.id}
+            >
               {index !== 0 && (
                 <View
                   style={{
@@ -157,11 +134,12 @@ const Header = ({
               )}
               <View
                 style={{
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                }}>
+                  alignItems: "center",
+                  flexDirection: "row",
+                }}
+              >
                 {item.icon}
-                <Text style={[styles.title1, {color: item.color}]}>
+                <Text style={[styles.title1, { color: item.color }]}>
                   {item.title}
                 </Text>
               </View>
@@ -179,10 +157,10 @@ const Header = ({
           width={sizeHelper.calWp(80)}
           height={sizeHelper.calHp(33)}
         />
-        {!isDashboard && (
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        {Platform.OS !== "ios" && !props.isDashboard && (
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={styles.terminalIdText}>
-              {StringsList._172 + ' : '}
+              {props.StringsList._172 + " : "}
             </Text>
             <View
               style={{
@@ -190,26 +168,28 @@ const Header = ({
                 width: sizeHelper.calWp(60),
                 height: sizeHelper.calHp(30),
                 borderRadius: sizeHelper.calWp(5),
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Text style={[styles.terminalIdText]}>
-                {TerminalConfiguration?.TerminalCode}
+                {props.TerminalConfiguration?.TerminalCode}
               </Text>
             </View>
           </View>
         )}
         <View
           style={{
-            flexDirection: 'row',
-
-            alignItems: 'center',
+            flexDirection: "row",
+            alignItems: "center",
             zIndex: 500,
-          }}>
-          {isDashboard && <TopNavigation />}
-          <TouchableOpacity onPress={() => onClickPowerOff()}>
+          }}
+        >
+          {props.isDashboard && <TopNavigation />}
+
+          <TouchableOpacity onPress={() => props.onClickPowerOff()}>
             <Icon
-              name={'power-off'}
+              name={"power-off"}
               size={
                 sizeHelper.screenWidth > 450
                   ? sizeHelper.calWp(30)
@@ -220,70 +200,74 @@ const Header = ({
           </TouchableOpacity>
         </View>
       </View>
-      {!isDashboard && (
+      {!props.isDashboard && (
         <View style={styles.bottomView}>
-          {isSearch ? (
+          {props.isSearch ? (
             <View
               style={{
                 flex: 1,
-                flexDirection: 'row',
+                flexDirection: "row",
                 // justifyContent: 'space-between',
-              }}>
+              }}
+            >
               <View style={styles.searchContainer}>
                 <View>
                   <TextInput
-                    editable={!disabled}
+                    editable={!props.disabled}
                     style={styles.search}
-                    ref={ref_searchBar}
-                    value={searchText}
+                    ref={props.ref_searchBar}
+                    value={props.searchText}
                     //onFocus={Keyboard.dismiss}
                     onEndEditing={() => {
-                      searchTextFun();
+                      props.searchTextFun();
                     }}
-                    onChangeText={text => {
-                      onChangeText('searchText', text);
+                    onChangeText={(text) => {
+                      props.onChangeText("searchText", text);
                     }}
-                    placeholder={`${StringsList?._135} ${StringsList?._304}/${StringsList?._141}`}
+                    placeholder={`${props.StringsList?._135} ${props.StringsList?._304}/${props.StringsList?._141}`}
                   />
-                  {barCode && (
+                  {props.barCode && (
                     <View
                       style={[
                         styles.search,
                         {
-                          justifyContent: 'center',
-                          position: 'absolute',
-                          backgroundColor: 'white',
+                          justifyContent: "center",
+                          position: "absolute",
+                          backgroundColor: "white",
                         },
-                      ]}>
+                      ]}
+                    >
                       <Text
                         style={{
                           fontSize: sizeHelper.calHp(20),
-                          fontFamily: 'ProximaNova-Regular',
-                        }}>
-                        {barCodeText === ''
-                          ? `${StringsList?._130} ${StringsList?._436}`
-                          : barCodeText}
+                          fontFamily: "ProximaNova-Regular",
+                        }}
+                      >
+                        {props.barCodeText === ""
+                          ? `${props.StringsList?._130} ${props.StringsList?._436}`
+                          : props.barCodeText}
                       </Text>
                     </View>
                   )}
                 </View>
-                {!isDashboard && (
+                {!props.isDashboard && (
                   <TouchableOpacity
-                    disabled={disabled}
+                    disabled={props.disabled}
                     onPress={() => {
-                      toggleSearchScan();
+                      props.toggleSearchScan();
                     }}
-                    style={styles.cameraContainer2}>
-                    {!barCode ? (
+                    style={styles.cameraContainer2}
+                  >
+                    {!props.barCode ? (
                       <Icon
-                        name={'qrcode'}
+                        name={"qrcode"}
                         size={sizeHelper.calWp(40)}
-                        color={barCode ? AppColor.blue2 : AppColor.gray1}
-                        style={{alignSelf: 'center'}}
+                        color={props.barCode ? AppColor.blue2 : AppColor.gray1}
+                        style={{ alignSelf: "center" }}
                       />
                     ) : (
                       <Icon
-                        name={'search'}
+                        name={"search"}
                         size={sizeHelper.calWp(35)}
                         color={AppColor.grayColor}
                       />
@@ -293,45 +277,29 @@ const Header = ({
               </View>
 
               <TouchableOpacity
-                disabled={returnInvoiceNumber}
-                onPress={onInvoiceClick}
+                disabled={props?.returnInvoiceNumber}
+                onPress={props?.onInvoiceClick}
                 style={[
                   styles.invoiceContainer,
                   {
-                    backgroundColor: invoiceNumber
+                    backgroundColor: props?.invoiceNumber
                       ? AppColor.yellowColor
                       : AppColor.blue1,
                   },
-                ]}>
-                <Text style={[styles.terminalIdText, {color: AppColor.white}]}>
-                  {invoiceNumber ? invoiceNumber : returnInvoiceNumber}
+                ]}
+              >
+                <Text
+                  style={[styles.terminalIdText, { color: AppColor.white }]}
+                >
+                  {props.invoiceNumber
+                    ? props.invoiceNumber
+                    : props.returnInvoiceNumber}
                 </Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title}>{props.title}</Text>
           )}
-          {/* {!isDashboard && (
-            <TouchableOpacity
-              disabled={disabled}
-              onPress={onPressCamera}
-              style={styles.cameraContainer}>
-              {isSearch ? (
-                <Icon
-                  name={'angle-left'}
-                  size={sizeHelper.calWp(30)}
-                  color={AppColor.white}
-                  style={{alignSelf: 'center'}}
-                />
-              ) : (
-                <Icon
-                  name={'angle-left'}
-                  size={sizeHelper.calWp(14)}
-                  color={AppColor.white}
-                />
-              )}
-            </TouchableOpacity>
-          )} */}
         </View>
       )}
     </View>
@@ -347,41 +315,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: sizeHelper.calWp(25),
     width: sizeHelper.screenWidth,
     paddingBottom: sizeHelper.calHp(20),
+    // height: sizeHelper.calHp(200),
   },
   topView: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    top: Platform.OS === "ios" ? 15 : 0,
+    marginHorizontal: Platform.OS === "android" ? 0 : 5,
   },
 
   terminalIdText: {
     fontSize: sizeHelper.calHp(22),
     color: AppColor.white,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
     // fontWeight: "bold"
   },
   title: {
     fontSize: sizeHelper.calHp(20),
     color: AppColor.white,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
     width: sizeHelper.calWp(80),
-    backgroundColor: 'green',
-    alignSelf: 'center',
-    textAlign: 'center',
+    backgroundColor: "green",
+    alignSelf: "center",
+    textAlign: "center",
   },
 
   title1: {
     fontSize: sizeHelper.calHp(20),
     marginStart: sizeHelper.calWp(5),
-    fontFamily: 'Proxima Nova Bold',
-    alignSelf: 'center',
-    textAlign: 'center',
+    fontFamily: "Proxima Nova Bold",
+    alignSelf: "center",
+    textAlign: "center",
   },
 
   bottomView: {
     marginTop: sizeHelper.calHp(35),
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     // justifyContent: 'center',
     // backgroundColor: "green"
   },
@@ -391,12 +362,13 @@ const styles = StyleSheet.create({
     backgroundColor: AppColor.white,
     borderRadius: sizeHelper.calHp(25),
     paddingStart: sizeHelper.calWp(11),
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
+    top: Platform.OS === "ios" ? 5 : 0,
   },
 
   search: {
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(6),
     width: sizeHelper.calWp(440),
@@ -404,23 +376,23 @@ const styles = StyleSheet.create({
     height: sizeHelper.calHp(50),
     backgroundColor: AppColor.white,
     fontSize: sizeHelper.calHp(18),
-    fontFamily: 'ProximaNova-Regular',
+    fontFamily: "ProximaNova-Regular",
   },
   invoiceContainer: {
     width: sizeHelper.calWp(160),
     height: sizeHelper.calHp(50),
     backgroundColor: AppColor.yellowColor,
     borderRadius: sizeHelper.calHp(25),
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginStart: sizeHelper.calWp(14),
   },
   cameraContainer: {
     width: sizeHelper.calHp(50),
     height: sizeHelper.calHp(50),
     backgroundColor: AppColor.green,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: sizeHelper.calWp(50) / 2,
     paddingEnd: sizeHelper.calWp(5),
     paddingBottom: sizeHelper.calWp(5),
@@ -429,8 +401,8 @@ const styles = StyleSheet.create({
     width: sizeHelper.calHp(50),
     height: sizeHelper.calHp(50),
     backgroundColor: AppColor.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: sizeHelper.calWp(50) / 2,
     marginStart: sizeHelper.calWp(14),
     // paddingEnd: sizeHelper.calWp(5),

@@ -1,8 +1,7 @@
-import React, {useState} from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   Image,
   TextInput,
   FlatList,
@@ -11,61 +10,94 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   I18nManager,
-  Dimensions,
   SafeAreaView,
-} from 'react-native';
-import {ScrollView} from 'react-native-gesture-handler';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import {SwipeListView} from 'react-native-swipe-list-view';
-import ViewShot, {captureScreen} from 'react-native-view-shot';
-import moment from 'moment';
+  Platform,
+  ScrollView,
+} from "react-native";
+import Icon from "react-native-vector-icons/FontAwesome";
+import { SwipeListView } from "react-native-swipe-list-view";
+import ViewShot, { captureScreen } from "react-native-view-shot";
+import moment from "moment";
+import Barcode from "react-native-barcode-builder";
+import sizeHelper from "../../helpers/sizeHelper";
+import AppColor from "../../constant/AppColor";
+import styles from "./style";
+import Header from "../../components/Header";
+import ProductItem from "../../components/ProductItem";
+import AllCategories from "../../components/AllCategories";
+import SelectedProductListItem from "../../components/SelectedProductListItem";
+import CustomButton from "../../components/CustomButton";
+import CustomDropDown from "../../components/CustomDropDown";
+import DrawerPopUp from "../../components/DrawerPopUP";
+import CreditInfoPopUP from "../../components/CreditInfoPopUp";
+import TerminalSetup from "../../components/TerminalSetup";
+import PairPrinterFamily from "../../components/PairPrinterFamily";
+import Loading from "../../components/Loading";
+import AlertModel from "../../components/AlertModel";
+import HoldInvoices from "../../components/HoldInvoices";
+import QRCodeScannerScreen from "../../components/BarCodeScanner";
+import ReturnInvoice from "../../components/ReturnInvoice";
+import AddSearchBuyer from "../../components/AddSearchBuyer";
+import LoyaltyCard from "../../components/LoyaltyCard";
+import GlobalTaxList from "../../components/GlobalTaxList";
+import AddonsList from "../../components/AddonsList";
+import IngredientsList from "../../components/IngredientsList";
+import SelectedProductListItemMobile from "../../components/SelectedProductListItemMobile";
+import DrawerPrint from "../../components/DrawerPrint";
+import BillingType from "../../components/BillingType";
+import CashPaidPopUp from "../../components/CashPaidPopUp";
+import CustomModal from "../../components/CustomModal";
+import CustomerNotes from "../../components/CustomerNotes";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ScopedStorage from "react-native-scoped-storage";
+const Design = (props) => {
+  // const createFolderAndFile = async () => {
+  //   try {
+  //     // Open document tree and request permission
+  //     const dir = await ScopedStorage.openDocumentTree();
+  //     const bnodyDir = await ScopedStorage.createDirectory(
+  //       dir.uri,
+  //       "POS Bnody"
+  //     );
+  //     const invoicesFilePath = `${bnodyDir.uri}/invoices.txt`;
 
-import Barcode from 'react-native-barcode-builder';
+  //     // Write content to "invoices.txt" file
+  // const isWrite = await ScopedStorage.writeFile(
+  //   bnodyDir.uri,
+  //   "",
+  //   "invoices.txt",
+  //   "text/plain",
+  //   "utf8"
+  // );
+  // await AsyncStorage.setItem("invoicesFileUri", isWrite);
+  // console.log("isWrite", isWrite);
+  // readFileContent();
+  // console.log("Folder and file created successfully.");
+  //   } catch (error) {
+  //     console.error("Error creating folder and file:", error);
+  //   }
+  // };
+  // const readFileContent = async () => {
+  //   try {
+  //     // Retrieve the directory path from AsyncStorage
+  //     const storedDir = await AsyncStorage.getItem("invoicesFileUri");
+  //     console.log("File content:", storedDir);
+  //     if (!storedDir) {
+  //       console.error("Directory path not found in AsyncStorage.");
+  //       return;
+  //     }
+  //     const content = await ScopedStorage.readFile(storedDir, "utf8");
 
-import sizeHelper from '../../helpers/sizeHelper';
-import AppColor from '../../constant/AppColor';
-import BnodyLogo from '../../assets/svg/bnodyLogo.svg';
-import styles from './style';
-import Header from '../../components/Header';
-import CategoryItem from '../../components/CategoryItem';
-import ProductItem from '../../components/ProductItem';
-import AllCategories from '../../components/AllCategories';
-import SelectedProductListItem from '../../components/SelectedProductListItem';
-import CustomButton from '../../components/CustomButton';
-import CustomDropDown from '../../components/CustomDropDown';
-import DrawerPopUp from '../../components/DrawerPopUP';
-import CreditInfoPopUP from '../../components/CreditInfoPopUp';
-import TerminalSetup from '../../components/TerminalSetup';
-import PairPrinterFamily from '../../components/PairPrinterFamily';
-import Loading from '../../components/Loading';
-import AlertModel from '../../components/AlertModel';
-import HoldInvoices from '../../components/HoldInvoices';
-import QRCodeScannerScreen from '../../components/BarCodeScanner';
-import ReturnInvoice from '../../components/ReturnInvoice';
-import AddSearchBuyer from '../../components/AddSearchBuyer';
-import LoyaltyCard from '../../components/LoyaltyCard';
-import GlobalTaxList from '../../components/GlobalTaxList';
-import AddonsList from '../../components/AddonsList';
-import IngredientsList from '../../components/IngredientsList';
-import SelectedProductListItemMobile from '../../components/SelectedProductListItemMobile';
-import DrawerPrint from '../../components/DrawerPrint';
-import BillingType from '../../components/BillingType';
-import CashPaidPopUp from '../../components/CashPaidPopUp';
-import CustomModal from '../../components/CustomModal';
-import CustomerNotes from '../../components/CustomerNotes';
+  //     console.log("File content:", content);
+  //   } catch (error) {
+  //     console.error("Error reading file content:", error);
+  //   }
+  // };
 
-const Design = props => {
-  // console.log('home Screen Props  ', typeof props.terminalSetup?.DeliveryNotes);
   const [isCashPaidFocus, setisCashPaidFocus] = useState(false);
   const [globleDiscountFocus, setGlobleDiscountFocus] = useState(false);
   const [globleDiscountPFocus, setGlobleDiscountPFocus] = useState(false);
-  const [noOfProducts, setNoOfProducts] = useState(0);
-  // const filterData = props.categoryProductsarticles.filter(
-  //   product =>
-  //   product?.ProductName.includes(props.searchText)
-  // )
-  // console.log('filterData', filterData);
-  const renderProductItem = ({item, index}) => {
+  const renderProductItem = ({ item, index }) => {
     return (
       <View style={styles.productItemContainer}>
         <ProductItem
@@ -78,12 +110,13 @@ const Design = props => {
     );
   };
 
-  const renderSelectProduct = ({item, index}) => {
+  const renderSelectProduct = ({ item, index }) => {
     return sizeHelper.screenWidth > 450 ? (
       <View
         style={{
           margin: sizeHelper.calWp(7),
-        }}>
+        }}
+      >
         <SelectedProductListItem
           item={item}
           TerminalConfiguration={props.TerminalConfiguration}
@@ -122,7 +155,8 @@ const Design = props => {
         style={{
           margin: sizeHelper.calWp(7),
           //  backgroundColor: "green"
-        }}>
+        }}
+      >
         <SelectedProductListItemMobile
           item={item}
           TerminalConfiguration={props.TerminalConfiguration}
@@ -160,59 +194,46 @@ const Design = props => {
   };
 
   const amountDetails = [
-    {id: 'subTotal:', title: `${props.StringsList._19}:`, value: '0'},
-    {id: 'VAT:', title: `${props.StringsList._180}:`, value: '0'},
-    {id: 'discountP:', title: `${props.StringsList._7}:`, value: '0'},
-    {id: 'discount:', title: `${props.StringsList._20}:`, value: '0'},
-
-    {id: 'total:', title: `${props.StringsList._23}:`, value: '0'},
-    {id: 'paidAmount:', title: `${props.StringsList._15}:`, value: '0'},
-    // { id: 'due:', title: 'Due:', value: '0' },
-  ];
-
-  const taxDetails = [
-    {id: 'productTax', title: `${props.StringsList._311}:`, value: '0'},
-    {id: 'invoiceTax', title: `${props.StringsList._312}:`, value: '0'},
-    {id: 'totalTax', title: `${props.StringsList._313}:`, value: '0'},
-    {id: 'numberOfItems', title: `${props.StringsList._22}:`, value: '0'},
-
-    {id: 'buyerName', title: `${props.StringsList._203}:`, value: 0},
-    {id: 'buyerCode', title: `${props.StringsList._72}:`, value: 0},
-    // { id: 'due:', title: 'Due:', value: '0' },
+    { id: "subTotal:", title: `${props.StringsList._19}:`, value: "0" },
+    { id: "VAT:", title: `${props.StringsList._180}:`, value: "0" },
+    { id: "discountP:", title: `${props.StringsList._7}:`, value: "0" },
+    { id: "discount:", title: `${props.StringsList._20}:`, value: "0" },
+    { id: "total:", title: `${props.StringsList._23}:`, value: "0" },
+    { id: "paidAmount:", title: `${props.StringsList._15}:`, value: "0" },
   ];
 
   const InoviceAmountDetails = [
     {
-      id: 'subTotal',
+      id: "subTotal",
       title: `${props.StringsList._19}:`,
       value: (props.subPrice - props.sumOfProductTax).toFixed(
-        props.TerminalConfiguration?.DecimalsInAmount,
+        props.TerminalConfiguration?.DecimalsInAmount
       ),
     },
     {
-      id: 'Tax',
+      id: "Tax",
       title: `${props.StringsList._13}:`,
       value: (props.globalTax + props.sumOfProductTax).toFixed(
-        props.TerminalConfiguration?.DecimalsInAmount,
+        props.TerminalConfiguration?.DecimalsInAmount
       ),
     },
     {
-      id: 'Discount',
+      id: "Discount",
       title: `${props.StringsList._20}:`,
       value: (props.globalDiscountAmount + props.sumOfProductDiscount).toFixed(
-        props.TerminalConfiguration?.DecimalsInAmount,
+        props.TerminalConfiguration?.DecimalsInAmount
       ),
     },
     {
-      id: 'Total',
+      id: "Total",
       title: `${props.StringsList._23}:`,
       value: props.totalPrice.toFixed(
-        props.TerminalConfiguration?.DecimalsInAmount,
+        props.TerminalConfiguration?.DecimalsInAmount
       ),
     },
   ];
 
-  const renderHiddenItem = ({item, index}) =>
+  const renderHiddenItem = ({ item, index }) => {
     !props.returnInvoiceNumber ? (
       <View
         style={[
@@ -222,10 +243,12 @@ const Design = props => {
               ? sizeHelper.calHp(100)
               : sizeHelper.calHp(80),
           },
-        ]}>
+        ]}
+      >
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => props.deleteItem(item, index)}>
+          onPress={() => props.deleteItem(item, index)}
+        >
           <Icon name="trash-o" size={20} color={AppColor.white} />
         </TouchableOpacity>
       </View>
@@ -238,24 +261,28 @@ const Design = props => {
               ? sizeHelper.calHp(100)
               : sizeHelper.calHp(80),
           },
-        ]}>
+        ]}
+      >
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => props.deleteItem(item, index)}>
+          onPress={() => props.deleteItem(item, index)}
+        >
           <Icon name="trash-o" size={24} color={AppColor.white} />
         </TouchableOpacity>
       </View>
     ) : null;
+  };
 
   const amountDetailsFun = () => {
     return (
       <View
         style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
+          flexDirection: "row",
+          justifyContent: "space-between",
           maxHeight: sizeHelper.calHp(400),
-          overflow: 'hidden',
-        }}>
+          overflow: "hidden",
+        }}
+      >
         <View
           style={{
             flex: 1,
@@ -264,8 +291,9 @@ const Design = props => {
             paddingVertical: sizeHelper.calWp(15),
             backgroundColor: AppColor.white,
             borderRadius: sizeHelper.calWp(15),
-          }}>
-          {amountDetails.map(item => {
+          }}
+        >
+          {amountDetails.map((item) => {
             return (
               <View key={item.title} style={styles.titleValueContainer}>
                 <Text
@@ -273,48 +301,50 @@ const Design = props => {
                     styles.titleValueStyle,
                     {
                       color:
-                        item.id === 'discount:' || item.id === 'discountP:'
+                        item.id === "discount:" || item.id === "discountP:"
                           ? AppColor.red
-                          : item.id === 'paidAmount:'
+                          : item.id === "paidAmount:"
                           ? AppColor.blue2
                           : AppColor.black,
                     },
-                  ]}>
+                  ]}
+                >
                   {item.title}
                 </Text>
                 <View
-                  style={{justifyContent: 'flex-end', alignItems: 'flex-end'}}>
-                  {item.id === 'discount:' || item.id === 'discountP:' ? (
+                  style={{ justifyContent: "flex-end", alignItems: "flex-end" }}
+                >
+                  {item.id === "discount:" || item.id === "discountP:" ? (
                     <TextInput
                       keyboardType="decimal-pad"
-                      onChangeText={text =>
-                        props.onChangeText('globalDiscount', text, item)
+                      onChangeText={(text) =>
+                        props.onChangeText("globalDiscount", text, item)
                       }
-                      onEndEditing={text => {
-                        if (item.id === 'discount:') {
+                      onEndEditing={(text) => {
+                        if (item.id === "discount:") {
                           setGlobleDiscountFocus(false);
-                          props.onEndEditing('globalDiscount', item);
-                        } else if (item.id === 'discountP:') {
+                          props.onEndEditing("globalDiscount", item);
+                        } else if (item.id === "discountP:") {
                           setGlobleDiscountPFocus(false);
-                          props.onEndEditing('globalDiscountP', item);
+                          props.onEndEditing("globalDiscountP", item);
                         } else {
                           setisCashPaidFocus(false);
-                          props.onEndEditing('cashPaid', item);
+                          props.onEndEditing("cashPaid", item);
                         }
                       }}
                       editable={
-                        (item.id === 'discount:' || item.id === 'discountP:') &&
+                        (item.id === "discount:" || item.id === "discountP:") &&
                         props?.TerminalConfiguration
-                          ?.IsDiscountOnSalesInvoice === 'true' &&
+                          ?.IsDiscountOnSalesInvoice === "true" &&
                         props.selectedProducts.length > 0 &&
                         !props.isInvoice &&
                         !props.returnInvoiceNumber &&
                         props?.userConfiguration?.DiscountAllowed === 1
                       }
                       placeholderTextColor={
-                        item.id === 'discount:' || item.id === 'discountP:'
+                        item.id === "discount:" || item.id === "discountP:"
                           ? AppColor.red
-                          : item.id === 'paidAmount:'
+                          : item.id === "paidAmount:"
                           ? AppColor.blue2
                           : AppColor.black
                       }
@@ -323,19 +353,19 @@ const Design = props => {
                         {
                           color: globleDiscountFocus
                             ? AppColor.black
-                            : item.id === 'discount:' ||
-                              item.id === 'discountP:'
+                            : item.id === "discount:" ||
+                              item.id === "discountP:"
                             ? AppColor.red
-                            : item.id === 'paidAmount:'
+                            : item.id === "paidAmount:"
                             ? AppColor.blue2
                             : AppColor.black,
                         },
                       ]}
                       onFocus={() => {
-                        if (item.id === 'discount:') {
+                        if (item.id === "discount:") {
                           setGlobleDiscountFocus(true);
                           props.setmanuallyCount(props.globalDiscountAmount);
-                        } else if (item.id === 'discountP:') {
+                        } else if (item.id === "discountP:") {
                           setGlobleDiscountPFocus(true);
                           props.setmanuallyCount(props.globalDiscountRate);
                         } else {
@@ -344,58 +374,59 @@ const Design = props => {
                         }
                       }}
                       value={
-                        globleDiscountFocus && item.id === 'discount:'
+                        globleDiscountFocus && item.id === "discount:"
                           ? undefined
-                          : globleDiscountPFocus && item.id === 'discountP:'
+                          : globleDiscountPFocus && item.id === "discountP:"
                           ? undefined
-                          : isCashPaidFocus && item.id === 'paidAmount:'
+                          : isCashPaidFocus && item.id === "paidAmount:"
                           ? undefined
-                          : item.id === 'discount:'
+                          : item.id === "discount:"
                           ? String(
                               props.globalDiscountAmount?.toFixed(
-                                props.TerminalConfiguration?.DecimalsInAmount,
-                              ),
+                                props.TerminalConfiguration?.DecimalsInAmount
+                              )
                             )
-                          : item.id === 'discountP:'
+                          : item.id === "discountP:"
                           ? String(
                               props.globalDiscountRate?.toFixed(
-                                props.TerminalConfiguration?.DecimalsInAmount,
-                              ),
+                                props.TerminalConfiguration?.DecimalsInAmount
+                              )
                             )
                           : props.advancePaidInCash
                           ? String(
                               props.advancePaidInCash?.toFixed(
-                                props.TerminalConfiguration?.DecimalsInAmount,
-                              ),
+                                props.TerminalConfiguration?.DecimalsInAmount
+                              )
                             )
                           : String(
                               props.totalPrice?.toFixed(
-                                props.TerminalConfiguration?.DecimalsInAmount,
-                              ),
+                                props.TerminalConfiguration?.DecimalsInAmount
+                              )
                             )
                       }
                       placeholder="0.00"
                     />
                   ) : (
                     <TouchableOpacity
-                      style={{flexDirection: 'row', alignItems: 'center'}}
+                      style={{ flexDirection: "row", alignItems: "center" }}
                       disabled={
                         props.selectedProducts?.length === 0 ||
-                        item.id !== 'VAT:' ||
+                        item.id !== "VAT:" ||
                         props.TerminalConfiguration?.IsTaxOnSalesInvoice !==
-                          'true' ||
+                          "true" ||
                         props.isInvoice ||
                         props.returnInvoiceNumber
                       }
                       onPress={() => {
                         props.setIsGlobalTax(true);
-                      }}>
-                      {item.id === 'VAT:' && (
+                      }}
+                    >
+                      {item.id === "VAT:" && (
                         <Icon
-                          name={'angle-down'}
+                          name={"angle-down"}
                           size={sizeHelper.calWp(25)}
                           color={AppColor.black}
-                          style={{marginEnd: sizeHelper.calWp(10)}}
+                          style={{ marginEnd: sizeHelper.calWp(10) }}
                         />
                       )}
                       <Text
@@ -403,73 +434,75 @@ const Design = props => {
                           styles.titleValueStyle2,
                           {
                             color:
-                              item.id === 'discount:' ||
-                              item.id === 'discountP:'
+                              item.id === "discount:" ||
+                              item.id === "discountP:"
                                 ? AppColor.red
-                                : item.id === 'paidAmount:'
+                                : item.id === "paidAmount:"
                                 ? AppColor.blue2
                                 : AppColor.black,
                           },
-                        ]}>
-                        {item.id === 'subTotal:'
+                        ]}
+                      >
+                        {item.id === "subTotal:"
                           ? props.subPrice?.toFixed(
-                              props.TerminalConfiguration?.DecimalsInAmount,
+                              props.TerminalConfiguration?.DecimalsInAmount
                             )
-                          : item.id === 'discount:'
+                          : item.id === "discount:"
                           ? props.globalDiscountAmount?.toFixed(
-                              props.TerminalConfiguration?.DecimalsInAmount,
+                              props.TerminalConfiguration?.DecimalsInAmount
                             )
-                          : item.id === 'discountP:'
+                          : item.id === "discountP:"
                           ? props.globalDiscountAmount?.toFixed(
-                              props.TerminalConfiguration?.DecimalsInAmount,
+                              props.TerminalConfiguration?.DecimalsInAmount
                             )
-                          : item.id === 'total:'
+                          : item.id === "total:"
                           ? props.totalPrice?.toFixed(
-                              props.TerminalConfiguration?.DecimalsInAmount,
+                              props.TerminalConfiguration?.DecimalsInAmount
                             )
-                          : item.id === 'paidAmount:'
+                          : item.id === "paidAmount:"
                           ? props.advancePaidInCash
                             ? String(
                                 props.advancePaidInCash?.toFixed(
-                                  props.TerminalConfiguration?.DecimalsInAmount,
-                                ),
+                                  props.TerminalConfiguration?.DecimalsInAmount
+                                )
                               )
                             : String(
                                 props.totalPrice?.toFixed(
-                                  props.TerminalConfiguration?.DecimalsInAmount,
-                                ),
+                                  props.TerminalConfiguration?.DecimalsInAmount
+                                )
                               )
-                          : item.id === 'due:'
+                          : item.id === "due:"
                           ? props.dueAmount?.toFixed(
-                              props.TerminalConfiguration?.DecimalsInAmount,
+                              props.TerminalConfiguration?.DecimalsInAmount
                             )
-                          : item.id === 'VAT:'
+                          : item.id === "VAT:"
                           ? props.globalTax?.toFixed(
-                              props.TerminalConfiguration?.DecimalsInAmount,
+                              props.TerminalConfiguration?.DecimalsInAmount
                             )
                           : item?.value}
                       </Text>
                     </TouchableOpacity>
                   )}
-                  {(item.id === 'discount:' || item.id === 'paidAmount:') && (
+                  {(item.id === "discount:" || item.id === "paidAmount:") && (
                     <View
                       style={[
                         styles.dashedLine,
                         {
                           borderColor:
-                            item.id === 'discount:'
+                            item.id === "discount:"
                               ? AppColor.red
-                              : item.id === 'paidAmount:'
+                              : item.id === "paidAmount:"
                               ? AppColor.blue2
                               : AppColor.black,
                         },
-                      ]}>
+                      ]}
+                    >
                       <View
                         style={{
-                          position: 'absolute',
+                          position: "absolute",
                           left: 0,
                           bottom: 0,
-                          width: '100%',
+                          width: "100%",
                           height: 1,
                           backgroundColor: AppColor.white,
                           zIndex: 1,
@@ -486,45 +519,20 @@ const Design = props => {
     );
   };
 
-  let currentDate = moment().format('DD/MM/YYYY HH:mm:ss');
+  let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
   return (
     <TouchableWithoutFeedback
       onPress={() => {
         props.setoptionsOpen(false);
         props.setPaymentsOpen(false);
-        // props.setOptionsValue(null)
-      }}>
+      }}
+    >
       <View style={styles.mainContainer}>
-        <View style={{position: 'absolute', top: -400}}>{<props.QR />}</View>
+        <View style={{ position: "absolute", top: -400 }}>{<props.QR />}</View>
 
         <StatusBar hidden={true} />
 
-        <Header
-          isSearch
-          onChangeText={props.onChangeText}
-          searchTextFun={props.searchTextFun}
-          searchText={props.searchText}
-          onPressCamera={props.onPressBackCat}
-          onInvoiceClick={props.onInvoiceClick}
-          TerminalConfiguration={props.TerminalConfiguration}
-          StringsList={props.StringsList}
-          onClickSetting={props.onClickSetting}
-          onClickPowerOff={props.onClickPowerOff}
-          ref_searchBar={props.ref_searchBar}
-          invoiceNumber={
-            props.returnInvoiceNumber
-              ? props.returnInvoiceNumber
-              : props.invoiceNumber
-          }
-          returnInvoiceNumber={
-            props.returnInvoiceNumber ? props.returnInvoiceNumber : ''
-          }
-          disabled={props.returnInvoiceNumber ? true : false}
-          isEditable={props.isToggle ? true : false}
-          toggleSearchScan={props.toggleSearchScan}
-          barCode={props.barCode}
-          barCodeText={props.barCodeText}
-        />
+        <Header props={props} />
         {props.noFamilyFound ? null : !props.isToggle ? (
           <AllCategories
             data={props.allCategoreis}
@@ -535,7 +543,7 @@ const Design = props => {
           />
         ) : null}
 
-        <View style={{paddingHorizontal: sizeHelper.calWp(24)}}>
+        <View style={{ paddingHorizontal: sizeHelper.calWp(24) }}>
           {!props.isToggle ? (
             <View
               style={[
@@ -550,11 +558,12 @@ const Design = props => {
                       ? sizeHelper.calHp(740)
                       : sizeHelper.calHp(480),
                 },
-              ]}>
+              ]}
+            >
               <FlatList
                 showsVerticalScrollIndicator={false}
                 style={{
-                  width: '100%',
+                  width: "100%",
                 }}
                 numColumns={sizeHelper.screenWidth > 450 ? 4 : 3}
                 nestedScrollEnabled
@@ -563,13 +572,13 @@ const Design = props => {
                   // marginStart: sizeHelper.calWp(-4),
                   // marginEnd: sizeHelper.calWp(-4)
                 }}
-                data={props.categoryProducts.filter(product =>
-                  product?.ProductName.includes(props.searchText),
+                data={props.categoryProducts.filter((product) =>
+                  product?.ProductName.includes(props.searchText)
                 )}
                 extraData={props.categoryProducts}
                 renderItem={renderProductItem}
-                keyExtractor={item => '_' + item.ProductBarCode}
-                key={'_'}
+                keyExtractor={(item) => "_" + item.ProductBarCode}
+                key={"_"}
               />
             </View>
           ) : (
@@ -584,7 +593,8 @@ const Design = props => {
                       ? sizeHelper.calHp(750)
                       : sizeHelper.calHp(750),
                 },
-              ]}>
+              ]}
+            >
               <SwipeListView
                 showsVerticalScrollIndicator={false}
                 disableRightSwipe={I18nManager.isRTL ? false : true}
@@ -597,41 +607,43 @@ const Design = props => {
                 }
                 rightOpenValue={sizeHelper.calWp(-100)}
                 leftOpenValue={sizeHelper.calWp(100)}
-                keyExtractor={item => item.SalesBillDetailsID.toString()}
-                key={'_'}
+                keyExtractor={(item) => item.SalesBillDetailsID.toString()}
+                key={"_"}
               />
             </View>
           )}
           <KeyboardAvoidingView
             behavior={
               globleDiscountFocus || globleDiscountPFocus
-                ? 'position'
-                : 'padding'
+                ? "position"
+                : "padding"
             }
-            style={styles.amountDetailsContianer}>
+            style={styles.amountDetailsContianer}
+          >
             {amountDetailsFun()}
           </KeyboardAvoidingView>
           {sizeHelper.screenWidth > 450 ? (
             <View style={styles.buttonsContainer}>
-              <View style={{zIndex: 0}}>
+              <View style={{ zIndex: 0 }}>
                 <CustomButton
                   containerStyle={{
                     height: sizeHelper.calWp(50),
                     width:
-                      props.terminalSetup?.DeliveryNotes === 'true'
+                      props.terminalSetup?.DeliveryNotes === "true"
                         ? sizeHelper.calWp(150)
                         : sizeHelper.calWp(166.66),
                   }} //new
                   title={props.StringsList._4}
                   onPressButton={props.onNewInvoice}
-                  isDisabled={props.invoiceNumber}
+                  // onPressButton={createFolderAndFile}
+                  isDisabled={props.invoiceNumber !== null ? true : false}
                   backgroundColor={AppColor.blue2}
                 />
               </View>
 
               <CustomDropDown
                 dropDownWidth={
-                  props.terminalSetup?.DeliveryNotes === 'true'
+                  props.terminalSetup?.DeliveryNotes === "true"
                     ? sizeHelper.calWp(150)
                     : sizeHelper.calWp(166.66)
                 } //option
@@ -641,7 +653,7 @@ const Design = props => {
                 placeholderTitle={props.StringsList._309}
                 setValue={props.setOptionsValue}
                 value={props.optionsValue}
-                disabled={props.returnInvoiceNumber}
+                disabled={props.returnInvoiceNumber === null ? true : false}
                 onChangeValue={props.onChangeText}
                 open={props.optionsOpen}
                 setOpen={props.setoptionsOpen}
@@ -663,7 +675,9 @@ const Design = props => {
                       placeholderTitle={props.StringsList._435}
                       setValue={props.setPaymentsValue}
                       value={props.paymentsValue}
-                      disabled={props.selectedProducts.length < 1}
+                      disabled={
+                        props.selectedProducts.length < 1 ? true : false
+                      }
                       open={props.paymentsOpen}
                       setOpen={props.setPaymentsOpen}
                     />
@@ -673,17 +687,19 @@ const Design = props => {
                         {
                           height: sizeHelper.calWp(50),
                           width:
-                            props.terminalSetup?.DeliveryNotes === 'true'
+                            props.terminalSetup?.DeliveryNotes === "true"
                               ? sizeHelper.calWp(150)
                               : sizeHelper.calWp(166.66),
                         },
-                        {backgroundColor: AppColor.red1},
+                        { backgroundColor: AppColor.red1 },
                       ]}
-                      isDisabled={props.selectedProducts.length < 1}
+                      isDisabled={
+                        props.selectedProducts.length < 1 ? true : false
+                      }
                       title={props.StringsList._153}
                       backgroundColor={AppColor.blue2}
                       onPressButton={() => {
-                        props.setPaymentsValue('1');
+                        props.setPaymentsValue("1");
                       }}
                     />
                   )}
@@ -697,22 +713,22 @@ const Design = props => {
                   placeholderTitle={props.StringsList._435}
                   setValue={props.setPaymentsValue}
                   value={props.paymentsValue}
-                  disabled={props.selectedProducts.length < 1}
+                  disabled={props.selectedProducts.length < 1 ? true : false}
                   open={props.paymentsOpen}
                   setOpen={props.setPaymentsOpen}
                 />
               )}
-              <View style={{zIndex: 0}}>
+              <View style={{ zIndex: 0 }}>
                 <CustomButton
                   containerStyle={[
                     {
                       height: sizeHelper.calWp(50),
                       width:
-                        props.terminalSetup?.DeliveryNotes === 'true'
+                        props.terminalSetup?.DeliveryNotes === "true"
                           ? sizeHelper.calWp(150)
                           : sizeHelper.calWp(166.66),
                     },
-                    {backgroundColor: AppColor.red1},
+                    { backgroundColor: AppColor.red1 },
                   ]}
                   title={
                     props.invoiceNumber
@@ -725,7 +741,7 @@ const Design = props => {
                   onPressButton={props.onClickCancel}
                 />
               </View>
-              {props.terminalSetup?.DeliveryNotes === 'true' &&
+              {props.terminalSetup?.DeliveryNotes === "true" &&
                 !props.returnInvoiceNumber && (
                   <TouchableOpacity
                     onPress={() => props.setCustomerNotesOpen(true)}
@@ -735,9 +751,10 @@ const Design = props => {
                       height: 40,
                       width: 40,
                       borderRadius: sizeHelper.calWp(5),
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}>
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
                     <Icon
                       name="sticky-note-o"
                       size={sizeHelper.calWp(22)}
@@ -751,18 +768,19 @@ const Design = props => {
             <View style={styles.buttonsContainerV2}>
               <View
                 style={{
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                  width: '100%',
-                }}>
-                <View style={{zIndex: 0}}>
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexDirection: "row",
+                  width: "100%",
+                }}
+              >
+                <View style={{ zIndex: 0 }}>
                   <CustomButton
                     containerStyle={[
                       {
                         height: sizeHelper.calWp(50),
                         width:
-                          props.terminalSetup?.DeliveryNotes === 'true'
+                          props.terminalSetup?.DeliveryNotes === "true"
                             ? sizeHelper.calWp(280)
                             : sizeHelper.calWp(310),
                       },
@@ -775,7 +793,7 @@ const Design = props => {
                 </View>
                 <CustomDropDown
                   dropDownWidth={
-                    props.terminalSetup?.DeliveryNotes === 'true'
+                    props.terminalSetup?.DeliveryNotes === "true"
                       ? sizeHelper.calWp(280)
                       : sizeHelper.calWp(310)
                   } //payments
@@ -792,18 +810,19 @@ const Design = props => {
               </View>
               <View
                 style={{
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                  width: '100%',
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexDirection: "row",
+                  width: "100%",
                   marginTop: sizeHelper.calHp(14),
-                }}>
+                }}
+              >
                 {props.returnInvoiceNumber ? (
                   <View>
                     {props.buyerInfo ? (
                       <CustomDropDown
                         dropDownWidth={
-                          props.terminalSetup?.DeliveryNotes === 'true'
+                          props.terminalSetup?.DeliveryNotes === "true"
                             ? sizeHelper.calWp(280)
                             : sizeHelper.calWp(310)
                         } //payments
@@ -829,7 +848,7 @@ const Design = props => {
                           {
                             height: sizeHelper.calWp(50),
                             width:
-                              props.terminalSetup?.DeliveryNotes === 'true'
+                              props.terminalSetup?.DeliveryNotes === "true"
                                 ? sizeHelper.calWp(280)
                                 : sizeHelper.calWp(310),
                           },
@@ -842,7 +861,7 @@ const Design = props => {
                         title={props.StringsList._153}
                         backgroundColor={AppColor.blue2}
                         onPressButton={() => {
-                          props.setPaymentsValue('1');
+                          props.setPaymentsValue("1");
                         }}
                       />
                     )}
@@ -850,7 +869,7 @@ const Design = props => {
                 ) : (
                   <CustomDropDown
                     dropDownWidth={
-                      props.terminalSetup?.DeliveryNotes === 'true'
+                      props.terminalSetup?.DeliveryNotes === "true"
                         ? sizeHelper.calWp(280)
                         : sizeHelper.calWp(310)
                     } //option
@@ -867,13 +886,13 @@ const Design = props => {
                   />
                 )}
 
-                <View style={{zIndex: 0}}>
+                <View style={{ zIndex: 0 }}>
                   <CustomButton //cancel
                     containerStyle={[
                       {
                         height: sizeHelper.calWp(50),
                         width:
-                          props.terminalSetup?.DeliveryNotes === 'true'
+                          props.terminalSetup?.DeliveryNotes === "true"
                             ? sizeHelper.calWp(280)
                             : sizeHelper.calWp(310),
                       },
@@ -894,7 +913,7 @@ const Design = props => {
                     onPressButton={props.onClickCancel}
                   />
                 </View>
-                {props.terminalSetup?.DeliveryNotes === 'true' &&
+                {props.terminalSetup?.DeliveryNotes === "true" &&
                   !props.returnInvoiceNumber && (
                     <TouchableOpacity
                       onPress={() => props.setCustomerNotesOpen(true)}
@@ -904,10 +923,11 @@ const Design = props => {
                         height: 25,
                         width: 25,
                         borderRadius: sizeHelper.calWp(5),
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        justifyContent: "center",
+                        alignItems: "center",
                         // marginTop: sizeHelper.calHp(10),
-                      }}>
+                      }}
+                    >
                       <Icon
                         name="sticky-note-o"
                         size={sizeHelper.calWp(30)}
@@ -961,15 +981,16 @@ const Design = props => {
               behavior="padding"
               style={{
                 flex: 1,
-                width: '100%',
-                justifyContent: 'center',
-              }}>
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
               <CreditInfoPopUP
                 StringsList={props.StringsList}
                 cancel={props.paymentMethodSelect}
                 viewref={props.viewref}
                 totalPrice={props.totalPrice}
-                isCredit={props.paymentsValue === '2'}
+                isCredit={props.paymentsValue === "2"}
                 cashPaidAmountFun={props.cashPaidAmountFun}
                 buyerInfo={props.buyerInfo}
                 setCashAmount={props.setCashAmount}
@@ -983,9 +1004,10 @@ const Design = props => {
               behavior="padding"
               style={{
                 flex: 1,
-                width: '100%',
-                justifyContent: 'center',
-              }}>
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
               <AddSearchBuyer
                 StringsList={props.StringsList}
                 cancel={props.otherOptions}
@@ -1005,9 +1027,10 @@ const Design = props => {
               behavior="padding"
               style={{
                 flex: 1,
-                width: '100%',
-                justifyContent: 'center',
-              }}>
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
               <LoyaltyCard
                 StringsList={props.StringsList}
                 cancel={props.otherOptions}
@@ -1023,17 +1046,18 @@ const Design = props => {
         {props.isInvoice && (
           <View style={styles.popupContainer}>
             <View style={styles.invoiceContainer}>
-              <SafeAreaView style={{flex: 1}}>
+              <SafeAreaView style={{ flex: 1 }}>
                 <ScrollView
-                  overScrollMode={'never'}
-                  contentContainerStyle={{flexGrow: 1, zIndex: 9999999}}
+                  overScrollMode={"never"}
+                  contentContainerStyle={{ flexGrow: 1, zIndex: 9999999 }}
                   style={{
                     flexGrow: 1,
 
                     paddingVertical: 2,
                   }}
-                  showsVerticalScrollIndicator={false}>
-                  <View style={{flex: 1}}>
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={{ flex: 1 }}>
                     <ViewShot
                       style={styles.viewShotStyle}
                       ref={props.qrRef2}
@@ -1041,25 +1065,26 @@ const Design = props => {
                       // ref={props.viewShotRef}
                       // onCapture={props.onCapture}
 
-                      captureMode="mount">
+                      captureMode="mount"
+                    >
                       <View>
-                        {props.TerminalConfiguration?.IsGodownInfo === 'true'
+                        {props.TerminalConfiguration?.IsGodownInfo === "true"
                           ? !!props?.TerminalConfiguration?.GoDownLogo && (
                               <Image
                                 source={{
                                   uri:
                                     props?.TerminalConfiguration
                                       ?.GoDownLogoType +
-                                    ',' +
+                                    "," +
                                     props?.TerminalConfiguration?.GoDownLogo,
                                 }}
                                 style={{
                                   // backgroundColor: "green",
                                   height: sizeHelper.calHp(150),
                                   width: sizeHelper.calWp(155),
-                                  resizeMode: 'contain',
-                                  alignSelf: 'center',
-                                  alignItems: 'center',
+                                  resizeMode: "contain",
+                                  alignSelf: "center",
+                                  alignItems: "center",
                                 }}
                               />
                             )
@@ -1069,16 +1094,16 @@ const Design = props => {
                                   uri:
                                     props?.TerminalConfiguration
                                       ?.CompanyLogoType +
-                                    ',' +
+                                    "," +
                                     props?.TerminalConfiguration?.CompanyLogo,
                                 }}
                                 style={{
                                   //   backgroundColor: "green",
                                   height: sizeHelper.calHp(150),
                                   width: sizeHelper.calWp(155),
-                                  resizeMode: 'contain',
-                                  alignSelf: 'center',
-                                  alignItems: 'center',
+                                  resizeMode: "contain",
+                                  alignSelf: "center",
+                                  alignItems: "center",
                                 }}
                               />
                             )}
@@ -1101,12 +1126,13 @@ const Design = props => {
                               {
                                 // marginBottom: 3,
                                 fontSize: sizeHelper.calHp(35),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {I18nManager.isRTL
-                              ? 'استرداد المبيعات'
-                              : 'Sales Refund'}
+                              ? "استرداد المبيعات"
+                              : "Sales Refund"}
                           </Text>
                         ) : (
                           <Text
@@ -1115,9 +1141,10 @@ const Design = props => {
                               {
                                 // marginBottom: 3,
                                 fontSize: sizeHelper.calHp(35),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.billingType.name}
                           </Text>
                         )}
@@ -1129,9 +1156,10 @@ const Design = props => {
                               {
                                 // marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading1}
                           </Text>
                         )}
@@ -1142,9 +1170,10 @@ const Design = props => {
                               {
                                 // marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading2}
                           </Text>
                         )}
@@ -1155,9 +1184,10 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading3}
                           </Text>
                         )}
@@ -1168,13 +1198,14 @@ const Design = props => {
                               {
                                 // marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading4}
                           </Text>
                         )}
-                        {props.TerminalConfiguration?.IsGodownInfo === 'true'
+                        {props.TerminalConfiguration?.IsGodownInfo === "true"
                           ? !!props.TerminalConfiguration?.GoDownName && (
                               <Text
                                 style={[
@@ -1182,9 +1213,10 @@ const Design = props => {
                                   {
                                     // marginBottom: 10,
                                     fontSize: sizeHelper.calHp(35),
-                                    alignSelf: 'center',
+                                    alignSelf: "center",
                                   },
-                                ]}>
+                                ]}
+                              >
                                 {props.TerminalConfiguration.GoDownName}
                               </Text>
                             )
@@ -1195,29 +1227,32 @@ const Design = props => {
                                   {
                                     // marginBottom: 10,
                                     fontSize: sizeHelper.calHp(35),
-                                    alignSelf: 'center',
+                                    alignSelf: "center",
                                   },
-                                ]}>
+                                ]}
+                              >
                                 {props.TerminalConfiguration.CompanyName}
                               </Text>
                             )}
                         {props.totalReprintCount !== null ? (
                           <View
                             style={{
-                              flexDirection: 'row',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                            }}>
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
                             <View>
                               <Text
                                 style={[
                                   styles.invoiceHeaderText,
                                   {
                                     // marginBottom: sizeHelper.calHp(5),
-                                    alignSelf: 'flex-start',
+                                    alignSelf: "flex-start",
                                   },
-                                ]}>
-                                Reprint :{' ' + props.totalReprintCount}
+                                ]}
+                              >
+                                Reprint :{" " + props.totalReprintCount}
                               </Text>
                             </View>
                             <View>
@@ -1227,9 +1262,10 @@ const Design = props => {
                                   {
                                     letterSpacing: 2,
                                     fontSize: sizeHelper.calHp(35),
-                                    alignSelf: 'center',
+                                    alignSelf: "center",
                                   },
-                                ]}>
+                                ]}
+                              >
                                 {currentDate}
                               </Text>
                             </View>
@@ -1242,9 +1278,10 @@ const Design = props => {
                                 {
                                   letterSpacing: 2,
                                   fontSize: sizeHelper.calHp(35),
-                                  alignSelf: 'center',
+                                  alignSelf: "center",
                                 },
-                              ]}>
+                              ]}
+                            >
                               {currentDate}
                             </Text>
                           </View>
@@ -1256,9 +1293,10 @@ const Design = props => {
                             styles.invoiceHeaderText,
                             {
                               // marginBottom: sizeHelper.calHp(5),
-                              alignSelf: 'flex-start',
+                              alignSelf: "flex-start",
                             },
-                          ]}>
+                          ]}
+                        >
                           {props.terminalSetup?.StartFrom}
                         </Text>
 
@@ -1266,12 +1304,13 @@ const Design = props => {
                           style={[
                             styles.invoiceHeaderText,
                             {
-                              alignSelf: 'center',
+                              alignSelf: "center",
                               fontSize: sizeHelper.calHp(35),
                             },
-                          ]}>
+                          ]}
+                        >
                           {props.StringsList._180}
-                          {' : '}
+                          {" : "}
                           {props.TerminalConfiguration?.ValueAddedTaxNumber}
                         </Text>
 
@@ -1281,18 +1320,19 @@ const Design = props => {
                               ? props.returnInvoiceNumber
                               : props.invoiceNumber
                           }
-                          format={'CODE128'}
+                          format={"CODE128"}
                           height={70}
                         />
 
                         <Text
                           style={{
                             marginTop: -5,
-                            color: 'black',
+                            color: "black",
                             letterSpacing: 18,
                             fontSize: sizeHelper.calHp(20),
-                            alignSelf: 'center',
-                          }}>
+                            alignSelf: "center",
+                          }}
+                        >
                           {props.returnInvoiceNumber
                             ? props.returnInvoiceNumber
                             : props.invoiceNumber}
@@ -1305,9 +1345,10 @@ const Design = props => {
                               {
                                 letterSpacing: 2,
                                 fontSize: sizeHelper.calHp(35),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.billDates}
                           </Text>
                         )}
@@ -1318,9 +1359,10 @@ const Design = props => {
                               marginBottom: 10,
                               letterSpacing: 8,
                               fontSize: sizeHelper.calHp(40),
-                              alignSelf: 'center',
+                              alignSelf: "center",
                             },
-                          ]}>
+                          ]}
+                        >
                           {props.returnInvoiceNumber
                             ? props.returnInvoiceNumber
                             : props.invoiceNumber}
@@ -1333,45 +1375,49 @@ const Design = props => {
                                 marginBottom: 10,
                                 letterSpacing: 8,
                                 fontSize: sizeHelper.calHp(40),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.invoiceNumber}
                           </Text>
                         )}
                         {props.billingStyleId === 2 && (
                           <View style={styles.invoiceHeader}>
-                            <View style={{width: '40%'}}>
+                            <View style={{ width: "40%" }}>
                               <Text style={styles.invoiceHeaderText}>
                                 {props.StringsList._76}
                               </Text>
                             </View>
-                            <View style={{width: '20%'}}>
+                            <View style={{ width: "20%" }}>
                               <Text
                                 style={[
                                   styles.invoiceHeaderText,
-                                  {alignSelf: 'flex-start'},
-                                ]}>
+                                  { alignSelf: "flex-start" },
+                                ]}
+                              >
                                 {props.StringsList._98}
                               </Text>
                             </View>
-                            <View style={{width: '15%'}}>
+                            <View style={{ width: "15%" }}>
                               <Text
                                 style={[
                                   styles.invoiceHeaderText,
-                                  {alignSelf: 'center'},
-                                ]}>
+                                  { alignSelf: "center" },
+                                ]}
+                              >
                                 {I18nManager.isRTL
                                   ? props.StringsList._177
-                                  : 'QTY'}
+                                  : "QTY"}
                               </Text>
                             </View>
-                            <View style={{width: '25%'}}>
+                            <View style={{ width: "25%" }}>
                               <Text
                                 style={[
                                   styles.invoiceHeaderText,
-                                  {alignSelf: 'flex-end'},
-                                ]}>
+                                  { alignSelf: "flex-end" },
+                                ]}
+                              >
                                 {props.StringsList._366}
                               </Text>
                             </View>
@@ -1380,22 +1426,23 @@ const Design = props => {
                         <View
                           style={[
                             styles.divider,
-                            {marginBottom: sizeHelper.calHp(5)},
+                            { marginBottom: sizeHelper.calHp(5) },
                           ]}
                         />
                         {props.selectedProducts.map((item, index) => {
                           return props.billingStyleId === 2 ? (
                             <View
                               // id={index + item}
-                              style={styles.invoiceListContainer}>
-                              <View style={{width: '40%'}}>
+                              style={styles.invoiceListContainer}
+                            >
+                              <View style={{ width: "40%" }}>
                                 <Text style={[styles.titleValueStyle]}>
                                   {I18nManager.isRTL
                                     ? item.ProductName2
                                     : item.ProductName}
                                 </Text>
                                 {props?.terminalSetup?.printGroupProducts ===
-                                  'true' &&
+                                  "true" &&
                                   item.innerProductsArray?.length > 0 &&
                                   item?.ProductType === 3 &&
                                   item.innerProductsArray.map(
@@ -1408,29 +1455,31 @@ const Design = props => {
                                                 ? sizeHelper.calHp(28)
                                                 : sizeHelper.calHp(22),
                                               color: AppColor.black,
-                                              fontFamily: 'ProximaNova-Regular',
-                                              textAlign: 'left',
+                                              fontFamily: "ProximaNova-Regular",
+                                              textAlign: "left",
                                               marginVertical: 2,
-                                            }}>
+                                            }}
+                                          >
                                             {I18nManager.isRTL
                                               ? product.ProductName2
                                               : product.ProductName}
                                             {product?.UOMFragment !== 0 &&
                                               (I18nManager.isRTL
-                                                ? ' - ' + product.UOMName2
-                                                : ' - ' + product.UOMName)}
+                                                ? " - " + product.UOMName2
+                                                : " - " + product.UOMName)}
                                           </Text>
                                         </View>
                                       );
-                                    },
+                                    }
                                   )}
-                                {item?.Description !== '' && (
+                                {item?.Description !== "" && (
                                   <View
                                     style={{
-                                      justifyContent: 'center',
-                                      alignItems: 'center',
+                                      justifyContent: "center",
+                                      alignItems: "center",
                                       marginBottom: 35,
-                                    }}>
+                                    }}
+                                  >
                                     <View>
                                       <Text
                                         style={{
@@ -1439,55 +1488,60 @@ const Design = props => {
                                             : sizeHelper.calHp(25),
 
                                           color: AppColor.black,
-                                          fontFamily: 'ProximaNova-Regular',
-                                          textAlign: 'left',
-                                        }}>
+                                          fontFamily: "ProximaNova-Regular",
+                                          textAlign: "left",
+                                        }}
+                                      >
                                         {item?.Description}
                                       </Text>
                                     </View>
                                   </View>
                                 )}
-                                {item.IngredientNames !== '' && (
+                                {item.IngredientNames !== "" && (
                                   <Text
                                     style={[
                                       styles.titleValueStyle,
-                                      {fontSize: sizeHelper.calHp(25)},
-                                    ]}>
+                                      { fontSize: sizeHelper.calHp(25) },
+                                    ]}
+                                  >
                                     {item.IngredientNames}
                                   </Text>
                                 )}
                               </View>
-                              <View style={{width: '20%'}}>
+                              <View style={{ width: "20%" }}>
                                 <Text
                                   style={[
                                     styles.titleValueStyle,
-                                    {alignSelf: 'flex-start'},
-                                  ]}>
+                                    { alignSelf: "flex-start" },
+                                  ]}
+                                >
                                   {item.PriceWithOutTax}
                                 </Text>
                               </View>
-                              <View style={{width: '15%'}}>
+                              <View style={{ width: "15%" }}>
                                 <Text
                                   style={[
                                     styles.titleValueStyle,
-                                    {alignSelf: 'center'},
-                                  ]}>
+                                    { alignSelf: "center" },
+                                  ]}
+                                >
                                   {item.IsParentAddOn
                                     ? item.Quantity
                                     : item.Quantity * item.OrignalQuantity}
                                 </Text>
                               </View>
-                              <View style={{width: '25%'}}>
+                              <View style={{ width: "25%" }}>
                                 <Text
                                   style={[
                                     styles.titleValueStyle,
-                                    {alignSelf: 'flex-end'},
-                                  ]}>
+                                    { alignSelf: "flex-end" },
+                                  ]}
+                                >
                                   {item.FreeProduct
-                                    ? '0.00'
+                                    ? "0.00"
                                     : item.PriceOriginal.toFixed(
                                         props.TerminalConfiguration
-                                          .DecimalsInAmount,
+                                          .DecimalsInAmount
                                       ) * item.Quantity}
                                 </Text>
                               </View>
@@ -1495,30 +1549,32 @@ const Design = props => {
                           ) : (
                             <View
                               // id={index + item}
-                              style={styles.invoiceListContainer}>
-                              <View style={{width: '65%'}}>
+                              style={styles.invoiceListContainer}
+                            >
+                              <View style={{ width: "65%" }}>
                                 <Text style={[styles.titleValueStyle]}>
                                   {I18nManager.isRTL
                                     ? item.ProductName2
                                     : item.ProductName}
                                   {item?.UOMFragment !== 0 &&
                                     (I18nManager.isRTL
-                                      ? ' - ' + item.UOMName2
-                                      : ' - ' + item.UOMName)}
+                                      ? " - " + item.UOMName2
+                                      : " - " + item.UOMName)}
                                 </Text>
                                 <Text style={styles.titleValueStyle}>
-                                  {'@ ' + item.PriceWithOutTax + ' X '}
+                                  {"@ " + item.PriceWithOutTax + " X "}
                                   {item.IsParentAddOn
                                     ? item.Quantity
                                     : item.Quantity * item.OrignalQuantity}
                                 </Text>
-                                {item?.Description !== '' && (
+                                {item?.Description !== "" && (
                                   <View
                                     style={{
-                                      justifyContent: 'center',
-                                      alignItems: 'center',
+                                      justifyContent: "center",
+                                      alignItems: "center",
                                       marginBottom: 35,
-                                    }}>
+                                    }}
+                                  >
                                     <View>
                                       <Text
                                         style={{
@@ -1527,16 +1583,17 @@ const Design = props => {
                                             : sizeHelper.calHp(25),
 
                                           color: AppColor.black,
-                                          fontFamily: 'ProximaNova-Regular',
-                                          textAlign: 'left',
-                                        }}>
+                                          fontFamily: "ProximaNova-Regular",
+                                          textAlign: "left",
+                                        }}
+                                      >
                                         {item?.Description}
                                       </Text>
                                     </View>
                                   </View>
                                 )}
                                 {props?.terminalSetup?.printGroupProducts ===
-                                  'true' &&
+                                  "true" &&
                                   item.innerProductsArray?.length > 0 &&
                                   item?.ProductType === 3 &&
                                   item.innerProductsArray.map(
@@ -1547,8 +1604,8 @@ const Design = props => {
                                       let uom =
                                         product?.UOMFragment !== 0 &&
                                         I18nManager.isRTL
-                                          ? ' - ' + product.UOMName2
-                                          : ' - ' + product.UOMName;
+                                          ? " - " + product.UOMName2
+                                          : " - " + product.UOMName;
 
                                       let pQuantity = product.Quantity;
 
@@ -1560,38 +1617,41 @@ const Design = props => {
                                                 ? sizeHelper.calHp(28)
                                                 : sizeHelper.calHp(25),
                                               color: AppColor.black,
-                                              fontFamily: 'ProximaNova-Regular',
-                                              textAlign: 'left',
+                                              fontFamily: "ProximaNova-Regular",
+                                              textAlign: "left",
                                               marginVertical: 2,
-                                            }}>
-                                            {pName + uom + ' * ' + pQuantity}
+                                            }}
+                                          >
+                                            {pName + uom + " * " + pQuantity}
                                           </Text>
                                         </View>
                                       );
-                                    },
+                                    }
                                   )}
-                                {item.IngredientNames !== '' && (
+                                {item.IngredientNames !== "" && (
                                   <Text
                                     style={[
                                       styles.titleValueStyle,
-                                      {fontSize: sizeHelper.calHp(25)},
-                                    ]}>
+                                      { fontSize: sizeHelper.calHp(25) },
+                                    ]}
+                                  >
                                     {item.IngredientNames}
                                   </Text>
                                 )}
                               </View>
 
-                              <View style={{width: '35%'}}>
+                              <View style={{ width: "35%" }}>
                                 <Text
                                   style={[
                                     styles.titleValueStyle,
-                                    {alignSelf: 'flex-end'},
-                                  ]}>
+                                    { alignSelf: "flex-end" },
+                                  ]}
+                                >
                                   {item.FreeProduct
-                                    ? '0.00'
+                                    ? "0.00"
                                     : item.PriceOriginal.toFixed(
                                         props.TerminalConfiguration
-                                          .DecimalsInAmount,
+                                          .DecimalsInAmount
                                       ) * item.Quantity}
                                 </Text>
                               </View>
@@ -1599,13 +1659,14 @@ const Design = props => {
                           );
                         })}
                         <View style={styles.divider} />
-                        {props?.customerNotes !== '' && (
+                        {props?.customerNotes !== "" && (
                           <View
                             style={{
-                              justifyContent: 'center',
-                              alignItems: 'center',
+                              justifyContent: "center",
+                              alignItems: "center",
                               marginBottom: 35,
-                            }}>
+                            }}
+                          >
                             <Text
                               style={[
                                 styles.titleValueStyle,
@@ -1614,10 +1675,11 @@ const Design = props => {
                                     ? sizeHelper.calHp(28)
                                     : sizeHelper.calHp(25),
                                 },
-                              ]}>
+                              ]}
+                            >
                               {I18nManager?.isRTL
-                                ? 'ملاحظات الزبون'
-                                : 'Customer Notes'}
+                                ? "ملاحظات الزبون"
+                                : "Customer Notes"}
                             </Text>
 
                             <View>
@@ -1628,9 +1690,10 @@ const Design = props => {
                                     : sizeHelper.calHp(25),
 
                                   color: AppColor.black,
-                                  fontFamily: 'ProximaNova-Regular',
-                                  textAlign: 'left',
-                                }}>
+                                  fontFamily: "ProximaNova-Regular",
+                                  textAlign: "left",
+                                }}
+                              >
                                 {props.customerNotes}
                               </Text>
                             </View>
@@ -1642,16 +1705,18 @@ const Design = props => {
                           return (
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text
                                 style={
                                   item.taxName
                                     ? styles.invoiceHeaderText
                                     : styles.titleValueStyle
-                                }>
+                                }
+                              >
                                 {item.taxName}
                               </Text>
                               <Text
@@ -1659,7 +1724,8 @@ const Design = props => {
                                   item.tax
                                     ? styles.invoiceHeaderText
                                     : styles.titleValueStyle
-                                }>
+                                }
+                              >
                                 {item.tax}
                               </Text>
                             </View>
@@ -1669,24 +1735,27 @@ const Design = props => {
                           return (
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text
                                 style={
-                                  item.id === 'Total'
+                                  item.id === "Total"
                                     ? styles.invoiceHeaderText
                                     : styles.titleValueStyle
-                                }>
+                                }
+                              >
                                 {item.title}
                               </Text>
                               <Text
                                 style={
-                                  item.id === 'Total'
+                                  item.id === "Total"
                                     ? styles.invoiceHeaderText
                                     : styles.titleValueStyle
-                                }>
+                                }
+                              >
                                 {item.value}
                               </Text>
                             </View>
@@ -1696,10 +1765,11 @@ const Design = props => {
                           <View>
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text style={styles.titleValueStyle}>
                                 {props.StringsList._166}
                               </Text>
@@ -1707,22 +1777,23 @@ const Design = props => {
                                 {(
                                   props.totalPrice - props.advancePaidInCash
                                 ).toFixed(
-                                  props.TerminalConfiguration?.DecimalsInAmount,
+                                  props.TerminalConfiguration?.DecimalsInAmount
                                 )}
                               </Text>
                             </View>
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text style={styles.titleValueStyle}>
                                 {props.StringsList._167}
                               </Text>
                               <Text style={styles.titleValueStyle}>
                                 {props.advancePaidInCash.toFixed(
-                                  props.TerminalConfiguration?.DecimalsInAmount,
+                                  props.TerminalConfiguration?.DecimalsInAmount
                                 )}
                               </Text>
                             </View>
@@ -1744,15 +1815,17 @@ const Design = props => {
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.StringsList._171}
                             </Text>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.selectedAgent?.SalesAgentName
                                 ? props.selectedAgent?.SalesAgentName
                                 : props.TerminalConfiguration?.SalesAgentName}
@@ -1762,15 +1835,17 @@ const Design = props => {
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.StringsList._172}
                             </Text>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.TerminalConfiguration?.TerminalCode}
                             </Text>
                           </View>
@@ -1779,7 +1854,7 @@ const Design = props => {
                           <View>
                             <View style={styles.divider} />
                             <Text style={styles.invoiceHeaderText}>
-                              {props.StringsList._77 + ':-'}
+                              {props.StringsList._77 + ":-"}
                             </Text>
                             <View style={styles.invoiceHeader}>
                               {!!props.buyerInfo?.BuyerName && (
@@ -1818,9 +1893,10 @@ const Design = props => {
                               {!!props.buyerInfo?.ValueAddedTaxNumber && (
                                 <View
                                   style={{
-                                    width: '41%',
-                                    alignItems: 'flex-start',
-                                  }}>
+                                    width: "41%",
+                                    alignItems: "flex-start",
+                                  }}
+                                >
                                   <Text style={styles.invoiceHeaderText}>
                                     {props.StringsList._140}
                                   </Text>
@@ -1832,9 +1908,10 @@ const Design = props => {
                               {!!props.buyerInfo?.CCRNumber && (
                                 <View
                                   style={{
-                                    width: '50%',
-                                    alignItems: 'flex-start',
-                                  }}>
+                                    width: "50%",
+                                    alignItems: "flex-start",
+                                  }}
+                                >
                                   <Text style={[styles.invoiceHeaderText]}>
                                     {props.StringsList._139}
                                   </Text>
@@ -1862,8 +1939,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer1}
                           </Text>
                         )}
@@ -1871,8 +1952,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer2}
                           </Text>
                         )}
@@ -1880,8 +1965,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer3}
                           </Text>
                         )}
@@ -1889,8 +1978,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer4}
                           </Text>
                         )}
@@ -1898,8 +1991,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer5}
                           </Text>
                         )}
@@ -1907,8 +2004,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer6}
                           </Text>
                         )}
@@ -1916,13 +2017,17 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer7}
                           </Text>
                         )}
                         {props.TerminalConfiguration?.IsGodownInfo ===
-                        'true' ? (
+                        "true" ? (
                           <Text style={styles.invoiceHeaderText}>
                             {props.TerminalConfiguration.GoDownAddress}
                           </Text>
@@ -1934,10 +2039,11 @@ const Design = props => {
                       </View>
                       <View
                         style={{
-                          alignSelf: 'center',
+                          alignSelf: "center",
                           marginVertical: sizeHelper.calHp(30),
                           marginBottom: sizeHelper.calHp(50),
-                        }}>
+                        }}
+                      >
                         {<props.QR />}
                       </View>
                     </ViewShot>
@@ -1947,9 +2053,9 @@ const Design = props => {
               <View style={styles.invoiceButtonContainer}>
                 <CustomButton
                   containerStyle={styles.invoiceButtonStyle}
-                  title={I18nManager.isRTL ? 'لقطة شاشة' : 'Screenshot'}
+                  title={I18nManager.isRTL ? "لقطة شاشة" : "Screenshot"}
                   backgroundColor={AppColor.blue2}
-                  onPressButton={() => props.onSaveInvoice('save')}
+                  onPressButton={() => props.onSaveInvoice("save")}
                 />
                 <CustomButton
                   containerStyle={[
@@ -1981,17 +2087,18 @@ const Design = props => {
         {props.clientCustomInvoice && (
           <View style={styles.popupContainer}>
             <View style={styles.invoiceContainer}>
-              <SafeAreaView style={{flex: 1}}>
+              <SafeAreaView style={{ flex: 1 }}>
                 <ScrollView
-                  overScrollMode={'never'}
-                  contentContainerStyle={{flexGrow: 1, zIndex: 9999999}}
+                  overScrollMode={"never"}
+                  contentContainerStyle={{ flexGrow: 1, zIndex: 9999999 }}
                   style={{
                     flexGrow: 1,
 
                     paddingVertical: 2,
                   }}
-                  showsVerticalScrollIndicator={false}>
-                  <View style={{flex: 1}}>
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={{ flex: 1 }}>
                     <ViewShot
                       style={styles.viewShotStyle}
                       ref={props.qrRef2}
@@ -1999,25 +2106,26 @@ const Design = props => {
                       // ref={props.viewShotRef}
                       // onCapture={props.onCapture}
 
-                      captureMode="mount">
+                      captureMode="mount"
+                    >
                       <View>
-                        {props.TerminalConfiguration?.IsGodownInfo === 'true'
+                        {props.TerminalConfiguration?.IsGodownInfo === "true"
                           ? !!props?.TerminalConfiguration?.GoDownLogo && (
                               <Image
                                 source={{
                                   uri:
                                     props?.TerminalConfiguration
                                       ?.GoDownLogoType +
-                                    ',' +
+                                    "," +
                                     props?.TerminalConfiguration?.GoDownLogo,
                                 }}
                                 style={{
                                   // backgroundColor: "green",
                                   height: sizeHelper.calHp(150),
                                   width: sizeHelper.calWp(155),
-                                  resizeMode: 'contain',
-                                  alignSelf: 'center',
-                                  alignItems: 'center',
+                                  resizeMode: "contain",
+                                  alignSelf: "center",
+                                  alignItems: "center",
                                 }}
                               />
                             )
@@ -2027,16 +2135,16 @@ const Design = props => {
                                   uri:
                                     props?.TerminalConfiguration
                                       ?.CompanyLogoType +
-                                    ',' +
+                                    "," +
                                     props?.TerminalConfiguration?.CompanyLogo,
                                 }}
                                 style={{
                                   //   backgroundColor: "green",
                                   height: sizeHelper.calHp(150),
                                   width: sizeHelper.calWp(155),
-                                  resizeMode: 'contain',
-                                  alignSelf: 'center',
-                                  alignItems: 'center',
+                                  resizeMode: "contain",
+                                  alignSelf: "center",
+                                  alignItems: "center",
                                 }}
                               />
                             )}
@@ -2059,12 +2167,13 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(35),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {I18nManager.isRTL
-                              ? 'استرداد المبيعات'
-                              : 'Sales Refund'}
+                              ? "استرداد المبيعات"
+                              : "Sales Refund"}
                           </Text>
                         ) : (
                           <Text
@@ -2073,9 +2182,10 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(35),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.billingType.name}
                           </Text>
                         )}
@@ -2087,9 +2197,10 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading1}
                           </Text>
                         )}
@@ -2100,9 +2211,10 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading2}
                           </Text>
                         )}
@@ -2113,9 +2225,10 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading3}
                           </Text>
                         )}
@@ -2126,13 +2239,14 @@ const Design = props => {
                               {
                                 marginBottom: 3,
                                 fontSize: sizeHelper.calHp(25),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.TerminalConfiguration.Heading4}
                           </Text>
                         )}
-                        {props.TerminalConfiguration?.IsGodownInfo === 'true'
+                        {props.TerminalConfiguration?.IsGodownInfo === "true"
                           ? !!props.TerminalConfiguration?.GoDownName && (
                               <Text
                                 style={[
@@ -2140,9 +2254,10 @@ const Design = props => {
                                   {
                                     marginBottom: 10,
                                     fontSize: sizeHelper.calHp(35),
-                                    alignSelf: 'center',
+                                    alignSelf: "center",
                                   },
-                                ]}>
+                                ]}
+                              >
                                 {props.TerminalConfiguration.GoDownName}
                               </Text>
                             )
@@ -2153,9 +2268,10 @@ const Design = props => {
                                   {
                                     marginBottom: 10,
                                     fontSize: sizeHelper.calHp(35),
-                                    alignSelf: 'center',
+                                    alignSelf: "center",
                                   },
-                                ]}>
+                                ]}
+                              >
                                 {props.TerminalConfiguration.CompanyName}
                               </Text>
                             )}
@@ -2166,9 +2282,10 @@ const Design = props => {
                             {
                               letterSpacing: 2,
                               fontSize: sizeHelper.calHp(35),
-                              alignSelf: 'center',
+                              alignSelf: "center",
                             },
-                          ]}>
+                          ]}
+                        >
                           {currentDate}
                         </Text>
 
@@ -2178,9 +2295,10 @@ const Design = props => {
                             styles.invoiceHeaderText,
                             {
                               marginBottom: sizeHelper.calHp(5),
-                              alignSelf: 'flex-start',
+                              alignSelf: "flex-start",
                             },
-                          ]}>
+                          ]}
+                        >
                           {props.terminalSetup?.StartFrom}
                         </Text>
 
@@ -2188,12 +2306,13 @@ const Design = props => {
                           style={[
                             styles.invoiceHeaderText,
                             {
-                              alignSelf: 'center',
+                              alignSelf: "center",
                               fontSize: sizeHelper.calHp(35),
                             },
-                          ]}>
+                          ]}
+                        >
                           {props.StringsList._180}
-                          {' : '}
+                          {" : "}
                           {props.TerminalConfiguration?.ValueAddedTaxNumber}
                         </Text>
 
@@ -2203,7 +2322,7 @@ const Design = props => {
                               ? props.returnInvoiceNumber
                               : props.invoiceNumber
                           }
-                          format={'CODE128'}
+                          format={"CODE128"}
                           height={70}
                         />
 
@@ -2214,9 +2333,10 @@ const Design = props => {
                               {
                                 letterSpacing: 2,
                                 fontSize: sizeHelper.calHp(35),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.billDates}
                           </Text>
                         )}
@@ -2227,9 +2347,10 @@ const Design = props => {
                               marginBottom: 20,
                               letterSpacing: 8,
                               fontSize: sizeHelper.calHp(40),
-                              alignSelf: 'center',
+                              alignSelf: "center",
                             },
-                          ]}>
+                          ]}
+                        >
                           {props.returnInvoiceNumber
                             ? props.returnInvoiceNumber
                             : props.invoiceNumber}
@@ -2242,45 +2363,49 @@ const Design = props => {
                                 marginBottom: 20,
                                 letterSpacing: 8,
                                 fontSize: sizeHelper.calHp(40),
-                                alignSelf: 'center',
+                                alignSelf: "center",
                               },
-                            ]}>
+                            ]}
+                          >
                             {props.invoiceNumber}
                           </Text>
                         )}
                         {/* {props.billingStyleId === 2 && ( */}
                         <View style={styles.invoiceHeader}>
-                          <View style={{width: '40%'}}>
+                          <View style={{ width: "40%" }}>
                             <Text style={styles.invoiceHeaderText}>
                               {props.StringsList._76}
                             </Text>
                           </View>
-                          <View style={{width: '20%'}}>
+                          <View style={{ width: "20%" }}>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'flex-start'},
-                              ]}>
+                                { alignSelf: "flex-start" },
+                              ]}
+                            >
                               {props.StringsList._98}
                             </Text>
                           </View>
-                          <View style={{width: '15%'}}>
+                          <View style={{ width: "15%" }}>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {I18nManager.isRTL
                                 ? props.StringsList._177
-                                : 'QTY'}
+                                : "QTY"}
                             </Text>
                           </View>
-                          <View style={{width: '25%'}}>
+                          <View style={{ width: "25%" }}>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'flex-end'},
-                              ]}>
+                                { alignSelf: "flex-end" },
+                              ]}
+                            >
                               {props.StringsList._366}
                             </Text>
                           </View>
@@ -2289,7 +2414,7 @@ const Design = props => {
                         <View
                           style={[
                             styles.divider,
-                            {marginBottom: sizeHelper.calHp(15)},
+                            { marginBottom: sizeHelper.calHp(15) },
                           ]}
                         />
                         {props.selectedProducts.map((item, index) => {
@@ -2297,66 +2422,72 @@ const Design = props => {
                             <View>
                               <View
                                 id={index + item}
-                                style={styles.invoiceListContainer}>
+                                style={styles.invoiceListContainer}
+                              >
                                 <View
                                   style={{
-                                    width: '40%',
+                                    width: "40%",
                                     // backgroundColor: 'green',
-                                  }}>
+                                  }}
+                                >
                                   <Text style={[styles.titleValueStyle]}>
                                     {I18nManager.isRTL
                                       ? item.ProductBarCode
                                       : item.ProductBarCode}
                                   </Text>
-                                  {item.IngredientNames !== '' && (
+                                  {item.IngredientNames !== "" && (
                                     <Text
                                       style={[
                                         styles.titleValueStyle,
-                                        {fontSize: sizeHelper.calHp(25)},
-                                      ]}>
+                                        { fontSize: sizeHelper.calHp(25) },
+                                      ]}
+                                    >
                                       {item.IngredientNames}
                                     </Text>
                                   )}
                                 </View>
-                                <View style={{width: '20%'}}>
+                                <View style={{ width: "20%" }}>
                                   <Text
                                     style={[
                                       styles.titleValueStyle,
-                                      {alignSelf: 'flex-start'},
-                                    ]}>
+                                      { alignSelf: "flex-start" },
+                                    ]}
+                                  >
                                     {item.PriceWithOutTax}
                                   </Text>
                                 </View>
-                                <View style={{width: '15%'}}>
+                                <View style={{ width: "15%" }}>
                                   <Text
                                     style={[
                                       styles.titleValueStyle,
-                                      {alignSelf: 'center'},
-                                    ]}>
+                                      { alignSelf: "center" },
+                                    ]}
+                                  >
                                     {item.IsParentAddOn
                                       ? item.Quantity
                                       : item.Quantity * item.OrignalQuantity}
                                   </Text>
                                 </View>
-                                <View style={{width: '25%'}}>
+                                <View style={{ width: "25%" }}>
                                   <Text
                                     style={[
                                       styles.titleValueStyle,
-                                      {alignSelf: 'flex-end'},
-                                    ]}>
+                                      { alignSelf: "flex-end" },
+                                    ]}
+                                  >
                                     {item.FreeProduct
-                                      ? '0.00'
+                                      ? "0.00"
                                       : Number(
                                           Number(item.PriceOriginal) *
-                                            Number(item.Quantity),
+                                            Number(item.Quantity)
                                         ).toFixed(
                                           props.TerminalConfiguration
-                                            .DecimalsInAmount,
+                                            .DecimalsInAmount
                                         )}
                                   </Text>
                                 </View>
                               </View>
-                              <View style={{flexDirection: 'row'}}>
+                              <View style={{ flexDirection: "row" }}>
                                 <Text
                                   style={[
                                     styles.titleValueStyle,
@@ -2364,7 +2495,8 @@ const Design = props => {
                                       marginRight: 5,
                                       fontSize: sizeHelper.calHp(25),
                                     },
-                                  ]}>
+                                  ]}
+                                >
                                   {I18nManager.isRTL
                                     ? item.UOMName
                                     : item.UOMName}
@@ -2372,8 +2504,9 @@ const Design = props => {
                                 <Text
                                   style={[
                                     styles.titleValueStyle,
-                                    {fontSize: sizeHelper.calHp(25)},
-                                  ]}>
+                                    { fontSize: sizeHelper.calHp(25) },
+                                  ]}
+                                >
                                   {I18nManager.isRTL
                                     ? item.ProductName2
                                     : item.ProductName}
@@ -2389,24 +2522,27 @@ const Design = props => {
                           return (
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text
                                 style={
-                                  item.id === 'Total'
+                                  item.id === "Total"
                                     ? styles.invoiceHeaderText
                                     : styles.titleValueStyle
-                                }>
+                                }
+                              >
                                 {item.title}
                               </Text>
                               <Text
                                 style={
-                                  item.id === 'Total'
+                                  item.id === "Total"
                                     ? styles.invoiceHeaderText
                                     : styles.titleValueStyle
-                                }>
+                                }
+                              >
                                 {item.value}
                               </Text>
                             </View>
@@ -2417,10 +2553,11 @@ const Design = props => {
                           <View>
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text style={styles.titleValueStyle}>
                                 {props.StringsList._166}
                               </Text>
@@ -2428,41 +2565,42 @@ const Design = props => {
                                 {(
                                   props.totalPrice - props.advancePaidInCash
                                 ).toFixed(
-                                  props.TerminalConfiguration?.DecimalsInAmount,
+                                  props.TerminalConfiguration?.DecimalsInAmount
                                 )}
                               </Text>
                             </View>
                             <View
                               style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                              }}>
+                                width: "100%",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
                               <Text style={styles.titleValueStyle}>
                                 {props.StringsList._167}
                               </Text>
                               <Text style={styles.titleValueStyle}>
                                 {props.advancePaidInCash.toFixed(
-                                  props.TerminalConfiguration?.DecimalsInAmount,
+                                  props.TerminalConfiguration?.DecimalsInAmount
                                 )}
                               </Text>
                             </View>
                             <View style={styles.divider} />
-                            {props.alertType === 'reprint' ||
-                            props.alertType === 'returnInvoice' ? null : (
+                            {props.alertType === "reprint" ||
+                            props.alertType === "returnInvoice" ? null : (
                               <View
                                 style={{
-                                  width: '100%',
-                                  flexDirection: 'row',
-                                  justifyContent: 'space-between',
-                                }}>
+                                  width: "100%",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                }}
+                              >
                                 <Text style={styles.titleValueStyle}>
                                   {props.StringsList._446}
                                 </Text>
                                 <Text style={styles.titleValueStyle}>
                                   {Number(props.cashAmount).toFixed(
-                                    props.TerminalConfiguration
-                                      .DecimalsInAmount,
+                                    props.TerminalConfiguration.DecimalsInAmount
                                   )}
                                 </Text>
                               </View>
@@ -2480,14 +2618,15 @@ const Design = props => {
                               )}s
                             </Text>
                           </View> */}
-                            {props.alertType === 'reprint' ||
-                            props.alertType === 'returnInvoice' ? null : (
+                            {props.alertType === "reprint" ||
+                            props.alertType === "returnInvoice" ? null : (
                               <View
                                 style={{
-                                  width: '100%',
-                                  flexDirection: 'row',
-                                  justifyContent: 'space-between',
-                                }}>
+                                  width: "100%",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                }}
+                              >
                                 <Text style={styles.titleValueStyle}>
                                   {props.StringsList._448}
                                 </Text>
@@ -2496,16 +2635,15 @@ const Design = props => {
                                     Number(props.cashAmount) -
                                     Number(props.advancePaidInCash)
                                   ).toFixed(
-                                    props.TerminalConfiguration
-                                      .DecimalsInAmount,
+                                    props.TerminalConfiguration.DecimalsInAmount
                                   )}
                                 </Text>
                               </View>
                             )}
                             {/* </View> */}
                           </View>
-                        ) : props.alertType === 'reprint' ||
-                          props.alertType === 'returnInvoice' ? null : (
+                        ) : props.alertType === "reprint" ||
+                          props.alertType === "returnInvoice" ? null : (
                           <>
                             <View style={styles.divider} />
                             {/* {!!props.advancePaidInCash && ( */}
@@ -2513,47 +2651,48 @@ const Design = props => {
                               {/* Total Paid Amount View */}
                               <View
                                 style={{
-                                  width: '100%',
-                                  flexDirection: 'row',
-                                  justifyContent: 'space-between',
-                                }}>
+                                  width: "100%",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                }}
+                              >
                                 <Text style={styles.titleValueStyle}>
                                   {props.StringsList._446}
                                 </Text>
                                 <Text style={styles.titleValueStyle}>
                                   {Number(props.cashAmount).toFixed(
-                                    props.TerminalConfiguration
-                                      .DecimalsInAmount,
+                                    props.TerminalConfiguration.DecimalsInAmount
                                   )}
                                 </Text>
                               </View>
                               {/* Net Amount View */}
                               <View
                                 style={{
-                                  width: '100%',
-                                  flexDirection: 'row',
-                                  justifyContent: 'space-between',
-                                }}>
+                                  width: "100%",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                }}
+                              >
                                 <Text style={styles.titleValueStyle}>
                                   {props.selectedPyamentMethod?.label ===
-                                  'Credit'
+                                  "Credit"
                                     ? props.StringsList._166
                                     : props.StringsList._447}
                                 </Text>
                                 <Text style={styles.titleValueStyle}>
                                   {props.totalPrice.toFixed(
-                                    props.TerminalConfiguration
-                                      .DecimalsInAmount,
+                                    props.TerminalConfiguration.DecimalsInAmount
                                   )}
                                 </Text>
                               </View>
                               {/* Remaining Amount View */}
                               <View
                                 style={{
-                                  width: '100%',
-                                  flexDirection: 'row',
-                                  justifyContent: 'space-between',
-                                }}>
+                                  width: "100%",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                }}
+                              >
                                 <Text style={styles.titleValueStyle}>
                                   {props.StringsList._448}
                                 </Text>
@@ -2571,7 +2710,7 @@ const Design = props => {
                                   <Text style={styles.titleValueStyle}>
                                     0.00
                                   </Text>
-                                ) : props?.cashAmount === '' &&
+                                ) : props?.cashAmount === "" &&
                                   props.advancePaidInCash == 0 ? (
                                   <Text style={styles.titleValueStyle}>
                                     0.00
@@ -2583,7 +2722,7 @@ const Design = props => {
                                       Number(props.totalPrice)
                                     ).toFixed(
                                       props.TerminalConfiguration
-                                        .DecimalsInAmount,
+                                        .DecimalsInAmount
                                     )}
                                   </Text>
                                 )}
@@ -2598,10 +2737,11 @@ const Design = props => {
                         {props.selectedProducts.length > 0 && (
                           <View
                             style={{
-                              width: '100%',
-                              flexDirection: 'row',
-                              justifyContent: 'space-between',
-                            }}>
+                              width: "100%",
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                            }}
+                          >
                             <View>
                               <Text style={styles.titleValueStyle}>
                                 {props.StringsList._449}
@@ -2631,15 +2771,17 @@ const Design = props => {
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.StringsList._171}
                             </Text>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.selectedAgent?.SalesAgentName
                                 ? props.selectedAgent?.SalesAgentName
                                 : props.TerminalConfiguration?.SalesAgentName}
@@ -2649,15 +2791,17 @@ const Design = props => {
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.StringsList._172}
                             </Text>
                             <Text
                               style={[
                                 styles.invoiceHeaderText,
-                                {alignSelf: 'center'},
-                              ]}>
+                                { alignSelf: "center" },
+                              ]}
+                            >
                               {props.TerminalConfiguration?.TerminalCode}
                             </Text>
                           </View>
@@ -2667,7 +2811,7 @@ const Design = props => {
                           <View>
                             <View style={styles.divider} />
                             <Text style={styles.invoiceHeaderText}>
-                              {props.StringsList._77 + ':-'}
+                              {props.StringsList._77 + ":-"}
                             </Text>
                             <View style={styles.invoiceHeader}>
                               {!!props.buyerInfo?.BuyerName && (
@@ -2704,37 +2848,41 @@ const Design = props => {
 
                             <View style={styles.invoiceHeader}>
                               {!!props.buyerInfo?.ValueAddedTaxNumber && (
-                                <View style={{width: '41%'}}>
+                                <View style={{ width: "41%" }}>
                                   <Text
                                     style={[
                                       styles.invoiceHeaderText,
-                                      {textAlign: 'left'},
-                                    ]}>
+                                      { textAlign: "left" },
+                                    ]}
+                                  >
                                     {props.StringsList._140}
                                   </Text>
                                   <Text
                                     style={[
                                       styles.invoiceHeaderText,
-                                      {textAlign: 'left'},
-                                    ]}>
+                                      { textAlign: "left" },
+                                    ]}
+                                  >
                                     {props.buyerInfo?.ValueAddedTaxNumber}
                                   </Text>
                                 </View>
                               )}
                               {!!props.buyerInfo?.CCRNumber && (
-                                <View style={{width: '40%'}}>
+                                <View style={{ width: "40%" }}>
                                   <Text
                                     style={[
                                       styles.invoiceHeaderText,
-                                      {textAlign: 'right'},
-                                    ]}>
+                                      { textAlign: "right" },
+                                    ]}
+                                  >
                                     {props.StringsList._139}
                                   </Text>
                                   <Text
                                     style={[
                                       styles.invoiceHeaderText,
-                                      {textAlign: 'right'},
-                                    ]}>
+                                      { textAlign: "right" },
+                                    ]}
+                                  >
                                     {props.buyerInfo?.CCRNumber}
                                   </Text>
                                 </View>
@@ -2758,8 +2906,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer1}
                           </Text>
                         )}
@@ -2767,8 +2919,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer2}
                           </Text>
                         )}
@@ -2776,8 +2932,12 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer3}
                           </Text>
                         )}
@@ -2785,13 +2945,17 @@ const Design = props => {
                           <Text
                             style={[
                               styles.invoiceHeaderText,
-                              {marginBottom: 3, fontSize: sizeHelper.calHp(25)},
-                            ]}>
+                              {
+                                marginBottom: 3,
+                                fontSize: sizeHelper.calHp(25),
+                              },
+                            ]}
+                          >
                             {props.TerminalConfiguration.Footer4}
                           </Text>
                         )}
                         {props.TerminalConfiguration?.IsGodownInfo ===
-                        'true' ? (
+                        "true" ? (
                           <Text style={styles.invoiceHeaderText}>
                             {props.TerminalConfiguration.GoDownAddress}
                           </Text>
@@ -2803,10 +2967,11 @@ const Design = props => {
                       </View>
                       <View
                         style={{
-                          alignSelf: 'center',
+                          alignSelf: "center",
                           marginVertical: sizeHelper.calHp(30),
                           marginBottom: sizeHelper.calHp(50),
-                        }}>
+                        }}
+                      >
                         {<props.QR />}
                       </View>
                     </ViewShot>
@@ -2816,9 +2981,9 @@ const Design = props => {
               <View style={styles.invoiceButtonContainer}>
                 <CustomButton
                   containerStyle={styles.invoiceButtonStyle}
-                  title={I18nManager.isRTL ? 'لقطة شاشة' : 'Screenshot'}
+                  title={I18nManager.isRTL ? "لقطة شاشة" : "Screenshot"}
                   backgroundColor={AppColor.blue2}
-                  onPressButton={() => props.onSaveInvoice('save')}
+                  onPressButton={() => props.onSaveInvoice("save")}
                 />
                 <CustomButton
                   containerStyle={[
@@ -2969,16 +3134,18 @@ const Design = props => {
                     // top: -20,
                     zIndex: 1000,
                     // backgroundColor: 'red',
-                  }}>
+                  }}
+                >
                   <View
                     style={{
                       width:
                         sizeHelper.screenWidth > 450
                           ? sizeHelper.calWp(530)
                           : sizeHelper.calHp(500),
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}>
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
                     <TextInput
                       style={styles.textInput}
                       placeholder={props.StringsList._456}
@@ -2993,32 +3160,34 @@ const Design = props => {
                       multiline={true}
                       numberOfLines={2}
                       spellCheck={true}
-                      textAlign={'left'}
-                      textAlignVertical={'top'}
+                      textAlign={"left"}
+                      textAlignVertical={"top"}
                       adjustsFontSizeToFit
                     />
                   </View>
 
                   <View
                     style={{
-                      flexDirection: 'row-reverse',
+                      flexDirection: "row-reverse",
                       width:
                         sizeHelper.screenWidth > 450
                           ? sizeHelper.calWp(510)
                           : sizeHelper.calHp(500),
-                      alignItems: 'center',
+                      alignItems: "center",
                       // height: 40,
                       // paddingVertical: 8,
                       // backgroundColor: AppColor.backColor,
                       left: sizeHelper.screenWidth > 450 ? 5 : -5,
                       top: sizeHelper.screenWidth > 450 ? 0 : -5,
-                    }}>
+                    }}
+                  >
                     <View
                       style={{
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        justifyContent: "center",
+                        alignItems: "center",
                         // marginHorizontal: 8,
-                      }}>
+                      }}
+                    >
                       <CustomButton
                         containerStyle={{
                           height: sizeHelper.calWp(45),
@@ -3034,10 +3203,11 @@ const Design = props => {
                     </View>
                     <View
                       style={{
-                        justifyContent: 'center',
-                        alignItems: 'center',
+                        justifyContent: "center",
+                        alignItems: "center",
                         marginHorizontal: 5,
-                      }}>
+                      }}
+                    >
                       <CustomButton
                         containerStyle={{
                           height: sizeHelper.calWp(45),
@@ -3058,7 +3228,7 @@ const Design = props => {
           />
         </>
         {(props.isLoading || props.AddProductLoader) && (
-          <View style={[styles.popupContainer, {zIndex: 99999}]}>
+          <View style={[styles.popupContainer, { zIndex: 99999 }]}>
             <Loading />
           </View>
         )}
