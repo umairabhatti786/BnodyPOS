@@ -1,5 +1,6 @@
 import React from "react";
-
+import { createStackNavigator } from "@react-navigation/stack";
+// Screens
 import LoginScreen from "../screens/login";
 import SplashScreen from "../screens/splash";
 import DashBoardScreen from "../screens/dashboard";
@@ -10,6 +11,9 @@ import CreditInfoPopUp from "../components/CreditInfoPopUp";
 import PrinterTesting from "../screens/PrinterTesting";
 import BarCodeGenerator from "../components/BarCodeGenerator";
 import PrivacyPolicy from "../components/PrivacyPolicy";
+import BottomTabBar from "../components/BottomTabBar";
+import PendingOrdersScreen from "../screens/orders";
+import TableBookingScreen from "../screens/TableBooking";
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 const Stack = createNativeStackNavigator();
@@ -25,11 +29,15 @@ const MainStack = () => {
         name={"splash"}
         component={SplashScreen}
       />
-
       <Stack.Screen
         options={{ headerShown: false }}
         name={"login"}
         component={LoginScreen}
+      />
+      <Stack.Screen
+        options={{ headerShown: false }}
+        name={"TableBook"}
+        component={TableBookingScreen}
       />
       <Stack.Screen
         options={{ headerShown: false }}
@@ -46,13 +54,11 @@ const MainStack = () => {
         name={"home"}
         component={HomeScreen}
       />
-
       <Stack.Screen
         options={{ headerShown: false }}
         name={"dashboard"}
         component={DashBoardScreen}
       />
-
       <Stack.Screen
         options={{ headerShown: false }}
         name={"drewarPopUp"}
@@ -72,6 +78,16 @@ const MainStack = () => {
         options={{ headerShown: false }}
         name={"PP"}
         component={PrivacyPolicy}
+      />
+      <Stack.Screen
+        options={{ headerShown: false }}
+        name={"BTB"}
+        component={BottomTabBar}
+      />
+      <Stack.Screen
+        options={{ headerShown: false }}
+        name={"PendingOrders"}
+        component={PendingOrdersScreen}
       />
     </Stack.Navigator>
   );

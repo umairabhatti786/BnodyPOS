@@ -5,7 +5,9 @@ import sizeHelper from "../../helpers/sizeHelper";
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
-    backgroundColor: AppColor.blue1,
+    width: "100%",
+    height: "100%",
+    // backgroundColor: AppColor.blue1,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -16,13 +18,13 @@ const styles = StyleSheet.create({
   buttonCircle: {
     width: sizeHelper.calWp(50),
     height: sizeHelper.calWp(50),
-    backgroundColor: AppColor.orange,
+    backgroundColor: AppColor.blue2,
     borderRadius: sizeHelper.calWp(50) / 2,
     justifyContent: "center",
     alignItems: "center",
     // paddingStart: 2,
-    marginEnd: sizeHelper.calWp(50),
-    margin: -5,
+    // marginEnd: sizeHelper.calWp(50),
+    // margin: -5,
   },
 });
 

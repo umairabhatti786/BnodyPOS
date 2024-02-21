@@ -45,7 +45,7 @@ const BillingType = ({
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: 25,
+          // borderRadius: 25,
         }}>
         <View
           style={{
@@ -64,7 +64,7 @@ const BillingType = ({
               color: AppColor.white,
               fontFamily: 'Proxima Nova Bold',
             }}>
-            {type === 'dashboard' ? StringsList._334 : StringsList._174}
+            {type === 'bill' ? StringsList._334 : StringsList._174}
           </Text>
 
           {/* <TouchableOpacity onPress={onPressCancel}>
@@ -106,7 +106,6 @@ const BillingType = ({
                       justifyContent: 'center',
                       alignItems: 'center',
                       marginTop: 5,
-                      // backgroundColor: "yellow"
                     }}
                     onPress={() => {
                       selectBillingType(item);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Modal,
@@ -10,18 +10,18 @@ import {
 
 import Icon from 'react-native-vector-icons/FontAwesome';
 import IconA from 'react-native-vector-icons/AntDesign';
-import { connect } from 'react-redux';
-import { Picker } from '@react-native-picker/picker';
+import {connect} from 'react-redux';
+import {Picker} from '@react-native-picker/picker';
 
-import { reach } from 'yup';
+import {reach} from 'yup';
 import AppColor from '../constant/AppColor';
 import sizeHelper from '../helpers/sizeHelper';
-import { CheckBoxCustom } from './CheckBoxCustom';
+import {CheckBoxCustom} from './CheckBoxCustom';
 import CustomButton from './CustomButton';
 import CustomDropDown from './CustomDropDown';
-import { CustomMenu } from './CustomMenu';
-import { getData } from '../sqliteHelper';
-import { HoldInvoiceTable } from '../sqliteTables/HoldInvoice';
+import {CustomMenu} from './CustomMenu';
+import {getData} from '../sqliteHelper';
+import {HoldInvoiceTable} from '../sqliteTables/HoldInvoice';
 import Loading from './Loading';
 import AddonsEquivelentProductList from './AddonsEquivelentProductList';
 
@@ -33,12 +33,12 @@ const AddonsList = ({
   StringsList,
   isLoading,
   isAddon,
-  selectedAllProducts
+  selectedAllProducts,
 }) => {
-  // +console.log('ReturnInvoice......', data);
-  const [isAddonEquivelent, setisAddonEquivelent] = useState(false)
-  const [equivaletntP, setEquivaletntP] = useState([])
-  const [addonIndex, setAddonIndex] = useState(0)
+  // +console.log('Addon product......', data);
+  const [isAddonEquivelent, setisAddonEquivelent] = useState(false);
+  const [equivaletntP, setEquivaletntP] = useState([]);
+  const [addonIndex, setAddonIndex] = useState(0);
   // var equivaletntP = []
   return (
     <Modal
@@ -51,7 +51,7 @@ const AddonsList = ({
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: 25,
+          // borderRadius: 25,
         }}>
         <View
           style={{
@@ -70,7 +70,7 @@ const AddonsList = ({
               color: AppColor.white,
               fontFamily: 'Proxima Nova Bold',
             }}>
-            {"Addons"}
+            {'Addons'}
           </Text>
 
           <TouchableOpacity onPress={onPressCancel}>
@@ -92,7 +92,6 @@ const AddonsList = ({
             borderBottomRightRadius: sizeHelper.calHp(10),
             paddingHorizontal: sizeHelper.calWp(20),
           }}>
-
           <View
             style={{
               flexDirection: 'row',
@@ -117,6 +116,7 @@ const AddonsList = ({
                 fontSize: sizeHelper.calHp(25),
                 color: AppColor.white,
                 fontFamily: 'Proxima Nova Bold',
+                textAlign: 'center',
               }}>
               {StringsList._177}
             </Text>
@@ -127,8 +127,9 @@ const AddonsList = ({
                 fontSize: sizeHelper.calHp(25),
                 color: AppColor.white,
                 fontFamily: 'Proxima Nova Bold',
+                textAlign: 'center',
               }}>
-              {StringsList._320 + " " + StringsList._98}
+              {StringsList._320 + ' ' + StringsList._98}
             </Text>
           </View>
           <ScrollView
@@ -138,13 +139,11 @@ const AddonsList = ({
             }}>
             {data.length > 0 ? (
               data.map((item, index) => {
-
-                return (isAddon ?
+                return isAddon ? (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => {
                       reacallFunc(item, 'returnInvoice', index);
-
                     }}>
                     <View
                       style={{
@@ -185,6 +184,7 @@ const AddonsList = ({
                           fontSize: sizeHelper.calHp(20),
                           color: AppColor.black,
                           fontFamily: 'Proxima Nova Bold',
+                          textAlign: 'center',
                         }}>
                         {item.Quantity}
                       </Text>
@@ -204,6 +204,7 @@ const AddonsList = ({
                           fontSize: sizeHelper.calHp(20),
                           color: AppColor.black,
                           fontFamily: 'Proxima Nova Bold',
+                          textAlign: 'center',
                         }}>
                         {item.GrandAmount}
                       </Text>
@@ -217,32 +218,41 @@ const AddonsList = ({
                       />
                       <TouchableOpacity
                         onPress={() => {
-                          setisAddonEquivelent(true)
-                          setEquivaletntP(item.EquivalentProducts)
-                          setAddonIndex(index)
-                          console.log("setisAddonEquivelent", equivaletntP, item.EquivalentProducts)
+                          setisAddonEquivelent(true);
+                          setEquivaletntP(item.EquivalentProducts);
+                          setAddonIndex(index);
+                          console.log(
+                            'setisAddonEquivelent',
+                            equivaletntP,
+                            item.EquivalentProducts,
+                          );
                         }}
                         style={{
-
                           width: '13%',
                           marginHorizontal: '0.5%',
                           marginVertical: sizeHelper.calHp(20),
                           fontSize: sizeHelper.calHp(20),
                           color: AppColor.black,
                           fontFamily: 'Proxima Nova Bold',
-                          alignItems: "center"
+                          alignItems: 'center',
                         }}>
-                        {item?.EquivalentProducts.length > 0 && <View style={{
-                          backgroundColor: AppColor.green,
-                          width: 33,
-                          height: 33,
-                          justifyContent: "center",
-                          alignItems: "center",
-                          borderRadius: 33 / 2
-                        }}>
-
-                          <Icon name="life-saver" size={20} color={AppColor.yellow1} />
-                        </View>}
+                        {item?.EquivalentProducts.length > 0 && (
+                          <View
+                            style={{
+                              backgroundColor: AppColor.green,
+                              width: 33,
+                              height: 33,
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              borderRadius: 33 / 2,
+                            }}>
+                            <Icon
+                              name="life-saver"
+                              size={20}
+                              color={AppColor.yellow1}
+                            />
+                          </View>
+                        )}
                       </TouchableOpacity>
                       <View
                         style={{
@@ -261,9 +271,8 @@ const AddonsList = ({
                         zIndex: 0,
                       }}
                     />
-                  </TouchableOpacity> : null
-                );
-
+                  </TouchableOpacity>
+                ) : null;
               })
             ) : (
               <Text
@@ -279,29 +288,32 @@ const AddonsList = ({
               </Text>
             )}
           </ScrollView>
-          <View style={{ alignSelf: "flex-end" }}>
-            {!isAddon && <CustomButton
-              containerStyle={{
-                marginEnd: sizeHelper.calHp(15),
-              }}
-              backgroundColor={AppColor.blue2}
-              title={StringsList._306}
-              onPressButton={selectedAllProducts}
-            />}
+          <View style={{alignSelf: 'flex-end'}}>
+            {!isAddon && (
+              <CustomButton
+                containerStyle={{
+                  marginEnd: sizeHelper.calHp(15),
+                }}
+                backgroundColor={AppColor.blue2}
+                title={StringsList._306}
+                onPressButton={selectedAllProducts}
+                isDisabled={data.length < 1}
+              />
+            )}
           </View>
         </View>
-
       </View>
       {isAddonEquivelent && (
-        <View style={{
-          width: '100%',
-          height: '100%',
-          position: 'absolute',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: AppColor.popUpBackgroundColor,
-          zIndex: 9999
-        }}>
+        <View
+          style={{
+            width: '100%',
+            height: '100%',
+            position: 'absolute',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: AppColor.popUpBackgroundColor,
+            zIndex: 9999,
+          }}>
           <AddonsEquivelentProductList
             onPressCancel={() => setisAddonEquivelent(false)}
             reacallFunc={reacallFunc}

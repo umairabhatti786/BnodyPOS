@@ -1,78 +1,69 @@
-import React, {useEffect, useState} from 'react';
-import {StyleSheet, View, Text, TextInput} from 'react-native';
-import translatorHelper, {t} from '../helpers/translatorHelp';
-import i18n from 'i18n-js';
-import {Formik} from 'formik';
-import * as yup from 'yup';
-import * as Animatable from 'react-native-animatable';
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View, Text, TextInput } from "react-native";
+import translatorHelper, { t } from "../helpers/translatorHelp";
 
-import Header from './Header';
-import sizeHelper from '../helpers/sizeHelper';
-import CustomButton from './CustomButton';
-import CustomRadioButton from './CustomRadioButton';
-import AppColor from '../constant/AppColor';
+import { Formik } from "formik";
+import * as yup from "yup";
+import * as Animatable from "react-native-animatable";
 
-const CreditInfoPopUP = props => {
-  const [error, setError] = useState('');
-  const [isError, setIsError] = useState(false);
+import Header from "./Header";
+import sizeHelper from "../helpers/sizeHelper";
+import CustomButton from "./CustomButton";
+import CustomRadioButton from "./CustomRadioButton";
+import AppColor from "../constant/AppColor";
+
+const CreditInfoPopUP = (props) => {
   const arry = [
     {
       title: props.StringsList._23,
-      value: 'total',
-      placeholder: '0.00',
+      value: "total",
+      placeholder: "0.00",
       editable: false,
     },
     {
       title: props.StringsList._70,
-      value: 'cashAdavance',
-      placeholder: '0.00',
+      value: "cashAdavance",
+      placeholder: "0.00",
       editable: true,
     },
     {
       title: props.StringsList._55,
-      value: 'credit',
-      placeholder: '0.00',
+      value: "credit",
+      placeholder: "0.00",
       editable: false,
     },
     {
       title: props.StringsList._71,
-      value: 'cashPaid',
-      placeholder: '0.00',
-      editable: true,
+      value: "cashPaid",
+      placeholder: "0.00",
+      editable: false,
     },
     {
       title: `${props.StringsList._16}`,
-      value: 'balance',
-      placeholder: '0.00',
+      value: "balance",
+      placeholder: "0.00",
       editable: false,
     },
     {
       title: props.isCredit ? props.StringsList._72 : props.StringsList._73,
-      value: 'buyerCode',
-      placeholder: '0000',
+      value: "buyerCode",
+      placeholder: "0.00",
       editable: props.isCredit ? false : true,
     },
 
     {
       title: props.StringsList._285,
-      value: 'name',
-      placeholder: 'name',
+      value: "name",
+      placeholder: "name",
       editable: props.isCredit ? false : true,
     },
   ];
-  const handleCheck = values => {
-    if (values.cashPaid >= values.cashAdavance) {
-      setError('');
-      setIsError(false);
-    } else {
-      setError('Cash Paid should be equal or greater than Cash Advance');
-      setIsError(true);
-    }
-    // console.log('On Change Text', text, type);
-  };
-  useEffect(() => {
-    // console.log("Credit Info PopUP", props)
-  });
+  // const onChangeText = (text, type) => {
+  //   // console.log('On Change Text', text, type);
+  // };
+  // useEffect(() => {
+  //   // console.log("Credit Info PopUP", props)
+  // })
 
   return (
     <Animatable.View
@@ -82,39 +73,31 @@ const CreditInfoPopUP = props => {
       useNativeDriver
       value={100}
       // easing="ease-in"
-      animation="slideInRight">
+      animation="slideInRight"
+    >
       <Formik
         initialValues={{
           total: String(props.totalPrice),
-          cashAdavance: '',
+          cashAdavance: "",
           credit: String(props.totalPrice),
-          cashPaid: '',
-          balance: '',
-          buyerCode: props.isCredit ? props.buyerInfo?.BuyerCode : '0000',
+          cashPaid: "",
+          balance: "",
+          buyerCode: props.isCredit ? props.buyerInfo?.BuyerCode : "",
 
-          name: props.isCredit ? props.buyerInfo?.BuyerName : '',
+          name: props.isCredit ? props.buyerInfo?.BuyerName : "",
         }}
-        onSubmit={values => {
+        onSubmit={(values) => {
           // console.log('onSubmit values...', props.buyerInfo);
-
-          if (Number(values.cashPaid) >= Number(values.cashAdavance)) {
-            setError('');
-            setIsError(false);
-            props.setCashAmount(values.cashPaid);
-            props.cashPaidAmountFun(
-              Number(values.cashAdavance),
-              values.buyerCode,
-            );
-            props.cancel('credit', 'save');
-          } else {
-            setError('Cash Paid should be equal or greater than Cash Advance');
-            setIsError(true);
-          }
-        }}>
-        {({handleChange, handleSubmit, values, errors, isValid}) => (
+          props.cashPaidAmountFun(
+            Number(values.cashAdavance),
+            values.buyerCode
+          );
+          props.cancel("credit", "save");
+        }}
+      >
+        {({ handleChange, handleSubmit, values, errors, isValid }) => (
           (values.credit = String(props.totalPrice - values.cashAdavance)),
-          ((values.balance = String(values.cashPaid - values.cashAdavance)),
-          ((values.cashPaid = String(values.cashPaid)),
+          (values.cashPaid = String(values.cashAdavance)),
           (
             // console.log('values...', values, errors),
             <View>
@@ -122,20 +105,22 @@ const CreditInfoPopUP = props => {
                 style={{
                   paddingHorizontal: sizeHelper.calWp(20),
                   paddingVertical: sizeHelper.calWp(15),
-                }}>
-                {arry.map((item, index) => {
+                }}
+              >
+                {arry.map((item) => {
                   // console.log('error value', errors[item?.value]);
                   return (
                     <View id={item.value}>
                       <View
                         style={{
-                          width: '100%',
+                          width: "100%",
                           // backgroundColor: 'green',
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                           marginTop: sizeHelper.calHp(20),
-                        }}>
+                        }}
+                      >
                         <Text style={styles.title}>{item.title}</Text>
                         <View style={styles.textInputContainer}>
                           <TextInput
@@ -152,9 +137,6 @@ const CreditInfoPopUP = props => {
                           />
                         </View>
                       </View>
-                      {index === 3 && isError && (
-                        <Text style={styles.errorText}>{error}</Text>
-                      )}
                       {errors[item?.value] && (
                         <Text style={styles.errorText}>
                           {errors[item?.value]}
@@ -179,12 +161,12 @@ const CreditInfoPopUP = props => {
                     backgroundColor: AppColor.red1,
                   }}
                   backgroundColor={AppColor.red1}
-                  onPressButton={() => props.cancel('credit')}
+                  onPressButton={() => props.cancel("credit")}
                   title={props.StringsList._2}
                 />
               </View>
             </View>
-          )))
+          )
         )}
       </Formik>
     </Animatable.View>
@@ -193,7 +175,7 @@ const CreditInfoPopUP = props => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '95%',
+    width: "95%",
     backgroundColor: AppColor.white,
     paddingBottom: sizeHelper.calHp(20),
     borderRadius: sizeHelper.calWp(15),
@@ -205,16 +187,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 2.22,
     elevation: 40,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   textInput: {
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(1),
     width: sizeHelper.calWp(450),
     height: sizeHelper.calHp(40),
-    backgroundColor: 'transparent',
-    fontFamily: 'Proxima Nova Bold',
+    backgroundColor: "transparent",
+    fontFamily: "Proxima Nova Bold",
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
     //backgroundColor: 'green',
@@ -225,8 +207,8 @@ const styles = StyleSheet.create({
     backgroundColor: AppColor.white,
     borderRadius: sizeHelper.calHp(60),
     paddingStart: sizeHelper.calWp(20),
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     shadowColor: AppColor.blue1,
     shadowOffset: {
       width: 20,
@@ -239,17 +221,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: sizeHelper.calHp(18),
     color: AppColor.black,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: sizeHelper.calHp(60),
   },
   errorText: {
     //textAlign: 'right',
     color: AppColor.orange,
-    fontFamily: 'ProximaNova-Semibold',
+    fontFamily: "ProximaNova-Semibold",
     marginTop: sizeHelper.calHp(10),
     fontSize: sizeHelper.calHp(20),
 

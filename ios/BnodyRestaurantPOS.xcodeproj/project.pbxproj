@@ -11,9 +11,8 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		656D3F93243F252E64766FAD /* libPods-BnodyRestaurantPOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE391C458057D8B439CB54C /* libPods-BnodyRestaurantPOS.a */; };
-		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		A4123A0DDD5111B75B8419A7 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2BD968327D126555BC59EC32 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a */; };
+		AF1800EE23DFB2720E832111 /* libPods-BnodyRestaurantPOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D39A378382C21F32FC690E30 /* libPods-BnodyRestaurantPOS.a */; };
+		E0637C1841E883CD3454CC85 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 937B3052C8285EF55FFFB63F /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -22,29 +21,29 @@
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
-			remoteInfo = "BnodyRestaurantPOS";
+			remoteInfo = BnodyRestaurantPOS;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		00E356EE1AD99517003FC87E /* BnodyRestaurantPOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "BnodyRestaurantPOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		00E356EE1AD99517003FC87E /* BnodyRestaurantPOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BnodyRestaurantPOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		00E356F21AD99517003FC87E /* BnodyRestaurantPOSTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "BnodyRestaurantPOSTests.m"; sourceTree = "<group>"; };
+		00E356F21AD99517003FC87E /* BnodyRestaurantPOSTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BnodyRestaurantPOSTests.m; sourceTree = "<group>"; };
 		044A92BA2B2AF8060059743B /* BnodyRestaurantPOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = BnodyRestaurantPOS.entitlements; path = BnodyRestaurantPOS/BnodyRestaurantPOS.entitlements; sourceTree = "<group>"; };
-		13B07F961A680F5B00A75B9A /* BnodyRestaurantPOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BnodyRestaurantPOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = "BnodyRestaurantPOS/AppDelegate.h"; sourceTree = "<group>"; };
-		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = "BnodyRestaurantPOS/AppDelegate.mm"; sourceTree = "<group>"; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = "BnodyRestaurantPOS/Images.xcassets"; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = "BnodyRestaurantPOS/Info.plist"; sourceTree = "<group>"; };
-		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = "BnodyRestaurantPOS/main.m"; sourceTree = "<group>"; };
-		19CB6FEA4103803B55838C3D /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig"; sourceTree = "<group>"; };
-		2BD968327D126555BC59EC32 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		696962C2861CF4549AFCEEF3 /* Pods-BnodyRestaurantPOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS.release.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS.release.xcconfig"; sourceTree = "<group>"; };
-		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = "BnodyRestaurantPOS/LaunchScreen.storyboard"; sourceTree = "<group>"; };
-		8DC805796BAA2BE9B2F3456C /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig"; sourceTree = "<group>"; };
-		C99973112B8E621AAB67B892 /* Pods-BnodyRestaurantPOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS.debug.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS.debug.xcconfig"; sourceTree = "<group>"; };
-		ECE391C458057D8B439CB54C /* libPods-BnodyRestaurantPOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BnodyRestaurantPOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07F961A680F5B00A75B9A /* BnodyRestaurantPOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BnodyRestaurantPOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = BnodyRestaurantPOS/AppDelegate.h; sourceTree = "<group>"; };
+		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = BnodyRestaurantPOS/AppDelegate.mm; sourceTree = "<group>"; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = BnodyRestaurantPOS/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = BnodyRestaurantPOS/Info.plist; sourceTree = "<group>"; };
+		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = BnodyRestaurantPOS/main.m; sourceTree = "<group>"; };
+		1F4ACA097A37C027784CBCFF /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig"; sourceTree = "<group>"; };
+		79476B1D36165C1BF3C18582 /* Pods-BnodyRestaurantPOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS.release.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS.release.xcconfig"; sourceTree = "<group>"; };
+		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = BnodyRestaurantPOS/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		937B3052C8285EF55FFFB63F /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2176837D53914F61B89B832 /* Pods-BnodyRestaurantPOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS.debug.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS.debug.xcconfig"; sourceTree = "<group>"; };
+		D39A378382C21F32FC690E30 /* libPods-BnodyRestaurantPOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BnodyRestaurantPOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F3B7611BFD68D7DF44A42989 /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig"; path = "Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,7 +51,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A4123A0DDD5111B75B8419A7 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a in Frameworks */,
+				E0637C1841E883CD3454CC85 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -60,7 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				656D3F93243F252E64766FAD /* libPods-BnodyRestaurantPOS.a in Frameworks */,
+				AF1800EE23DFB2720E832111 /* libPods-BnodyRestaurantPOS.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -73,7 +72,7 @@
 				00E356F21AD99517003FC87E /* BnodyRestaurantPOSTests.m */,
 				00E356F01AD99517003FC87E /* Supporting Files */,
 			);
-			path = "BnodyRestaurantPOSTests";
+			path = BnodyRestaurantPOSTests;
 			sourceTree = "<group>";
 		};
 		00E356F01AD99517003FC87E /* Supporting Files */ = {
@@ -95,15 +94,15 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB71A68108700A75B9A /* main.m */,
 			);
-			name = "BnodyRestaurantPOS";
+			name = BnodyRestaurantPOS;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				ECE391C458057D8B439CB54C /* libPods-BnodyRestaurantPOS.a */,
-				2BD968327D126555BC59EC32 /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a */,
+				D39A378382C21F32FC690E30 /* libPods-BnodyRestaurantPOS.a */,
+				937B3052C8285EF55FFFB63F /* libPods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -142,10 +141,10 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				C99973112B8E621AAB67B892 /* Pods-BnodyRestaurantPOS.debug.xcconfig */,
-				696962C2861CF4549AFCEEF3 /* Pods-BnodyRestaurantPOS.release.xcconfig */,
-				19CB6FEA4103803B55838C3D /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig */,
-				8DC805796BAA2BE9B2F3456C /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig */,
+				A2176837D53914F61B89B832 /* Pods-BnodyRestaurantPOS.debug.xcconfig */,
+				79476B1D36165C1BF3C18582 /* Pods-BnodyRestaurantPOS.release.xcconfig */,
+				1F4ACA097A37C027784CBCFF /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig */,
+				F3B7611BFD68D7DF44A42989 /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -157,20 +156,20 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "BnodyRestaurantPOSTests" */;
 			buildPhases = (
-				A58E3743ECECFC0C3F4983DB /* [CP] Check Pods Manifest.lock */,
+				3A4C2CE857E91DDEE074674D /* [CP] Check Pods Manifest.lock */,
 				00E356EA1AD99517003FC87E /* Sources */,
 				00E356EB1AD99517003FC87E /* Frameworks */,
 				00E356EC1AD99517003FC87E /* Resources */,
-				8501E079FAA7B3F2B12E5013 /* [CP] Embed Pods Frameworks */,
-				DC7024991CFD515176E37DAB /* [CP] Copy Pods Resources */,
+				7948C3E7BFC441C8A7FF3641 /* [CP] Embed Pods Frameworks */,
+				526A3CB7B96302AE909F4114 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				00E356F51AD99517003FC87E /* PBXTargetDependency */,
 			);
-			name = "BnodyRestaurantPOSTests";
-			productname = "BnodyRestaurantPOSTests";
+			name = BnodyRestaurantPOSTests;
+			productName = BnodyRestaurantPOSTests;
 			productReference = 00E356EE1AD99517003FC87E /* BnodyRestaurantPOSTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -178,21 +177,21 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "BnodyRestaurantPOS" */;
 			buildPhases = (
-				4BB6A574803D8A73A243EF73 /* [CP] Check Pods Manifest.lock */,
+				7D013DB1D4D79741A6B1A3AE /* [CP] Check Pods Manifest.lock */,
 				FD10A7F022414F080027D42C /* Start Packager */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				327027F5B04AD628B8A5D737 /* [CP] Embed Pods Frameworks */,
-				FC6A43210E3341DD5BAB3A35 /* [CP] Copy Pods Resources */,
+				26E51BEA58DE0D1C80FF3D28 /* [CP] Embed Pods Frameworks */,
+				2C0DC56AB11126AC2179A32F /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = "BnodyRestaurantPOS";
-			productName = "BnodyRestaurantPOS";
+			name = BnodyRestaurantPOS;
+			productName = BnodyRestaurantPOS;
 			productReference = 13B07F961A680F5B00A75B9A /* BnodyRestaurantPOS.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -245,7 +244,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -269,7 +267,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT \\\"/bin/sh $REACT_NATIVE_XCODE\\\"\"\n";
 		};
-		327027F5B04AD628B8A5D737 /* [CP] Embed Pods Frameworks */ = {
+		26E51BEA58DE0D1C80FF3D28 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -286,46 +284,24 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		4BB6A574803D8A73A243EF73 /* [CP] Check Pods Manifest.lock */ = {
+		2C0DC56AB11126AC2179A32F /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
+			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-BnodyRestaurantPOS-checkManifestLockResult.txt",
+				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8501E079FAA7B3F2B12E5013 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		A58E3743ECECFC0C3F4983DB /* [CP] Check Pods Manifest.lock */ = {
+		3A4C2CE857E91DDEE074674D /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -347,7 +323,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		DC7024991CFD515176E37DAB /* [CP] Copy Pods Resources */ = {
+		526A3CB7B96302AE909F4114 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -364,21 +340,43 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		FC6A43210E3341DD5BAB3A35 /* [CP] Copy Pods Resources */ = {
+		7948C3E7BFC441C8A7FF3641 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			name = "[CP] Copy Pods Resources";
+			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS/Pods-BnodyRestaurantPOS-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests/Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		7D013DB1D4D79741A6B1A3AE /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-BnodyRestaurantPOS-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 		FD10A7F022414F080027D42C /* Start Packager */ = {
@@ -433,7 +431,7 @@
 /* Begin XCBuildConfiguration section */
 		00E356F61AD99517003FC87E /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 19CB6FEA4103803B55838C3D /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig */;
+			baseConfigurationReference = 1F4ACA097A37C027784CBCFF /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -441,7 +439,7 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				INFOPLIST_FILE = "BnodyRestaurantPOSTests/Info.plist";
+				INFOPLIST_FILE = BnodyRestaurantPOSTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -461,12 +459,12 @@
 		};
 		00E356F71AD99517003FC87E /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8DC805796BAA2BE9B2F3456C /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig */;
+			baseConfigurationReference = F3B7611BFD68D7DF44A42989 /* Pods-BnodyRestaurantPOS-BnodyRestaurantPOSTests.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COPY_PHASE_STRIP = NO;
-				INFOPLIST_FILE = "BnodyRestaurantPOSTests/Info.plist";
+				INFOPLIST_FILE = BnodyRestaurantPOSTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -486,18 +484,17 @@
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C99973112B8E621AAB67B892 /* Pods-BnodyRestaurantPOS.debug.xcconfig */;
+			baseConfigurationReference = A2176837D53914F61B89B832 /* Pods-BnodyRestaurantPOS.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BnodyRestaurantPOS/BnodyRestaurantPOS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = QKF5MUR6KK;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = i386;
-				INFOPLIST_FILE = "BnodyRestaurantPOS/Info.plist";
-             INFOPLIST_KEY_CFBundleDisplayName = "BnodyRestaurantPOS";
+				INFOPLIST_FILE = BnodyRestaurantPOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BnodyRestaurantPOS;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -510,8 +507,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = assemble;
-				PRODUCT_NAME = "BnodyRestaurantPOS";
+				PRODUCT_BUNDLE_IDENTIFIER = bnodyrestaurantpos;
+				PRODUCT_NAME = BnodyRestaurantPOS;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -520,17 +517,16 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 696962C2861CF4549AFCEEF3 /* Pods-BnodyRestaurantPOS.release.xcconfig */;
+			baseConfigurationReference = 79476B1D36165C1BF3C18582 /* Pods-BnodyRestaurantPOS.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BnodyRestaurantPOS/BnodyRestaurantPOS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = QKF5MUR6KK;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = i386;
-				INFOPLIST_FILE = "BnodyRestaurantPOS/Info.plist";
-             INFOPLIST_KEY_CFBundleDisplayName = "BnodyRestaurantPOS";
+				INFOPLIST_FILE = BnodyRestaurantPOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BnodyRestaurantPOS;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -543,8 +539,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = assemble;
-				PRODUCT_NAME = "BnodyRestaurantPOS";
+				PRODUCT_BUNDLE_IDENTIFIER = bnodyrestaurantpos;
+				PRODUCT_NAME = BnodyRestaurantPOS;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -670,6 +666,10 @@
 					"-ld_classic",
 					"-Wl",
 					"-ld_classic",
+					"-Wl",
+					"-ld_classic",
+					"-Wl",
+					"-ld_classic",
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
@@ -743,6 +743,10 @@
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
+					"-Wl",
+					"-ld_classic",
+					"-Wl",
+					"-ld_classic",
 					"-Wl",
 					"-ld_classic",
 					"-Wl",

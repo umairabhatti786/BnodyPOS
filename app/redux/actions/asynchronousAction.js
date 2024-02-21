@@ -1,9 +1,9 @@
 import {Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 const isLive = true;
-const apiUrl = isLive
-  ? 'https://tempposapi.bnody.com/api/'
-  : 'https://qaapi.bnody.com/api/';
+export const apiUrl = isLive
+  ? 'https://restaurantapi.bnody.com/api/'
+  : 'https://restaurantapi.bnody.com/api/';
 
 export const fetchService = async (url, method, token) => {
   try {
@@ -12,10 +12,10 @@ export const fetchService = async (url, method, token) => {
       method: method,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Basic ' + token,
+        Authorization: 'Bearer ' + token,
       },
     });
-    console.log('api response for response....', response);
+    console.log('GET request response =========>', response);
     let responseJson = await response.json();
     // console.log('api response for response....', responseJson);
     if (responseJson) {
@@ -29,14 +29,15 @@ export const fetchService = async (url, method, token) => {
 
     return responseJson;
   } catch (error) {
-    Alert.alert('Error', 'Something went wrong', error);
-    // console.log('Error in retrieving userinfo from Auth0: ' + error);
+    // Alert.alert("Error", "Something went wrong", error);
+    console.log('Something went wrong', error);
     return error;
   }
 };
 
-export const ServerCall = (token, urlPath, method) => {
+export const ServerCall = (token, urlPath, method, body) => {
   let url = apiUrl + urlPath;
+
   return async dispatch => {
     try {
       dispatch({
@@ -46,22 +47,30 @@ export const ServerCall = (token, urlPath, method) => {
       if (method === 'GET' || method === 'DELETE') {
         response = await fetchService(url, method, token);
       } else {
-        console.log('request url', url, JSON.stringify(method));
+        console.log(
+          'POST request response =========> ',
+          token,
+          url,
+          method,
+          body,
+        );
         let res = await fetch(url, {
           method: 'POST',
           headers: token
             ? {
                 'Content-Type': 'application/json',
-                Authorization: 'Basic ' + token,
+                Authorization: 'Bearer ' + token,
               }
             : {
                 'Content-Type': 'application/json',
               },
-          body: JSON.stringify(method),
+          // body: body,
+          body: JSON.stringify(body),
         });
         console.log('api request response', res);
-        response = await res.json();
+        response = await res.text();
         console.log('api request response', response);
+
         if (res.ok) {
           response.success = true;
         } else {
@@ -86,29 +95,6 @@ export const ServerCall = (token, urlPath, method) => {
   };
 };
 
-export const getQuantity = async uri => {
-  const apiUrl = 'https://tempposapi.bnody.com/api';
-  let token = await AsyncStorage.getItem('ACCESS_TOKEN');
-  let finalToken = 'Basic ' + token;
-  try {
-    let url = apiUrl + uri;
-    console.log('URL :', url);
-    let resp = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: finalToken,
-      },
-    });
-    console.log('response1>>>>>>>>>>>>>>>>>>>>', resp);
-    let response = await resp.json();
-    console.log('response', response);
-    return response;
-  } catch (e) {
-    console.log(e, 'error');
-  }
-};
-
 export const SaveAllData = payload => {
   return async dispatch => {
     try {
@@ -120,4 +106,25 @@ export const SaveAllData = payload => {
       return error;
     }
   };
+};
+export const getQuantity = async uri => {
+  const apiUrl = 'http://192.168.30.4:8070/api/';
+  let token = await AsyncStorage.getItem('ACCESS_TOKEN');
+  try {
+    let url = apiUrl + uri;
+    console.log('URL :', url);
+    let resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token,
+      },
+    });
+    console.log('resp =========>', resp);
+    let response = await resp.json();
+    console.log('response', response);
+    return response;
+  } catch (e) {
+    console.log(e, 'error');
+  }
 };

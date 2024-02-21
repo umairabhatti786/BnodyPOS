@@ -8,7 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-import Icon from 'react-native-vector-icons/AntDesign';
+import Icon from 'react-native-vector-icons/FontAwesome';
 import { connect } from 'react-redux';
 import { Picker } from '@react-native-picker/picker';
 
@@ -46,7 +46,7 @@ const AddonsEquivelentProductList = ({
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: 25,
+          // borderRadius: 25,
         }}>
         <View
           style={{

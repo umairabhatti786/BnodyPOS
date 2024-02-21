@@ -1,30 +1,38 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
   Text,
-  TouchableWithoutFeedback,
   TouchableOpacity,
   TextInput,
   I18nManager,
-  Modal,
-  Animated,
-  ScrollView,
 } from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome";
-import DropDownPicker from "react-native-dropdown-picker";
+
+import NetInfo from "@react-native-community/netinfo";
+import Entypo from "react-native-vector-icons/Entypo";
 import Menu, {
   MenuOptions,
   MenuOption,
   MenuTrigger,
 } from "react-native-popup-menu";
-import RemaningQuantityBox from "./RemaningQuantityBox";
+import {
+  PlusIcon,
+  MinusIcon,
+  DownIcon,
+  UpIcon,
+  SettingIcon,
+} from "../assets/svg/svg";
+import Icon from "react-native-vector-icons/FontAwesome";
+import DropDownPicker from "react-native-dropdown-picker";
+import CustomModal from "../components/CustomModal";
+import CustomButton from "./CustomButton";
 import sizeHelper from "../helpers/sizeHelper";
 import AppColor from "../constant/AppColor";
-import { PlusIcon, MinusIcon, CloseIcon, OpenIcon } from "../assets/svg/svg";
-import NetInfo from "@react-native-community/netinfo";
+import IncrementButton from "../assets/svg/incrementButtonMobile";
+import DecrementButton from "../assets/svg/decrementButtonMobile";
+import DecrementButtonDisable from "../assets/svg/decrementButtonDisableMobile";
+import RemaningQuantityBox from "./RemaningQuantityBox";
 import GroupProductsModal from "./GroupProductsModal";
-import DescriptionBox from "./DescriptionBox";
 const SelectedProductListItemMobile = ({
   item,
   onPressIncrementDecrement,
@@ -47,8 +55,6 @@ const SelectedProductListItemMobile = ({
   onClickIn,
   setAddProductLoader,
   props,
-  onChangePrice,
-  printType,
 }) => {
   const [isMore, setMore] = useState(false);
   const [open, setOpen] = useState(false);
@@ -62,7 +68,8 @@ const SelectedProductListItemMobile = ({
   const [productItems, setProductItems] = useState(false);
   const [quantityModelOpen, setQuantityModelOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-
+  const zIndex = 5000 - 1000 * index;
+  const zIndexInverse = 1000 + 1000 * index;
   const checkInternetConnectivity = async () => {
     const netInfo = await NetInfo.fetch();
     if (netInfo?.details?.subnet) {
@@ -75,56 +82,30 @@ const SelectedProductListItemMobile = ({
   };
   setInterval(checkInternetConnectivity, 500);
 
-  const onClickSearchFunction = async (type) => {
-    if (type.id === "dp") {
-      item.PriceType = 3;
-    } else if (type.id === "ws") {
-      item.PriceType = 2;
-    } else if (type.id === "rs") {
-      item.PriceType = 1;
-    }
-    onChangePrice(item, type.value);
-  };
   const onClickOtherFunction = async (type, item, index) => {
+    // console.log('values of options', type, index, index);
     if (type.id === "ing") {
       getProductsIngredients(item);
     } else if (type.id === "add") {
       getAddOnProducts(item, index);
     } else if (type.id === "pg") {
       setProductItems(true);
+    } else if (type.id === "pn") {
+      props.setNotesDetail(item?.notes ? item.notes : item?.ProductNote);
+      props.setSelectedProductsNotes(item);
+      props.onOpenModal();
     } else if (type.id === "rq") {
       setQuantityModelOpen(true);
-    } else if (type.id === "pn") {
-      props.setDescriptionDetail(item?.Description ? item.Description : "");
-      props.setSelectedProductsNotes(item);
-      props.setDescriptionModal(true);
     }
+    // console.log('the value of object is in second menu', item);
   };
 
   const recieveData = (data) => {
     return setQuantityModelOpen(data);
   };
 
-  const suitcaseArray = [
-    {
-      id: "dp",
-      title: "Distributor Price",
-      value: item?.DistributorPrice,
-    },
-    {
-      id: "ws",
-      title: "Wholesale Price",
-      value: item?.WholeSalePrice,
-    },
-    {
-      id: "rs",
-      title: "Retail Price",
-      value: item?.RetailPrice,
-    },
-  ];
-
   const otherOptionsArray =
-    item.ProductType == 3
+    item.ProductType === 3
       ? [
           {
             id: "ing",
@@ -143,16 +124,16 @@ const SelectedProductListItemMobile = ({
           },
           {
             id: "pn",
-            title: "Product Description",
+            title: "Product Notes",
             icon: "sticky-note",
           },
-          // isConnected
-          //   ? {
-          //       id: 'rq',
-          //       title: 'Remaining Quantity',
-          //       icon: 'hourglass-half',
-          //     }
-          //   : null,
+          isConnected
+            ? {
+                id: "rq",
+                title: "Remaining Quantity",
+                icon: "hourglass-half",
+              }
+            : null,
         ]
       : [
           {
@@ -167,7 +148,7 @@ const SelectedProductListItemMobile = ({
           },
           {
             id: "pn",
-            title: "Product Description",
+            title: "Product Notes",
             icon: "sticky-note",
           },
           isConnected
@@ -181,85 +162,30 @@ const SelectedProductListItemMobile = ({
   const filteredOptionsArray = otherOptionsArray.filter(
     (option) => option !== null
   );
-  const renderTouchable = () => <TouchableOpacity></TouchableOpacity>;
-  const TopNavigation = () => (
-    <View
-      pointerEvents={printType === "returnInvoice" ? "none" : "auto"}
-      style={{ marginEnd: sizeHelper.calWp(10) }}
-    >
-      <Menu onSelect={(value, id) => onClickSearchFunction(value, id)}>
-        <MenuTrigger renderTouchable={renderTouchable}>
-          <View
-            style={{
-              backgroundColor: AppColor.green,
-              width: 24,
-              height: 24,
-              marginHorizontal: 3,
-              justifyContent: "center",
-              alignItems: "center",
-              borderRadius: 50,
-            }}
-          >
-            <Icon
-              name={"tag"}
-              size={sizeHelper.calWp(30)}
-              color={AppColor.white}
-            />
-          </View>
-        </MenuTrigger>
 
-        <MenuOptions
-          optionsContainerStyle={{
-            width: "auto",
-            marginTop: sizeHelper.calWp(55),
-            borderRadius: sizeHelper.calHp(10),
-            paddingVertical: sizeHelper.calHp(15),
-            paddingHorizontal: sizeHelper.calHp(10),
-            backgroundColor: AppColor.white,
-            paddingBottom: 20,
-            marginEnd: I18nManager.isRTL
-              ? sizeHelper.calWp(300) - sizeHelper.screenWidth
-              : 0,
-          }}
-        >
-          {suitcaseArray.map((item) => (
-            <MenuOption
-              style={{ marginBottom: -10 }}
-              renderTouchable={renderTouchable}
-              key={item.id}
-              value={item}
-            >
-              <View
-                style={{
-                  alignItems: "center",
-                  flexDirection: "row",
-                  padding: 5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: AppColor.black,
-                    fontFamily: "ProximaNova-Semibold",
-                    fontSize: sizeHelper.calHp(20),
-                  }}
-                >
-                  {item.title}
-                </Text>
-              </View>
-            </MenuOption>
-          ))}
-        </MenuOptions>
-      </Menu>
-    </View>
-  );
+  const renderTouchable = () => <TouchableOpacity></TouchableOpacity>;
 
   const OtherOptionsView = () => (
     <View
-      pointerEvents={printType === "returnInvoice" ? "none" : "auto"}
-      style={{ marginEnd: sizeHelper.calWp(10) }}
+      pointerEvents={props?.printType === "returnInvoice" ? "none" : "auto"}
+      style={{
+        // marginEnd: sizeHelper.calWp(10),
+        // position: 'absolute',
+        // marginLeft: sizeHelper.calWp(555),
+        // marginTop: sizeHelper.calHp(30),
+        marginHorizontal: 8,
+        // backgroundColor: 'red',
+        left: 7,
+      }}
     >
       <Menu onSelect={(value, id) => onClickOtherFunction(value, item, index)}>
-        <MenuTrigger renderTouchable={renderTouchable}>
+        <MenuTrigger
+          renderTouchable={() =>
+            setTimeout(() => {
+              renderTouchable();
+            }, 200)
+          }
+        >
           <View
             style={{
               backgroundColor: AppColor.green,
@@ -269,13 +195,14 @@ const SelectedProductListItemMobile = ({
               justifyContent: "center",
               alignItems: "center",
               borderRadius: 50,
-              marginHorizontal: 2,
             }}
           >
-            <Icon
-              name={"gear"}
-              size={sizeHelper.calWp(30)}
-              color={AppColor.white}
+            <SettingIcon
+              style={{
+                height: sizeHelper.calWp(30),
+
+                width: sizeHelper.calWp(30),
+              }}
             />
           </View>
         </MenuTrigger>
@@ -284,10 +211,10 @@ const SelectedProductListItemMobile = ({
             width: "auto",
             marginTop: sizeHelper.calWp(55),
             borderRadius: sizeHelper.calHp(10),
-            paddingVertical: sizeHelper.calHp(15),
+            paddingVertical: sizeHelper.calHp(5),
             paddingHorizontal: sizeHelper.calHp(10),
             backgroundColor: AppColor.white,
-            paddingBottom: 20,
+            // paddingBottom: 20,
             marginEnd: I18nManager.isRTL
               ? sizeHelper.calWp(300) - sizeHelper.screenWidth
               : 0,
@@ -295,7 +222,6 @@ const SelectedProductListItemMobile = ({
         >
           {filteredOptionsArray.map((item) => (
             <MenuOption
-              style={{ marginBottom: -10 }}
               renderTouchable={renderTouchable}
               key={item.id}
               value={item}
@@ -304,8 +230,7 @@ const SelectedProductListItemMobile = ({
                 style={{
                   alignItems: "center",
                   flexDirection: "row",
-                  margin: 0,
-                  padding: 5,
+                  marginVertical: 5,
                 }}
               >
                 <Icon name={item.icon} size={20} color={AppColor.blue1} />
@@ -314,7 +239,7 @@ const SelectedProductListItemMobile = ({
                     marginLeft: 10,
                     color: AppColor.black,
                     fontFamily: "ProximaNova-Semibold",
-                    fontSize: sizeHelper.calHp(20),
+                    fontSize: sizeHelper.calHp(25),
                   }}
                 >
                   {item.title}
@@ -328,7 +253,8 @@ const SelectedProductListItemMobile = ({
         <RemaningQuantityBox
           openModal={quantityModelOpen}
           setModalOpen={recieveData}
-          itemCode={item.ProductCode}
+          itemCode={item.ProductBarCode}
+          TerminalConfiguration={TerminalConfiguration}
         />
       )}
     </View>
@@ -369,11 +295,14 @@ const SelectedProductListItemMobile = ({
             <Text style={[styles.productName, { marginTop: sizeHelper.calHp(0), color: AppColor.white, fontSize: sizeHelper.calHp(24) }]}>{noOfProducts}</Text>}
         </View> */}
         <View style={{ marginStart: sizeHelper.calWp(10) }}>
-          <View style={{ marginTop: sizeHelper.calHp(5) }}>
+          <View
+            style={{ marginTop: sizeHelper.calHp(5), flexDirection: "row" }}
+          >
             <View
               style={{
-                width: sizeHelper.calWp(600),
+                width: sizeHelper.calWp(550),
                 alignItems: "center",
+                // backgroundColor: 'green',
                 flexDirection: "row",
               }}
             >
@@ -385,7 +314,7 @@ const SelectedProductListItemMobile = ({
                 <Text style={styles.productBox1}>
                   {I18nManager.isRTL
                     ? "  -" + item.UOMName2
-                    : "  -" + item.UOMName}
+                    : "  -  " + item.UOMName}
                 </Text>
               )}
             </View>
@@ -396,33 +325,37 @@ const SelectedProductListItemMobile = ({
               justifyContent: "space-between",
               marginTop: sizeHelper.calHp(5),
               alignItems: "center",
+              // backgroundColor: 'green',
+              // width: '100%',
             }}
           >
             <View
               style={{
-                width: sizeHelper.calWp(80),
+                width: sizeHelper.calWp(200),
                 height: sizeHelper.calHp(40),
                 justifyContent: "center",
+                // alignItems: 'center',
+                // backgroundColor: 'green',
               }}
             >
               <TextInput
                 editable={
-                  item.IsParentAddOn === 1 &&
-                  userConfiguration.PriceChangeAllowed === 1
+                  item.IsParentAddOn &&
+                  userConfiguration.PriceChangeAllowed === 1 &&
+                  props?.returnInvoiceNumber === null
                 }
                 keyboardType="numeric"
                 onChangeText={(text) => onChangeText("changePrice", text, item)}
                 onEndEditing={(text) => {
                   onEndEditing("changePrice", item), setFocusPrice(false);
                 }}
-                adjustsFontSizeToFit
-                numberOfLines={1}
                 style={[
                   styles.inputField,
                   {
                     color: AppColor.black,
                     fontFamily: "Proxima Nova Bold",
-                    fontSize: sizeHelper.calHp(24),
+                    fontSize: sizeHelper.calHp(20),
+                    textAlign: "left",
                   },
                 ]}
                 onFocus={() => {
@@ -434,10 +367,18 @@ const SelectedProductListItemMobile = ({
                 value={
                   isFocusPrice
                     ? manuallyCount
-                    : item.ProductType == 3
-                    ? Number(item.webperamount).toFixed(2)
-                    : Number(item.PriceWithOutTax).toFixed(2)
-                    ? Number(item.PriceWithOutTax).toFixed(2)
+                    : // : item?.ProductType === 3
+                    // ? String(
+                    //     item?.webperamount.toFixed(
+                    //       TerminalConfiguration.DecimalsInAmount,
+                    //     ),
+                    //   )
+                    item.PriceWithOutTax
+                    ? String(
+                        item.PriceWithOutTax.toFixed(
+                          TerminalConfiguration.DecimalsInAmount
+                        )
+                      )
                     : undefined
                 }
                 placeholder="0.00"
@@ -455,14 +396,18 @@ const SelectedProductListItemMobile = ({
                   style={{
                     backgroundColor:
                       item.Quantity <= 1 ? "#67859436" : "#1f7bed",
-                    height: 30,
-                    width: 30,
+                    height: 23,
+                    width: 23,
                     borderRadius: 5,
                     justifyContent: "center",
                     alignItems: "center",
+                    left: 20,
                   }}
-                  disabled={item.Quantity <= 1}
-                  onPressIn={async () => {}}
+                  disabled={
+                    item.Quantity <= 1 || props?.isLoading === true
+                      ? true
+                      : false
+                  }
                   onPress={async () => {
                     onClickIn();
                     setLoading(true);
@@ -474,12 +419,15 @@ const SelectedProductListItemMobile = ({
                   }}
                 >
                   <MinusIcon
-                    style={{ height: 28, width: 28 }}
+                    style={{
+                      height: sizeHelper.calWp(35),
+                      width: sizeHelper.calWp(35),
+                    }}
                     fill={item.Quantity <= 1 ? "#67859436" : "#fff"}
                   />
                 </TouchableOpacity>
               ) : (
-                <View style={{ width: 24, height: 24 }} />
+                <View style={{ width: 30, height: 30 }} />
               )}
               <View
                 style={{
@@ -487,11 +435,15 @@ const SelectedProductListItemMobile = ({
                   height: 24,
                   justifyContent: "center",
                   alignItems: "center",
-                  //  backgroundColor: 'green',
+                  left: 20,
+                  // backgroundColor: "green",
                 }}
               >
                 <TextInput
-                  editable={item.IsParentAddOn === 1}
+                  editable={
+                    item.IsParentAddOn && props.returnInvoiceNumber === null
+                  }
+                  inputMode="numeric"
                   keyboardType="numeric"
                   onChangeText={(text) =>
                     onChangeText("manuallyCount", text, item)
@@ -503,7 +455,6 @@ const SelectedProductListItemMobile = ({
                     styles.inputField,
                     {
                       paddingVertical: 0,
-                      // backgroundColor: "yellow",
                       height: 24,
                       textAlign: "center",
                       width: sizeHelper.calWp(80),
@@ -517,28 +468,34 @@ const SelectedProductListItemMobile = ({
                     isFocus
                       ? manuallyCount
                       : item.IsParentAddOn
-                      ? String(item.Quantity.toFixed(2))
-                      : String(
-                          (item.Quantity * item.OrignalQuantity).toFixed(2)
-                        )
+                      ? String(item.Quantity)
+                      : String(item.Quantity * item.OrignalQuantity)
                   }
-                  placeholder="0.00"
+                  placeholder={"0.00"}
                 />
               </View>
+
               {item.IsParentAddOn ? (
                 <TouchableOpacity
                   style={{
                     backgroundColor: "#1f7bed",
-                    height: 30,
-                    width: 30,
+                    height: 23,
+                    width: 23,
                     borderRadius: 5,
                     justifyContent: "center",
                     alignItems: "center",
+                    left: 20,
                   }}
-                  disabled={isDisabled}
+                  disabled={
+                    props?.printType === "returnInvoice" &&
+                    item?.Quantity === item.maxQuantity
+                      ? true || isLoading === true
+                      : false
+                  }
                   onPress={async () => {
                     setDisabled(true);
                     onClickIn();
+
                     setLoading(true);
                     setAddProductLoader(true);
                     await onPressIncrementDecrement(item, "increment", index);
@@ -548,22 +505,32 @@ const SelectedProductListItemMobile = ({
                     }, 0);
                   }}
                 >
-                  <PlusIcon style={{ height: 28, width: 28 }} />
+                  <PlusIcon
+                    style={{
+                      height: sizeHelper.calWp(35),
+                      width: sizeHelper.calWp(35),
+                    }}
+                  />
                 </TouchableOpacity>
               ) : (
-                <View style={{ width: 24, height: 24 }} />
+                <View
+                  style={{
+                    width: 30,
+                    height: 30,
+                    left: 2,
+                  }}
+                />
               )}
             </View>
-
             <View
               style={{
                 backgroundColor: AppColor.yellowColor,
                 width: sizeHelper.calWp(120),
-                marginLeft: sizeHelper.calWp(20),
-                marginRight: sizeHelper.calHp(10),
-                height: sizeHelper.calHp(40),
+                marginHorizontal: sizeHelper.calWp(20),
+                height: sizeHelper.calHp(35),
                 justifyContent: "center",
                 borderRadius: sizeHelper.calWp(5),
+                left: 20,
               }}
             >
               <Text
@@ -571,77 +538,21 @@ const SelectedProductListItemMobile = ({
                 numberOfLines={1}
                 style={styles.amount}
               >
-                {/* {item.SellingPrice * item.Quantity +
-                item.tax * item.Quantity -
-                (item.DiscountAmount ? item.DiscountAmount : 0)} */}
                 {item.GrandAmount.toFixed(
                   TerminalConfiguration.DecimalsInAmount
                 )}
               </Text>
             </View>
-            {item.IsParentAddOn && item.ProductType !== 3 ? (
-              <TopNavigation />
-            ) : (
-              <></>
-            )}
 
             {item.IsParentAddOn && <OtherOptionsView />}
-            {/* <TouchableOpacity
-              style={{ marginEnd: sizeHelper.calWp(10) }}
-              disabled={disabled}
-              onPress={() => {
-                getProductsIngredients(item);
-              }}>
-              <View
-                style={{
-                  backgroundColor: AppColor.yellow1,
-                  width: 33,
-                  height: 33,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderRadius: 33 / 2,
-                }}>
-                <Icon name="life-saver" size={20} color={AppColor.green} />
-              </View>
-            </TouchableOpacity> */}
-            {/* <TouchableOpacity
-              style={{ marginEnd: sizeHelper.calWp(10) }}
-              disabled={
-                !item.IsParentAddOn || item.AddOnGroupCode === '' || disabled
-              }
-              onPress={() => {
-                getAddOnProducts(item, index);
-              }}>
-              {!item.IsParentAddOn ? (
-                <View style={{ height: 33, width: 33 }} />
-              ) : item.AddOnGroupCode === '' ? (
-                <View style={{ height: 33, width: 33 }} />
-              ) : (
-                <View
-                  style={{
-                    backgroundColor: AppColor.green,
-                    width: 33,
-                    height: 33,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderRadius: 33 / 2,
-                  }}>
-                  <Icon name="life-saver" size={20} color={AppColor.yellow1} />
-                </View>
-              )}
-            </TouchableOpacity> */}
-
             <TouchableOpacity
               style={{
                 backgroundColor: AppColor.white,
-                height: 30,
-                width: 30,
+                height: 23,
+                width: 23,
 
                 justifyContent: "center",
                 alignItems: "center",
-                borderColor: AppColor.blue2,
-                borderWidth: 1,
-                borderRadius: 100,
               }}
               onPress={() => {
                 setMore(!isMore);
@@ -651,9 +562,9 @@ const SelectedProductListItemMobile = ({
               }}
             >
               {isMore ? (
-                <CloseIcon style={{ height: 25, width: 25 }} />
+                <UpIcon style={{ height: 22, width: 22 }} />
               ) : (
-                <OpenIcon style={{ height: 25, width: 25 }} />
+                <DownIcon style={{ height: 22, width: 22 }} />
               )}
             </TouchableOpacity>
           </View>
@@ -668,31 +579,36 @@ const SelectedProductListItemMobile = ({
               justifyContent: "space-between",
               alignItems: "center",
               paddingHorizontal: sizeHelper.calWp(20),
-              paddingVertical:
-                sizeHelper.screenWidth > 450
-                  ? sizeHelper.calHp(25)
-                  : sizeHelper.calHp(25),
+              paddingVertical: sizeHelper.calHp(25),
             },
           ]}
         >
-          <View>
+          <View style={{ left: -5 }}>
             <Text style={styles.productName}>{StringsList._13}</Text>
-            <Text style={styles.productBox}>{Number(item.tax).toFixed(2)}</Text>
+            <Text style={styles.productBox}>
+              {item.tax.toFixed(TerminalConfiguration.DecimalsInAmount)}
+            </Text>
           </View>
           {item.IsParentAddOn && (
-            <View>
+            <View
+              style={{ left: 20 }}
+              pointerEvents={
+                props?.returnInvoiceNumber !== null ? "none" : "auto"
+              }
+            >
               <Text style={styles.productName}>{StringsList._7}</Text>
               <TextInput
                 editable={
-                  item.IsParentAddOn === 1 &&
+                  item.IsParentAddOn &&
+                  props.returnInvoiceNumber === null &&
                   TerminalConfiguration.IsDiscountOnSalesProduct !== "true"
                     ? false
-                    : item.IsParentAddOn === 1 &&
+                    : item.IsParentAddOn &&
                       userConfiguration.DiscountAllowed === 1
                     ? true
                     : false
                 }
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 onChangeText={(text) =>
                   onChangeText("DiscountRate", text, item)
                 }
@@ -729,27 +645,33 @@ const SelectedProductListItemMobile = ({
             </View>
           )}
           {item.IsParentAddOn && (
-            <View>
+            <View
+              style={{ left: 10 }}
+              pointerEvents={
+                props?.returnInvoiceNumber !== null ? "none" : "auto"
+              }
+            >
               <Text style={styles.productName}>{StringsList._8}</Text>
               <TextInput
                 editable={
-                  item.IsParentAddOn === 1 &&
+                  item.IsParentAddOn &&
+                  props.returnInvoiceNumber === null &&
                   (item.DiscountRate > 0 ||
                     TerminalConfiguration.IsDiscountOnSalesProduct !== "true")
                     ? false
-                    : item.IsParentAddOn === 1 &&
+                    : item.IsParentAddOn &&
                       userConfiguration.DiscountAllowed === 1
                     ? true
                     : false
                 }
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 onChangeText={(text) =>
                   onChangeText("DiscountAmount", text, item)
                 }
                 onEndEditing={(text) => {
                   onEndEditing("DiscountAmount", item), setFocusDA(false);
                 }}
-                style={[styles.inputField]}
+                style={styles.inputField}
                 onFocus={() => {
                   setFocusDA(true);
                   setmanuallyCount(
@@ -800,11 +722,12 @@ const SelectedProductListItemMobile = ({
       )}
       {isMore &&
         item.IsParentAddOn &&
-        props.userConfiguration?.AssignSalesAgentAgainstServices === 1 && (
+        props.userConfiguration?.AssignSalesAgentAgainstServices === 1 &&
+        item.IsParentAddOn && (
           <View
             style={[
               styles.dropDownStyle,
-              { bottom: open ? sizeHelper.calHp(270) : sizeHelper.calHp(35) },
+              { bottom: open ? sizeHelper.calHp(240) : sizeHelper.calHp(35) },
             ]}
           >
             <DropDownPicker
@@ -891,17 +814,104 @@ const SelectedProductListItemMobile = ({
           </View>
         )}
       <>
-        <DescriptionBox
-          descriptionDetail={props.descriptionDetail}
-          setDescriptionDetail={props.setDescriptionDetail}
-          descriptionModal={props.descriptionModal}
-          setDescriptionModal={props.setDescriptionModal}
-          selectedProductNotes={props.selectedProductNotes}
-          onSaveNotes={props.onSaveNotes}
-          StringsList={StringsList}
+        <CustomModal
+          title={props.StringsList._43}
+          displayModal={props.notesModal}
+          onModalShow={props.setNotesModal}
+          setisPromptModal={() => {}}
+          isPromptModal={false}
+          children={
+            <>
+              <View>
+                <View
+                  style={{
+                    width: sizeHelper.calHp(485),
+                    justifyContent: "center",
+                    alignItems: "center",
+                    left: 4,
+                  }}
+                >
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={props.StringsList._529}
+                    placeholderTextColor={AppColor.black3}
+                    value={props.notesDetail}
+                    onChangeText={props.setNotesDetail}
+                    keyboardType="default"
+                    autoCorrect={true}
+                    editable={true}
+                    enablesReturnKeyAutomatically={true}
+                    maxLength={99}
+                    multiline={true}
+                    numberOfLines={2}
+                    spellCheck={true}
+                    textAlign={"left"}
+                    textAlignVertical={"top"}
+                    adjustsFontSizeToFit
+                  />
+                </View>
+                <View>
+                  <View
+                    style={{
+                      flexDirection: "row-reverse",
+                      width: sizeHelper.calHp(500),
+                      alignItems: "center",
+                      // height: 40,
+                      // paddingVertical: 8,
+                      // backgroundColor: AppColor.backColor,
+                      left: 5,
+                      top: -2,
+                    }}
+                  >
+                    <View
+                      style={{
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginHorizontal: 8,
+                      }}
+                    >
+                      <CustomButton
+                        containerStyle={{
+                          height: sizeHelper.calWp(45),
+                          width: sizeHelper.calWp(120),
+                          //   marginTop: sizeHelper.calHp(25),
+                        }}
+                        // isDisabled={isPromptModal && !value}
+                        title={props.StringsList._2}
+                        backgroundColor={AppColor.red}
+                        titleColor={AppColor.white}
+                        onPressButton={props.setNotesModal}
+                      />
+                    </View>
+                    <View
+                      style={{
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginHorizontal: 5,
+                      }}
+                    >
+                      <CustomButton
+                        containerStyle={{
+                          height: sizeHelper.calWp(45),
+                          width: sizeHelper.calWp(120),
+                          //   marginTop: sizeHelper.calHp(25),
+                        }}
+                        // isDisabled={isPromptModal && !value}
+                        title={props.StringsList._1}
+                        backgroundColor={AppColor.blue2}
+                        titleColor={AppColor.white}
+                        onPressButton={() =>
+                          props.onSaveNotes(props.selectedProductNotes)
+                        }
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </>
+          }
         />
       </>
-
       <>
         {productItems && item?.IsParentAddOn && item?.ProductType === 3 && (
           <GroupProductsModal
@@ -917,38 +927,30 @@ const SelectedProductListItemMobile = ({
 };
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {
+    alignItems: "center",
+    borderRadius: sizeHelper.calHp(10),
+  },
   innerContainer: {
     borderRadius: sizeHelper.calHp(10),
     flexDirection: "row",
     backgroundColor: AppColor.white,
-
-    // paddingRight: sizeHelper.calWp(24),
     paddingHorizontal: sizeHelper.calWp(15),
     paddingVertical:
       sizeHelper.screenWidth > 450 ? sizeHelper.calHp(0) : sizeHelper.calHp(0),
   },
   productName1: {
-    // width: "85%",
-    //marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(25),
     color: AppColor.black,
     fontFamily: "ProximaNova-Semibold",
-    //fontWeight: 'bold',
-    // backgroundColor: "green",
   },
   productName: {
-    // width: "85%",
     marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
     fontFamily: "ProximaNova-Semibold",
-    //fontWeight: 'bold',
-    // backgroundColor: "green",
   },
   productBox1: {
-    // height: sizeHelper.calHp(28),
-    // marginTop: sizeHelper.calHp(15),
     fontSize: sizeHelper.calHp(16),
     color: AppColor.blue,
     fontFamily: "Proxima Nova Bold",
@@ -956,16 +958,14 @@ const styles = StyleSheet.create({
   productBox: {
     height: sizeHelper.calHp(28),
     marginTop: sizeHelper.calHp(15),
-    fontSize: sizeHelper.calHp(16),
+    fontSize: sizeHelper.calHp(18),
     color: AppColor.gray1,
     fontFamily: "ProximaNova-Regular",
   },
   amount: {
     textAlign: "center",
-    // backgroundColor: 'green',
-    // width: sizeHelper.calWp(120),
     fontSize: sizeHelper.calHp(24),
-    color: AppColor.black,
+    color: AppColor.white,
     fontFamily: "Proxima Nova Bold",
 
     marginEnd: sizeHelper.calWp(2),
@@ -975,16 +975,14 @@ const styles = StyleSheet.create({
     fontSize: sizeHelper.calHp(16),
     color: AppColor.black,
     fontFamily: "ProximaNova-Regular",
-
-    //marginHorizontal: sizeHelper.calWp(17),
   },
   inputField: {
     textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(1),
-    width: sizeHelper.calWp(100),
+    width: sizeHelper.calWp(200),
     height: sizeHelper.calHp(40),
-    // backgroundColor: 'green',
+
     fontFamily: "ProximaNova-Regular",
     fontSize: sizeHelper.calHp(25),
     color: AppColor.black,
@@ -999,7 +997,21 @@ const styles = StyleSheet.create({
   },
   dropDownStyle: {
     position: "absolute",
-    right: sizeHelper.calWp(24),
+    right: sizeHelper.calWp(25),
+  },
+  textInput: {
+    height: 180,
+    margin: 10,
+    borderWidth: 1,
+    padding: 10,
+    width: "100%",
+    borderRadius: 5,
+    borderColor: "red",
+    backgroundColor: AppColor.backColor,
+    borderColor: AppColor.gray,
+    justifyContent: "center",
+    alignItems: "center",
+    top: -10,
   },
 });
 

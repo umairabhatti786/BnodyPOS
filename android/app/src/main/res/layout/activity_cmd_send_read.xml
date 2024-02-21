@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        tools:context="com.bnodypos.activity.CmdTestActivity">
+        tools:context="com.bnodyrestaurantpos.activity.CmdTestActivity">
 
         <TextView
             android:id="@+id/tv_rev"

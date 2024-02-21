@@ -1,31 +1,69 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   Image,
-  TextInput,
   TouchableOpacity,
-  FlatList,
+  Text,
   I18nManager,
+  TextInput,
   Keyboard,
+  TouchableWithoutFeedback,
+  Alert,
   Platform,
+  SafeAreaView,
 } from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome";
+
+import sizeHelper from "../helpers/sizeHelper";
+import AppColor from "../constant/AppColor";
+import BnodyLogo from "../assets/svg/bnodyLogo.svg";
 import Menu, {
   MenuOptions,
   MenuOption,
   MenuTrigger,
 } from "react-native-popup-menu";
-import sizeHelper from "../helpers/sizeHelper";
-import AppColor from "../constant/AppColor";
-import BnodyLogo from "../assets/svg/bnodyLogo.svg";
+import Icon from "react-native-vector-icons/FontAwesome";
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 
+import { list } from "../constant/global";
+import { useRoute } from "@react-navigation/native";
 const Header = ({ props }) => {
-  const suitcaseArray = [
+  const route = useRoute();
+  const onPressHome = () => {
+    if (props?.orderCode === false && route.name === "home") {
+      props.onClickCancel();
+      list.isOrderPlaced = false;
+      props.navigation.navigate("home", { id: undefined });
+    } else if (props?.orderCode === true && route.name === "home") {
+      if (props?.selectedProducts.length > 0) {
+        Alert.alert(props.StringsList._537, props.StringsList._475, [
+          {
+            text: "OK",
+            onPress: () => {
+              props.onClickCancel();
+              props.navigation.navigate("dashboard");
+            },
+          },
+          {
+            text: "Cancel",
+            onPress: () => {
+              console.log("Cancel Presed");
+            },
+            style: "cancel",
+          },
+        ]);
+      } else {
+        props.navigation.navigate("dashboard");
+      }
+    } else {
+      props.navigation.navigate("home", { id: undefined });
+    }
+  };
+
+  const dashboardSettingArray = [
     {
       id: "saleBilType",
-      title: props.StringsList._174,
+      title: props.StringsList._511,
       icon: (
         <Icon
           name={"print"}
@@ -34,48 +72,31 @@ const Header = ({ props }) => {
               ? sizeHelper.calWp(30)
               : sizeHelper.calWp(35)
           }
-          color={"#ba569c"}
+          color={AppColor.blue5}
         />
       ),
-      color: "#ba569c",
+      color: AppColor.black,
     },
-    // {
-
     {
       id: "billingType",
-      title: "Billing Type",
+      title: props.StringsList._334,
+
       icon: (
-        <Icon
-          name={"print"}
+        <FontAwesome5
+          name={"receipt"}
           size={
             sizeHelper.screenWidth > 450
               ? sizeHelper.calWp(30)
               : sizeHelper.calWp(35)
           }
-          color={"#7e9a49"}
+          color={AppColor.blue5}
         />
       ),
-      color: "#7e9a49",
-    },
-    {
-      id: "terminalSetup",
-      title: props.StringsList?._35,
-      icon: (
-        <Icon
-          name={"print"}
-          size={
-            sizeHelper.screenWidth > 450
-              ? sizeHelper.calWp(30)
-              : sizeHelper.calWp(35)
-          }
-          color={"#fb865a"}
-        />
-      ),
-      color: "#fb865a",
+      color: AppColor.black,
     },
     {
       id: "pairPrinter",
-      title: props.StringsList?._36,
+      title: props.StringsList._36,
       icon: (
         <Icon
           name={"print"}
@@ -84,31 +105,40 @@ const Header = ({ props }) => {
               ? sizeHelper.calWp(30)
               : sizeHelper.calWp(35)
           }
-          color={"#7e9a49"}
+          color={AppColor.blue5}
         />
       ),
-      color: "#7e9a49",
+      color: AppColor.black,
+    },
+    {
+      id: "terminalSetup",
+      title: props?.StringsList?._35,
+      icon: (
+        <Icon
+          name={"print"}
+          size={
+            sizeHelper.screenWidth > 450
+              ? sizeHelper.calWp(30)
+              : sizeHelper.calWp(35)
+          }
+          color={AppColor.blue5}
+        />
+      ),
+      color: AppColor.black,
     },
   ];
-
   const renderTouchable = () => <TouchableOpacity></TouchableOpacity>;
 
-  const TopNavigation = () => (
-    <View style={{ marginEnd: sizeHelper.calWp(30) }}>
-      <Menu onSelect={(value) => props.onClickSetting(value)}>
+  const TopNavigationDashBoard = () => (
+    <View style={{ marginEnd: sizeHelper.calWp(20) }}>
+      <Menu onSelect={(value) => props?.onClickSetting(value)}>
         <MenuTrigger renderTouchable={renderTouchable}>
-          <Icon
-            name={"suitcase"}
-            size={
-              sizeHelper.screenWidth > 450
-                ? sizeHelper.calWp(30)
-                : sizeHelper.calWp(35)
-            }
-            color={AppColor.white}
+          <Image
+            style={styles.icon}
+            source={require("../assets/images/setting.png")}
           />
         </MenuTrigger>
         <MenuOptions
-          style={{ backgroundColor: "white" }}
           optionsContainerStyle={{
             width: "auto",
             marginTop: sizeHelper.calWp(32),
@@ -117,7 +147,7 @@ const Header = ({ props }) => {
               : 0,
           }}
         >
-          {suitcaseArray.map((item, index) => (
+          {dashboardSettingArray.map((item, index) => (
             <MenuOption
               renderTouchable={renderTouchable}
               key={item.id}
@@ -136,10 +166,20 @@ const Header = ({ props }) => {
                 style={{
                   alignItems: "center",
                   flexDirection: "row",
+                  marginVertical: sizeHelper.calHp(5),
+                  paddingHorizontal: 15,
                 }}
               >
                 {item.icon}
-                <Text style={[styles.title1, { color: item.color }]}>
+                <Text
+                  style={[
+                    styles.title1,
+                    {
+                      color: item.color,
+                      marginHorizontal: sizeHelper.calWp(5),
+                    },
+                  ]}
+                >
                   {item.title}
                 </Text>
               </View>
@@ -149,244 +189,213 @@ const Header = ({ props }) => {
       </Menu>
     </View>
   );
+
   return (
     <View style={styles.mainContainer}>
-      <View style={styles.topView}>
-        <BnodyLogo
-          // backgroundColor={'green'}
-          width={sizeHelper.calWp(80)}
-          height={sizeHelper.calHp(33)}
-        />
-        {Platform.OS !== "ios" && !props.isDashboard && (
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={styles.terminalIdText}>
-              {props.StringsList._172 + " : "}
-            </Text>
-            <View
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          right: 10,
+          justifyContent: "space-between",
+        }}
+      >
+        {route.name === "home" && (
+          <TouchableOpacity
+            disabled={false}
+            style={{ left: 10 }}
+            onPress={() => props.navigation.navigate("TableBook")}
+          >
+            <Text
               style={{
-                backgroundColor: AppColor.yellowColor,
-                width: sizeHelper.calWp(60),
-                height: sizeHelper.calHp(30),
-                borderRadius: sizeHelper.calWp(5),
-                alignItems: "center",
-                justifyContent: "center",
+                fontFamily: "ProximaNova-Regular",
+                fontSize:
+                  sizeHelper.screenWidth > 450
+                    ? sizeHelper.calHp(25)
+                    : sizeHelper.calHp(20),
+                color: AppColor.white,
               }}
             >
-              <Text style={[styles.terminalIdText]}>
-                {props.TerminalConfiguration?.TerminalCode}
-              </Text>
-            </View>
-          </View>
+              {props.StringsList._469}
+            </Text>
+          </TouchableOpacity>
         )}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            zIndex: 500,
-          }}
+        {route.name === "home" && (
+          <TouchableOpacity
+            disabled={false}
+            style={{ left: 20 }}
+            onPress={onPressHome}
+          >
+            <Text
+              style={{
+                fontFamily: "ProximaNova-Regular",
+                fontSize:
+                  sizeHelper.screenWidth > 450
+                    ? sizeHelper.calHp(25)
+                    : sizeHelper.calHp(20),
+                color: AppColor.yellow1,
+              }}
+            >
+              {props.StringsList._470}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View
+        style={{
+          position: "absolute",
+          justifyContent: "center",
+          alignItems: "center",
+          top: 0,
+          right: 0,
+          left: 0,
+          bottom: 0,
+        }}
+      >
+        <TouchableOpacity
+          disabled={route.name === "dashboard" ? true : false}
+          onPress={onPressHome}
         >
-          {props.isDashboard && <TopNavigation />}
+          <BnodyLogo
+            width={sizeHelper.calWp(110)}
+            height={sizeHelper.calHp(45)}
+          />
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity onPress={() => props.onClickPowerOff()}>
-            <Icon
-              name={"power-off"}
-              size={
-                sizeHelper.screenWidth > 450
-                  ? sizeHelper.calWp(30)
-                  : sizeHelper.calWp(35)
-              }
-              color={AppColor.white}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-around",
+        }}
+      >
+        {route.name === "home" && (
+          <>
+            <TouchableOpacity
+              onPress={() => props?.setIsSearch(true)}
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                marginEnd: sizeHelper.calWp(10),
+              }}
+            >
+              <Image
+                style={{
+                  width:
+                    sizeHelper.screenWidth > 450
+                      ? sizeHelper.calHp(35)
+                      : sizeHelper.calHp(25),
+                  height:
+                    sizeHelper.screenWidth > 450
+                      ? sizeHelper.calHp(35)
+                      : sizeHelper.calHp(25),
+                  resizeMode: "contain",
+                }}
+                source={require("../assets/images/find.png")}
+              />
+            </TouchableOpacity>
+          </>
+        )}
+        {route.name === "dashboard" && (
+          <TouchableOpacity
+            style={{ marginEnd: sizeHelper.calWp(10) }}
+            onPress={() => {
+              list.isHoldedInvoiceOpened = true;
+              props.navigation?.navigate("home", { type: "holdInvoice" });
+            }}
+          >
+            <Image
+              style={{
+                width: sizeHelper.calHp(30),
+                height: sizeHelper.calHp(30),
+                resizeMode: "contain",
+              }}
+              source={require("../assets/images/invoice.png")}
             />
           </TouchableOpacity>
-        </View>
-      </View>
-      {!props.isDashboard && (
-        <View style={styles.bottomView}>
-          {props.isSearch ? (
-            <View
+        )}
+        {route.name === "dashboard" && (
+          <TouchableOpacity
+            style={{ marginEnd: sizeHelper.calWp(10) }}
+            onPress={() => props.rebootTerminalFunction()}
+          >
+            <Image
               style={{
-                flex: 1,
-                flexDirection: "row",
-                // justifyContent: 'space-between',
+                width: sizeHelper.calHp(30),
+                height: sizeHelper.calHp(30),
+                resizeMode: "contain",
               }}
-            >
-              <View style={styles.searchContainer}>
-                <View>
-                  <TextInput
-                    editable={!props.disabled}
-                    style={styles.search}
-                    ref={props.ref_searchBar}
-                    value={props.searchText}
-                    //onFocus={Keyboard.dismiss}
-                    onEndEditing={() => {
-                      props.searchTextFun();
-                    }}
-                    onChangeText={(text) => {
-                      props.onChangeText("searchText", text);
-                    }}
-                    placeholder={`${props.StringsList?._135} ${props.StringsList?._304}/${props.StringsList?._141}`}
-                  />
-                  {props.barCode && (
-                    <View
-                      style={[
-                        styles.search,
-                        {
-                          justifyContent: "center",
-                          position: "absolute",
-                          backgroundColor: "white",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          fontSize: sizeHelper.calHp(20),
-                          fontFamily: "ProximaNova-Regular",
-                        }}
-                      >
-                        {props.barCodeText === ""
-                          ? `${props.StringsList?._130} ${props.StringsList?._436}`
-                          : props.barCodeText}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                {!props.isDashboard && (
-                  <TouchableOpacity
-                    disabled={props.disabled}
-                    onPress={() => {
-                      props.toggleSearchScan();
-                    }}
-                    style={styles.cameraContainer2}
-                  >
-                    {!props.barCode ? (
-                      <Icon
-                        name={"qrcode"}
-                        size={sizeHelper.calWp(40)}
-                        color={props.barCode ? AppColor.blue2 : AppColor.gray1}
-                        style={{ alignSelf: "center" }}
-                      />
-                    ) : (
-                      <Icon
-                        name={"search"}
-                        size={sizeHelper.calWp(35)}
-                        color={AppColor.grayColor}
-                      />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
+              source={require("../assets/images/refresh.png")}
+            />
+          </TouchableOpacity>
+        )}
 
-              <TouchableOpacity
-                disabled={props?.returnInvoiceNumber}
-                onPress={props?.onInvoiceClick}
-                style={[
-                  styles.invoiceContainer,
-                  {
-                    backgroundColor: props?.invoiceNumber
-                      ? AppColor.yellowColor
-                      : AppColor.blue1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.terminalIdText, { color: AppColor.white }]}
-                >
-                  {props.invoiceNumber
-                    ? props.invoiceNumber
-                    : props.returnInvoiceNumber}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={styles.title}>{props.title}</Text>
-          )}
-        </View>
-      )}
+        {route.name === "dashboard" && <TopNavigationDashBoard />}
+
+        <TouchableOpacity
+          onPress={props.onClickLogoutFunction}
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Image
+            style={{
+              width:
+                sizeHelper.screenWidth > 450
+                  ? sizeHelper.calHp(35)
+                  : sizeHelper.calHp(25),
+              height:
+                sizeHelper.screenWidth > 450
+                  ? sizeHelper.calHp(35)
+                  : sizeHelper.calHp(25),
+              resizeMode: "contain",
+            }}
+            source={require("../assets/images/shutdown.png")}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   mainContainer: {
-    backgroundColor: AppColor.blue1,
-    // flex: 1,
-    //height:sizeHelper.calHp(142),
+    backgroundColor: AppColor.blue5,
+    flexDirection: "row",
     paddingTop: sizeHelper.calHp(14),
-    paddingHorizontal: sizeHelper.calWp(25),
+    paddingHorizontal: sizeHelper.calWp(20),
     width: sizeHelper.screenWidth,
-    paddingBottom: sizeHelper.calHp(20),
-    // height: sizeHelper.calHp(200),
+    paddingBottom: sizeHelper.calHp(10),
+    justifyContent: "space-between",
+    height:
+      Platform.OS === "ios" ? sizeHelper.calHp(100) : sizeHelper.calHp(50),
   },
   topView: {
+    flex: 1,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    top: Platform.OS === "ios" ? 15 : 0,
-    marginHorizontal: Platform.OS === "android" ? 0 : 5,
-  },
-
-  terminalIdText: {
-    fontSize: sizeHelper.calHp(22),
-    color: AppColor.white,
-    fontFamily: "Proxima Nova Bold",
-    // fontWeight: "bold"
-  },
-  title: {
-    fontSize: sizeHelper.calHp(20),
-    color: AppColor.white,
-    fontFamily: "Proxima Nova Bold",
-    width: sizeHelper.calWp(80),
-    backgroundColor: "green",
-    alignSelf: "center",
-    textAlign: "center",
+    alignItems: "center",
   },
 
   title1: {
     fontSize: sizeHelper.calHp(20),
     marginStart: sizeHelper.calWp(5),
-    fontFamily: "Proxima Nova Bold",
+    fontFamily: "ProximaNova-Regular",
     alignSelf: "center",
     textAlign: "center",
   },
 
   bottomView: {
-    marginTop: sizeHelper.calHp(35),
     alignItems: "center",
     flexDirection: "row",
-    // justifyContent: 'center',
-    // backgroundColor: "green"
-  },
-  searchContainer: {
-    width: sizeHelper.calWp(530),
-    height: sizeHelper.calHp(50),
-    backgroundColor: AppColor.white,
-    borderRadius: sizeHelper.calHp(25),
-    paddingStart: sizeHelper.calWp(11),
-    alignItems: "center",
-    flexDirection: "row",
-    top: Platform.OS === "ios" ? 5 : 0,
+    right:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.calWp(15)
+        : sizeHelper.calWp(-5),
   },
 
-  search: {
-    textAlignVertical: "center",
-    padding: 0,
-    paddingStart: sizeHelper.calWp(6),
-    width: sizeHelper.calWp(440),
-    borderRadius: sizeHelper.calHp(18),
-    height: sizeHelper.calHp(50),
-    backgroundColor: AppColor.white,
-    fontSize: sizeHelper.calHp(18),
-    fontFamily: "ProximaNova-Regular",
-  },
-  invoiceContainer: {
-    width: sizeHelper.calWp(160),
-    height: sizeHelper.calHp(50),
-    backgroundColor: AppColor.yellowColor,
-    borderRadius: sizeHelper.calHp(25),
-    alignItems: "center",
-    justifyContent: "center",
-    marginStart: sizeHelper.calWp(14),
-  },
   cameraContainer: {
     width: sizeHelper.calHp(50),
     height: sizeHelper.calHp(50),
@@ -405,8 +414,45 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: sizeHelper.calWp(50) / 2,
     marginStart: sizeHelper.calWp(14),
-    // paddingEnd: sizeHelper.calWp(5),
-    //paddingBottom: sizeHelper.calWp(5)
+    right:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.calWp(80)
+        : sizeHelper.calWp(70),
+  },
+  icon: {
+    width: sizeHelper.calHp(30),
+    height: sizeHelper.calHp(30),
+    resizeMode: "contain",
+    left: 5,
+  },
+
+  searchContainer: {
+    width:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.calWp(365)
+        : sizeHelper.calWp(345),
+    height: sizeHelper.calHp(50),
+    backgroundColor: AppColor.white,
+    borderRadius: sizeHelper.calHp(25),
+    paddingStart: sizeHelper.calWp(11),
+    alignItems: "center",
+    flexDirection: "row",
+  },
+
+  search: {
+    textAlignVertical: "center",
+    padding: 0,
+    paddingStart: sizeHelper.calWp(6),
+    width:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.calWp(285)
+        : sizeHelper.calWp(250),
+    borderRadius: sizeHelper.calHp(18),
+    height: sizeHelper.calHp(50),
+    backgroundColor: AppColor.white,
+    fontSize: sizeHelper.calHp(18),
+    fontFamily: "ProximaNova-Regular",
+    overflow: "hidden",
   },
 });
 

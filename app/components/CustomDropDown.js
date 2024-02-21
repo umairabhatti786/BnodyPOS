@@ -1,9 +1,9 @@
-import React, {useState} from 'react';
-import {View, StyleSheet, Image, Text, TouchableOpacity} from 'react-native';
-import DropDownPicker from 'react-native-dropdown-picker';
+import React, { useState } from "react";
+import { View, StyleSheet, Image, Text, TouchableOpacity } from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 
-import AppColor from '../constant/AppColor';
-import sizeHelper from '../helpers/sizeHelper';
+import AppColor from "../constant/AppColor";
+import sizeHelper from "../helpers/sizeHelper";
 
 const CustomDropDown = ({
   buttonBackroundColor,
@@ -20,6 +20,8 @@ const CustomDropDown = ({
   dropDownDirection,
   open,
   setOpen,
+  children,
+  childrenStyle,
 }) => {
   // const [open, setOpen] = useState(false);
 
@@ -32,9 +34,11 @@ const CustomDropDown = ({
         backgroundColor: AppColor.white,
         height: 0.5,
         width: dropDownWidth - sizeHelper.calWp(30),
-        alignSelf: 'center',
+        alignSelf: "center",
       }}
-      dropDownDirection={dropDownDirection ? dropDownDirection : 'AUTO'}
+      children={children}
+      childrenStyle={childrenStyle}
+      dropDownDirection={dropDownDirection ? dropDownDirection : "AUTO"}
       disabled={disabled}
       open={open}
       value={value}
@@ -42,7 +46,7 @@ const CustomDropDown = ({
       setOpen={setOpen}
       setValue={setValue}
       setItems={setItems}
-      onPress={open =>
+      onPress={(open) =>
         // console.log('was the picker open?', open, )
         setValue(null)
       }
@@ -50,12 +54,12 @@ const CustomDropDown = ({
       placeholder={placeholderTitle}
       //style={styles.dropDownStyle}
       placeholderStyle={{
-        alignSelf: 'center',
-        textAlign: 'center',
+        alignSelf: "center",
+        textAlign: "center",
         // paddingStart: sizeHelper.calWp(15),
         fontSize: sizeHelper.calHp(22),
-        color: disabled ? AppColor.gray1 : AppColor.white,
-        fontFamily: 'ProximaNova-Semibold',
+        color: disabled ? AppColor.gray1 : AppColor.gray2,
+        fontFamily: "ProximaNova-Semibold",
       }}
       labelProps={{
         numberOfLines: 1,
@@ -76,19 +80,19 @@ const CustomDropDown = ({
         width: dropDownWidth,
         backgroundColor: disabled ? AppColor.disableColor : AppColor.blue2,
         borderWidth: 0,
-        // paddingHorizontal: sizeHelper.calWp(0),
+        //paddingHorizontal: sizeHelper.calWp(20),
       }}
       arrowIconContainerStyle={{
         height: sizeHelper.calHp(40),
         width: sizeHelper.calWp(35),
 
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
       }}
       arrowIconStyle={{
         width: sizeHelper.calWp(20),
         height: sizeHelper.calHp(20),
-        tintColor: disabled ? AppColor.gray1 : AppColor.white,
+        tintColor: disabled ? AppColor.gray1 : AppColor.gray2,
       }}
       listItemContainerStyle={{
         zIndex: 110100,
@@ -108,7 +112,7 @@ const CustomDropDown = ({
       }}
       labelStyle={{
         color: disabled ? AppColor.gray1 : AppColor.white,
-        textAlign: 'center',
+        textAlign: "center",
         fontSize: sizeHelper.calHp(22),
       }}
       tickIconStyle={{
@@ -116,7 +120,8 @@ const CustomDropDown = ({
         height: sizeHelper.calHp(15),
         tintColor: disabled ? AppColor.gray1 : AppColor.white,
       }}
-      zIndex={9000}
+      zIndex={9999999999}
+      zIndexInverse={99999999}
     />
   );
 };

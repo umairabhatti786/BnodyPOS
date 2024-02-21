@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {Children, useEffect} from 'react';
 import {
   View,
   StyleSheet,
@@ -10,16 +10,30 @@ import {
   I18nManager,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import i18n from 'i18n-js';
 
 import AppColor from '../constant/AppColor';
 import sizeHelper from '../helpers/sizeHelper';
 import CategoryItem from './CategoryItem';
 
-const AllCategories = ({ data, onPressItem, focus, flatListRef, disabled }) => {
-  const renderItems = ({ item, index }) => {
+const AllCategories = ({
+  data,
+  onPressItem,
+  focus,
+  flatListRef,
+  disabled,
+  onInvoiceClick,
+  orderNumber,
+  children,
+  childrenStyle,
+  storageItems,
+  selectedProducts,
+  StringsList,
+  orderDetails,
+  TerminalConfiguration,
+}) => {
+  const renderItems = ({item, index}) => {
     return (
-      <View style={{ marginStart: sizeHelper.calWp(9) }}>
+      <View style={{marginStart: sizeHelper.calWp(9)}}>
         <CategoryItem
           onPressItem={onPressItem}
           isSelected={item.isSelected}
@@ -40,22 +54,63 @@ const AllCategories = ({ data, onPressItem, focus, flatListRef, disabled }) => {
           alignItems: 'center',
           // paddingHorizontal: sizeHelper.calWp(40),
         }}>
-        <Text style={styles.categorytitle}>
-          {I18nManager.isRTL ? 'التصنيفات' : 'Categories'}
-        </Text>
-        {/* <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.search}
-            placeholder="Search Product Name/Code"
-          />
-          <Icon
-            name={'search'}
-            size={sizeHelper.calWp(15)}
-            color={AppColor.grayColor}
-          />
-        </View> */}
+        <Text style={styles.categorytitle}>{StringsList._524}</Text>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+          {storageItems ? (
+            <>
+              <TouchableOpacity
+                disabled={true}
+                style={[
+                  styles.invoiceContainer,
+                  {
+                    padding: sizeHelper.calHp(10),
+                    paddingHorizontal: sizeHelper.calHp(20),
+                    borderRadius: sizeHelper.calHp(30),
+                    backgroundColor: AppColor.green,
+                    marginTop: sizeHelper.calHp(10),
+                    marginEnd: sizeHelper.calHp(15),
+                    // flexDirection: 'row',
+                    // left: sizeHelper.calHp(180),
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  },
+                ]}>
+                <View style={childrenStyle}>{children}</View>
+              </TouchableOpacity>
+            </>
+          ) : orderDetails ? (
+            <>
+              <TouchableOpacity
+                disabled={true}
+                style={[
+                  styles.invoiceContainer,
+                  {
+                    padding: sizeHelper.calHp(10),
+                    paddingHorizontal: sizeHelper.calHp(20),
+                    borderRadius: sizeHelper.calHp(30),
+                    backgroundColor: AppColor.green,
+                    marginTop: sizeHelper.calHp(10),
+                    marginEnd: sizeHelper.calHp(15),
+                    // flexDirection: 'row',
+                    // left: sizeHelper.calHp(180),
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  },
+                ]}>
+                <View style={childrenStyle}>{children}</View>
+              </TouchableOpacity>
+            </>
+          ) : null}
+        </View>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+      <View style={{flexDirection: 'row', alignItems: 'center'}}>
         {/* <TouchableOpacity>
           <Icon
             name={'angle-left'}
@@ -72,11 +127,14 @@ const AllCategories = ({ data, onPressItem, focus, flatListRef, disabled }) => {
             marginTop: sizeHelper.calHp(13),
             marginHorizontal: sizeHelper.calWp(13),
           }}
-          contentContainerStyle={{ padding: 5 }}
+          contentContainerStyle={{padding: 5}}
           data={data}
           renderItem={renderItems}
-          keyExtractor={item => item.ProductFamilyCode}
+          // keyExtractor={(item) => item.ProductFamilyCode}
+          keyExtractor={item => '_' + item.ProductFamilyCode.toString()}
+          key={item => '_' + item.ProductBarCode.toString()}
         />
+
         {/* <TouchableOpacity>
           <Icon
             name={'angle-right'}
@@ -124,9 +182,10 @@ const styles = StyleSheet.create({
     fontFamily: 'ProximaNova-Regular',
   },
   categorytitle: {
+    marginTop: sizeHelper.calHp(15),
     marginStart: sizeHelper.calHp(15),
-    fontSize: sizeHelper.calHp(22),
-    color: AppColor.blue1,
+    fontSize: sizeHelper.calHp(26),
+    color: AppColor.blue5,
     fontFamily: 'Proxima Nova Bold',
   },
 });

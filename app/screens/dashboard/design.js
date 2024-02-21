@@ -1,21 +1,16 @@
-import React, { useState, useRef } from "react";
+import React from "react";
 import {
   FlatList,
   Text,
   TouchableOpacity,
   View,
   StatusBar,
-  ScrollView,
-  Image,
   I18nManager,
+  ImageBackground,
 } from "react-native";
-import Carousel, { Pagination } from "react-native-snap-carousel";
 import * as Progress from "react-native-progress";
-import Drawer from "../../assets/svg/drawer.svg";
-import HelpIcon from "../../assets/svg/helpIcon.svg";
-import LogoutIcon from "../../assets/svg/logoutIcon.svg";
-import NewIcon from "../../assets/svg/newIcon.svg";
-import RebootTerminalIcon from "../../assets/svg/rebootTerminalIcon.svg";
+import BillingType from "../../components/BillingType";
+import NewIcon from "../../assets/svg/newIcon";
 import Header from "../../components/Header";
 import sizeHelper from "../../helpers/sizeHelper";
 import styles from "./style";
@@ -25,221 +20,230 @@ import TerminalSetup from "../../components/TerminalSetup";
 import PairPrinterFamily from "../../components/PairPrinterFamily";
 import Loading from "../../components/Loading";
 import AlertModel from "../../components/AlertModel";
-import SaleAgentsList from "../../components/SaleAgentsList";
-import DrawerPrint from "../../components/DrawerPrint";
-import BillingType from "../../components/BillingType";
 
 const Design = (props) => {
-  // console.log('drawerSetupArr', drawerSetupArr);
   const carouselArray = [
+    {
+      id: "totalOrders",
+      title: props?.StringsList._23 + " " + props?.StringsList._506,
+
+      color: AppColor.greenText,
+      value: Number(
+        props?.TerminalConfiguration?.LastBillNumber
+          ? props?.TerminalConfiguration?.LastBillNumber
+          : 0
+      ),
+    },
     {
       id: "totalSales",
       title: I18nManager.isRTL ? "إجمالي المبيعات" : "Total Sales",
-      icon: <NewIcon />,
-      color: "#7e9a49",
-      value:
-        Number(props.drawerSetupArr.CashSales) +
-        Number(props.drawerSetupArr.creditSales) +
-        Number(props.drawerSetupArr.cardSale),
-    },
-    {
-      id: "cashInDrawer",
-      title: I18nManager.isRTL ? "نقد في الدرج" : "Cash in Drawer",
-      icon: <Drawer />,
-      color: "#ba569c",
-      value: Number(props.drawerSetupArr.estimatedAmountinDrawer),
+
+      color: AppColor.blueText,
+      value: Number(props?.drawerSetupArr.estimatedAmountinDrawer),
     },
     {
       id: "totalReturns",
-      title: I18nManager.isRTL ? "العوائد الإجمالية" : "Total Returns",
-      icon: <RebootTerminalIcon />,
-      color: "#d99359",
+      title: props?.StringsList._506 + " " + props?.StringsList._29,
+
+      color: AppColor.pinkText,
       value:
-        Number(props.drawerSetupArr.creditRefunds) +
-        Number(props.drawerSetupArr.cardReturn) +
-        Number(props.drawerSetupArr.CashRefund),
+        Number(props?.drawerSetupArr.creditRefunds) +
+        Number(props?.drawerSetupArr.cardReturn) +
+        Number(props?.drawerSetupArr.CashRefund),
+    },
+    {
+      id: "cashTransaction",
+      title: I18nManager.isRTL ? "المعاملة النقدية" : "Transaction Cash",
+
+      color: AppColor.yellowText,
+      value: Number(props?.drawerSetupArr.CashSales),
+    },
+    {
+      id: "creditTransaction",
+      title: I18nManager.isRTL ? "ائتمان المعاملات" : "Transaction Credit",
+
+      color: AppColor.grayText,
+      value:
+        Number(props?.drawerSetupArr.cardSale) +
+        Number(props?.drawerSetupArr.creditSales),
     },
   ];
-  const [activeSlide, setActiveSlide] = useState({
-    activeSlide: I18nManager.isRTL ? carouselArray.length - 1 : 0,
-  });
+
   const BottomArray = [
     {
       id: "new",
-      title: props.StringsList?._4,
+      title: props?.StringsList?._4,
       icon: <NewIcon />,
-      color: AppColor.green1,
+
       disable: false,
-    },
-    {
-      id: "drawer",
-      title: props.StringsList?._45,
-      icon: <Drawer />,
-      color: AppColor.pink,
-      disable: false,
-    },
-    {
-      id: "rebootTerminal",
-      title: props.StringsList?._307,
-      icon: <RebootTerminalIcon />,
-      color: AppColor.green1,
-      disable: false,
-    },
-    {
-      id: "saleAgents",
-      title: I18nManager.isRTL ? "وكلاء البيع" : "Sale Agents",
-      icon: (
-        <HelpIcon
-          color={
-            props.userConfiguration.AssignSalesAgentAgainstServices === 1
-              ? AppColor.orange2
-              : AppColor.disableColor
-          }
-        />
-      ),
-      disable: props.userConfiguration.AssignSalesAgentAgainstServices === 0,
-      color:
-        props.userConfiguration.AssignSalesAgentAgainstServices === 1
-          ? AppColor.orange2
-          : AppColor.disableColor,
+      backgroundColor: AppColor.green1,
+      imageBackground: require("../../assets/images/new.jpg"),
     },
     {
       id: "postBills",
-      title: props.StringsList?._308,
-      icon: (
-        <Image
-          style={{
-            height: 45,
-            width: 30,
-            tintColor: props.isBillNeedPost
-              ? AppColor.orange2
-              : AppColor.disableColor,
-          }}
-          source={require("../../assets/images/receipt.png")}
-        />
-      ),
-      disable: !props.isBillNeedPost,
-      color: props.isBillNeedPost ? AppColor.orange2 : AppColor.disableColor,
+      title: props?.StringsList?._308,
+
+      disable: !props?.isBillNeedPost,
+      color: props?.isBillNeedPost ? AppColor.white : AppColor.disableColor,
+      backgroundColor: props?.isBillNeedPost
+        ? AppColor.orange2
+        : AppColor.disableColor,
+      imageBackground: require("../../assets/images/postBills.jpg"),
     },
     {
-      id: "logout",
-      title: props.StringsList?._326,
-      icon: <LogoutIcon />,
-      color: AppColor.yellow1,
+      id: "return",
+      title: props.StringsList._29,
+
+      color: AppColor.pink,
       disable: false,
+      backgroundColor: AppColor.pink,
+      imageBackground: require("../../assets/images/return.jpg"),
+    },
+    {
+      id: "drawer",
+      title: props?.StringsList?._45,
+
+      color: AppColor.pink,
+      disable: false,
+      backgroundColor: AppColor.pink,
+      imageBackground: require("../../assets/images/drawerback.png"),
+    },
+    {
+      id: "pendingOrders",
+      title: I18nManager?.isRTL ? "الأوامر المعلقة" : "Pending Orders",
+
+      disable: false,
+      backgroundColor: AppColor.orange2,
+      color: AppColor.black3,
+      imageBackground: require("../../assets/images/pending.jpg"),
+    },
+    {
+      id: "reprint",
+      title: props.StringsList._518,
+
+      color: AppColor.black3,
+      disable: false,
+      backgroundColor: AppColor.red,
+      imageBackground: require("../../assets/images/reprint.jpg"),
     },
   ];
 
-  const pagination = () => {
-    return (
-      <Pagination
-        dotsLength={carouselArray.length}
-        activeDotIndex={activeSlide.activeSlide}
-        dotStyle={styles.dotStyle}
-        inactiveDotOpacity={0.4}
-        inactiveDotScale={0.6}
-      />
-    );
-  };
-
   const renderItems = ({ item, index }) => {
-    //console.log('isBillNeedPost..', isBillNeedPost);
     return (
-      <View
-        style={[
-          styles.renderItemContainer,
-          {
-            margin: sizeHelper.calWp(20),
-            opacity: item.id === "postBills" && !props.isBillNeedPost ? 0.4 : 1,
-          },
-        ]}
+      <TouchableOpacity
+        disabled={item.disable}
+        onPress={() => {
+          props?.onPressItem(item.id);
+        }}
       >
-        <View
-          style={[
-            styles.divider,
-            {
-              width:
-                index === 1 || index === 4
-                  ? sizeHelper.calWp(300)
-                  : sizeHelper.calWp(200),
+        <ImageBackground
+          source={item.imageBackground}
+          style={{
+            opacity:
+              item.id === "postBills" && !props?.isBillNeedPost ? 0.4 : 1,
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 2,
             },
-          ]}
-        />
-
-        <TouchableOpacity
-          disabled={item.disable}
-          style={[
-            styles.renderItemContainer,
-            { justifyContent: "space-between" },
-          ]}
-          onPress={() => {
-            props.onPressItem(item.id);
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: item.backgroundColor,
+            width: sizeHelper.calWp(220),
+            height: sizeHelper.calHp(205),
+            marginVertical:
+              sizeHelper.screenWidth > 450
+                ? sizeHelper.calHp(18)
+                : sizeHelper.calHp(20),
           }}
         >
-          {item.icon}
           <Text
             style={[
               styles.itemTittle,
-              { color: item.disable ? AppColor.gray1 : AppColor.white },
+              {
+                color: item.disable ? AppColor.white : AppColor.white,
+                // opacity:
+                //   item.id === 'postBills' && !props?.isBillNeedPost ? 2 : 1,
+              },
             ]}
             adjustsFontSizeToFit={true}
             numberOfLines={1}
           >
             {item.title}
           </Text>
-          <View
-            style={[
-              styles.itemsBottomLine,
-              {
-                backgroundColor: item.color,
-              },
-            ]}
-          />
-        </TouchableOpacity>
-      </View>
+        </ImageBackground>
+      </TouchableOpacity>
     );
   };
 
   const carouselRenderItems = ({ item, index }) => {
+    let value = item?.value ? item.value : 0;
     return (
-      <View style={{ alignItems: "center" }}>
-        <View
-          style={
-            activeSlide.activeSlide === index
-              ? styles.carouselItemsContainer
-              : styles.carouselItemsContainerV2
-          }
-        >
-          {activeSlide.activeSlide === index && (
-            <View
-              style={{
-                position: "absolute",
-                alignItems: "center",
-              }}
-            >
-              <Progress.CircleSnail
-                duration={3000}
-                spinDuration={5000}
-                size={sizeHelper.calWp(260)}
-                thickness={sizeHelper.calWp(4)}
-                color={[
-                  AppColor.purple,
-                  AppColor.green1,
-                  AppColor.pink,
-                  AppColor.orange1,
-                  AppColor.orange2,
-                  AppColor.yellow1,
-                ]}
-              />
-            </View>
-          )}
+      <View
+        style={{
+          alignItems: "center",
+          backgroundColor: AppColor.white,
+          shadowColor: "#000",
+          shadowOffset: {
+            width: 0,
+            height: 2,
+          },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+
+          elevation: 5,
+          width: sizeHelper.calWp(220),
+          height: sizeHelper.calWp(250),
+          borderRadius: 10,
+          alignSelf: "center",
+          justifyContent: "center",
+          marginHorizontal: sizeHelper.calHp(10),
+          marginVertical: sizeHelper.calHp(10),
+        }}
+      >
+        <View style={styles.carouselItemsContainerV2}>
+          <View
+            style={{
+              position: "absolute",
+
+              width: sizeHelper.calWp(150),
+              height: sizeHelper.calWp(150),
+              borderRadius: sizeHelper.calWp(150) / 2,
+
+              justifyContent: "center",
+              alignItems: "center",
+              alignSelf: "center",
+            }}
+          >
+            <Progress.CircleSnail
+              duration={3000}
+              spinDuration={5000}
+              size={sizeHelper.calWp(175)}
+              thickness={sizeHelper.calWp(4)}
+              color={[
+                item?.id === "totalOrders"
+                  ? AppColor.greenText
+                  : item?.id === "totalSales"
+                  ? AppColor.blueText
+                  : item?.id === "totalReturns"
+                  ? AppColor.pinkText
+                  : item?.id === "cashTransaction"
+                  ? AppColor.yellowText
+                  : AppColor.grayText,
+              ]}
+            />
+          </View>
+
           <View style={styles.carouselItemsInnerContainer}>
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}
-              style={styles.carouselItemCount}
+              style={[styles.carouselItemCount, { color: item?.color }]}
             >
-              {item.value.toFixed(props.TerminalConfiguration.DecimalsInAmount)}
+              {value.toFixed(props?.TerminalConfiguration.DecimalsInAmount)}
             </Text>
           </View>
         </View>
@@ -251,44 +255,88 @@ const Design = (props) => {
   return (
     <View style={styles.mainContainer}>
       <StatusBar hidden />
-      <Header props={props} />
-      <Text style={styles.aromatic}>
-        {props.selectedAgent?.SalesAgentName
-          ? props.selectedAgent?.SalesAgentName
-          : props.TerminalConfiguration.SalesAgentName}
-      </Text>
-      <Text style={styles.pointOfSale}>
-        {I18nManager.isRTL ? "نقطة البيع" : "Point Of Sale"}
-      </Text>
-      <View style={styles.topContainer}>
+      <Header props={props} isSearch={props.isSearch} />
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginVertical: sizeHelper.calHp(10),
+          marginHorizontal: sizeHelper.calHp(22),
+        }}
+      >
         <View>
-          <Carousel
-            inactiveSlideScale={0.8}
-            data={I18nManager.isRTL ? carouselArray.reverse() : carouselArray}
-            renderItem={carouselRenderItems}
-            sliderWidth={sizeHelper.screenWidth}
-            itemWidth={sizeHelper.calWp(250)}
-            onSnapToItem={(index) =>
-              setActiveSlide({
-                activeSlide: I18nManager.isRTL
-                  ? carouselArray.length - (1 + index)
-                  : index,
-              })
-            }
-          />
+          <Text style={styles.overView}>
+            {I18nManager.isRTL ? "ملخص" : "Overview"}
+          </Text>
         </View>
-        {pagination()}
+
+        <View style={styles.terminalView}>
+          <Text style={styles.termianal}>
+            {props?.StringsList?._82 +
+              ":" +
+              props?.TerminalConfiguration?.TerminalCode}
+          </Text>
+        </View>
       </View>
-      <View style={styles.bottomContainer}>
+      <View style={styles.divider} />
+
+      <View style={styles.topContainer}>
         <FlatList
-          numColumns={3}
+          scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+          data={I18nManager.isRTL ? carouselArray.reverse() : carouselArray}
+          renderItem={carouselRenderItems}
+          horizontal={false}
           style={{
-            backgroundColor: AppColor.blue,
+            backgroundColor: AppColor.white,
           }}
+          numColumns={3}
+          columnWrapperStyle={{
+            justifyContent: "center",
+            backgroundColor: AppColor.white,
+          }}
+          contentContainerStyle={{
+            paddingBottom: 0,
+            marginVertical: sizeHelper.calHp(20),
+          }}
+          keyExtractor={(item) => "_" + item.id.toString()}
+          key={(item) => "_" + item.id.toString()}
+        />
+      </View>
+
+      <View style={styles.bottomContainer}>
+        <View
+          style={{
+            borderBottomWidth: sizeHelper.calHp(2),
+            borderBottomColor: AppColor.gray2,
+            marginHorizontal: sizeHelper.calHp(22),
+          }}
+        >
+          <Text
+            style={{
+              color: AppColor.black,
+              fontSize: sizeHelper.calHp(36),
+              fontFamily: "ProximaNova-Semibold",
+              bottom: 7,
+              paddingTop: 15,
+            }}
+          >
+            {I18nManager.isRTL ? "روابط سريعة" : "Quick Links"}
+          </Text>
+        </View>
+        <FlatList
+          style={{
+            backgroundColor: AppColor.backColor,
+          }}
+          contentContainerStyle={{
+            paddingVertical: sizeHelper.calHp(20),
+          }}
+          numColumns={3}
           columnWrapperStyle={{
             justifyContent: "space-around",
+            backgroundColor: AppColor.backColor,
           }}
-          contentContainerStyle={{ paddingVertical: sizeHelper.calHp(100) }}
           data={BottomArray}
           renderItem={renderItems}
           keyExtractor={(item) => item.id}
@@ -296,93 +344,90 @@ const Design = (props) => {
         />
       </View>
 
-      {props.isPopup && (
+      {props?.isPopup && (
+        <View style={styles.popupContainer}>
+          <DrawerPopUp
+            StringsList={props?.StringsList}
+            userConfiguration={props?.userConfiguration}
+            TerminalConfiguration={props?.TerminalConfiguration}
+            cancel={props?.onPressItem}
+            viewref={props?.viewref}
+          />
+        </View>
+      )}
+      {props?.isPairPrinterFamily && (
+        <View style={styles.popupContainer}>
+          <PairPrinterFamily
+            onPressCancel={() => props?.setPairPrinterFamily(false)}
+          />
+        </View>
+      )}
+
+      {props.isDrawar && (
         <View style={styles.popupContainer}>
           <DrawerPopUp
             StringsList={props.StringsList}
             userConfiguration={props.userConfiguration}
             TerminalConfiguration={props.TerminalConfiguration}
-            cancel={props.onPressItem}
-            viewref={props.viewref}
-            // onSave={() => props.setIsDrawar(!props.isDrawar)}
+            cancel={() => {
+              props.drawerRef?.current?.fadeOutRight().then(() => {
+                props?.setIsDrawar(!props?.isDrawar);
+                props?.getDrawerSetting();
+              });
+            }}
+            viewref={props.drawerRef}
           />
         </View>
       )}
-      {props.isTerminalSetup && (
-        <View style={styles.popupContainer}>
-          <TerminalSetup onPressCancel={() => props.setTerminalSetup(false)} />
-        </View>
-      )}
-      {props.isPairPrinterFamily && (
-        <View style={styles.popupContainer}>
-          <PairPrinterFamily
-            onPressCancel={() => props.setPairPrinterFamily(false)}
-          />
-        </View>
-      )}
-      {props.isSaleAgents && (
-        <View style={[styles.popupContainer]}>
-          <SaleAgentsList
-            onPressCancel={() => props.setIsSaleAgents(false)}
-            reacallFunc={props.selectedSaleAgentsFun}
-            data={props.salesAgentsList}
-            StringsList={props.StringsList}
-            isLoading={props.isLoading}
-            isGlobal
-          />
-        </View>
-      )}
-      {props.isLogout && (
-        <View style={styles.popupContainer}>
-          <DrawerPrint
-            StringsList={props.StringsList}
-            TerminalConfiguration={props.TerminalConfiguration}
-          />
-        </View>
-      )}
-      {props.isLoading && (
-        <View style={styles.popupContainer}>
-          <Loading />
-        </View>
-      )}
-      {props.isBillingType && (
+      {props?.isBillingType && (
         <View style={[styles.popupContainer]}>
           <BillingType
-            onPressCancel={() => props.setisBillingType(false)}
-            reacallFunc={props.reacallFunc}
-            selectBillingType={props.selectBillingType}
-            data={props.billingTypeData}
-            StringsList={props.StringsList}
-            isLoading={props.isLoading}
+            onPressCancel={() => props?.setisBillingType(false)}
+            reacallFunc={props?.reacallFunc}
+            selectBillingType={props?.selectBillingType}
+            data={props?.billingTypeData}
+            StringsList={props?.StringsList}
+            isLoading={props?.isLoading}
             type={"dashboard"}
           />
         </View>
       )}
-      {props.isSaleBilType && (
+      {props?.isSaleBilType && (
         <View style={[styles.popupContainer]}>
           <BillingType
-            onPressCancel={() => props.setIsSaleBilType(false)}
-            reacallFunc={props.reacallFunc}
-            data={props.saleBilData}
-            tringsList={props.StringsList}
-            isLoading={props.isLoading}
-            selectBillingType={props.selectSaleBilType}
+            onPressCancel={() => props?.setIsSaleBilType(false)}
+            reacallFunc={props?.reacallFunc}
+            data={props?.saleBilData}
+            StringsList={props?.StringsList}
+            isLoading={props?.isLoading}
+            selectBillingType={props?.selectSaleBilType}
           />
+        </View>
+      )}
+      {props?.isTerminalSetup && (
+        <View style={styles.popupContainer}>
+          <TerminalSetup onPressCancel={() => props?.setTerminalSetup(false)} />
+        </View>
+      )}
+      {props?.isLoading && (
+        <View style={styles.popupContainer}>
+          <Loading />
         </View>
       )}
       {/* <TerminalSetup displayAlert={false} /> */}
       <AlertModel
         displayAlert={props.displayAlert}
         onAlertShow={props.setDisplayAlert}
-        setisPromptAlert={() => {}}
-        isPromptAlert={false}
+        setisPromptAlert={props.setisPromptAlert}
+        isPromptAlert={props.isPromptAlert}
         message={props.message}
-        value={""}
-        isConfirmation={props.isRequriedLogin}
-        onChangeText={() => {}}
+        value={props.alertValue}
+        onChangeText={props.onChangeText}
         reacallFunc={props.reacallFunc}
-        placeholderText={""}
-        type={"invoiceNumber"}
+        placeholderText={props.message}
+        type={props.alertType}
+        StringsList={props.StringsList}
+        props={props}
       />
     </View>
   );

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:gravity="center_vertical"
     android:orientation="vertical"
-    tools:context="com.bnodypos.activity.TextPrintActivity">
+    tools:context="com.bnodyrestaurantpos.activity.TextPrintActivity">
 
     <TableRow
         android:id="@+id/tr_size"

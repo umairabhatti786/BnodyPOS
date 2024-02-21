@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,11 +6,11 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-} from 'react-native';
-import DropDownPicker from 'react-native-dropdown-picker';
+} from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 
-import AppColor from '../constant/AppColor';
-import sizeHelper from '../helpers/sizeHelper';
+import AppColor from "../constant/AppColor";
+import sizeHelper from "../helpers/sizeHelper";
 
 const CustomDropDown = ({
   buttonBackroundColor,
@@ -36,20 +36,20 @@ const CustomDropDown = ({
       }}
       // contentContainerStyle={{padding: 5}}
       data={[
-        { name: 'kk' },
-        { name: 'kakdk' },
-        { name: 'lskjfoia' },
-        { name: 'kakdk' },
-        { name: 'lskjfoia' },
-        { name: 'kakdk' },
-        { name: 'lskjfoia' },
-        { name: 'kk' },
-        { name: 'kakdk' },
-        { name: 'lskjfoia' },
-        { name: 'kakdk' },
-        { name: 'lskjfoia' },
-        { name: 'kakdk' },
-        { name: 'lskjfoia' },
+        { name: "kk" },
+        { name: "kakdk" },
+        { name: "lskjfoia" },
+        { name: "kakdk" },
+        { name: "lskjfoia" },
+        { name: "kakdk" },
+        { name: "lskjfoia" },
+        { name: "kk" },
+        { name: "kakdk" },
+        { name: "lskjfoia" },
+        { name: "kakdk" },
+        { name: "lskjfoia" },
+        { name: "kakdk" },
+        { name: "lskjfoia" },
       ]}
       renderItem={({ item }) => {
         return (
@@ -58,12 +58,13 @@ const CustomDropDown = ({
               zIndex: 999,
 
               backgroundColor: AppColor.yellowColor,
-            }}>
+            }}
+          >
             <Text>{item.name}</Text>
           </TouchableOpacity>
         );
       }}
-      keyExtractor={item => item.id}
+      keyExtractor={(item) => item.id}
     />
   );
 };

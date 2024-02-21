@@ -1,4 +1,4 @@
-import { Dimensions, PixelRatio } from 'react-native';
+import {Dimensions, PixelRatio} from 'react-native';
 
 const screenSize = Dimensions.get('window');
 
@@ -6,9 +6,9 @@ const screentHeight = screenSize.height;
 const screenWidth = screenSize.width;
 const Height = 1334;
 const Width = 750;
-console.log("height, width ", screenSize)
+console.log('height, width ', screenSize);
 const calHp = HP => {
-  let heightPixel = HP //- HP * 0.28
+  let heightPixel = HP; //- HP * 0.28
   let calculatedHeight =
     ((screentHeight > 1330 ? heightPixel : heightPixel) / Height) * 100;
   const elemHeight =
@@ -22,8 +22,7 @@ const calHp = HP => {
 };
 
 const calWp = WP => {
-
-  let widthPixel = WP //- WP * 0.28
+  let widthPixel = WP; //- WP * 0.28
   let calculatedWidth =
     ((screenWidth > 500 ? widthPixel : widthPixel) / Width) * 100;
 

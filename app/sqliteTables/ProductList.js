@@ -1,4 +1,4 @@
-import {ExecuteQuery} from '../sqliteHelper';
+import { ExecuteQuery } from '../sqliteHelper';
 
 export const ProductListTable = 'ProductList';
 
@@ -9,11 +9,10 @@ export const ProductListCoulumnskey = {
   ProductType: 'ProductType',
   Operation: 'Operation',
   SerialNumber: 'SerialNumber',
-  Description: 'Description',
 };
-export const ProductCreateTableCoulumns = `Id TEXT  PRIMARY KEY NOT NULL, ProductCode  TEXT, ProductFamilyCode  TEXT, ProductType  INTEGER, Operation TEXT, SerialNumber INTEGER , Description TEXT`;
+export const ProductCreateTableCoulumns = `Id TEXT  PRIMARY KEY NOT NULL, ProductCode  TEXT, ProductFamilyCode  TEXT, ProductType  INTEGER, Operation TEXT, SerialNumber INTEGER`;
 
-export const ProductInsertCoulumns = `Id, ProductCode, ProductFamilyCode, ProductType, Operation, SerialNumber , Description`;
+export const ProductInsertCoulumns = `Id, ProductCode, ProductFamilyCode, ProductType, Operation, SerialNumber`;
 
 export const InsertProductList = async values => {
   let InsertDataQuery = `INSERT INTO ${ProductListTable} (${ProductInsertCoulumns}) VALUES`;
@@ -32,8 +31,6 @@ export const InsertProductList = async values => {
       values[i].ProductType +
       "','" +
       values[i].Operation +
-      "','" +
-      values[i].Description +
       "','" +
       values[i].SerialNumber +
       "')";

@@ -12,7 +12,7 @@ import {
 import { View } from 'react-native-animatable';
 
 import QRCodeScanner from 'react-native-qrcode-scanner-plus';
-import Icon from 'react-native-vector-icons/AntDesign';
+import Icon from 'react-native-vector-icons/FontAwesome';
 import AppColor from '../constant/AppColor';
 import sizeHelper from '../helpers/sizeHelper';
 

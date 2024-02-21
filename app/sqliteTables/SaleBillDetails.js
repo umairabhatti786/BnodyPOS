@@ -3,11 +3,11 @@ import {ExecuteQuery} from '../sqliteHelper';
 export const SaleBillDetailsTable = 'SaleBillDetails';
 
 export const SaleBillDetailsCoulumnskey = {
-  SalesBillDetailsID: 'SalesBillDetailsID',
-  SalesBillID: 'SalesBillID',
-  BillNumber: 'BillNumber',
+  SalesInvoiceDetailsID: 'SalesInvoiceDetailsID',
+  SalesInvoiceID: 'SalesInvoiceID',
+  InvoiceNumber: 'InvoiceNumber',
   FiscalSpanID: 'FiscalSpanID',
-  BillType: 'BillType',
+  InvoiceType: 'InvoiceType',
   SerialNumber: 'SerialNumber',
   ProductCode: 'ProductCode',
   ProductName: 'ProductName',
@@ -22,7 +22,6 @@ export const SaleBillDetailsCoulumnskey = {
   Price: 'Price',
   PriceOriginal: 'PriceOriginal',
   DiscountRate: 'DiscountRate',
-  Description: 'Description',
   DiscountAmount: 'DiscountAmount',
   TaxGroupID: 'TaxGroupID',
   IsTax1IncludedInPrice: 'IsTax1IncludedInPrice',
@@ -38,7 +37,7 @@ export const SaleBillDetailsCoulumnskey = {
   GrandAmount: 'GrandAmount',
   GroupDataID: 'GroupDataID',
   ProductBarCode: 'ProductBarCode',
-  ReturnSalesBillDetailID: 'ReturnSalesBillDetailID',
+  ReturnSalesInvoiceDetailID: 'ReturnSalesInvoiceDetailID',
   DeliveryStatus: 'DeliveryStatus',
   DeliveryDate: 'DeliveryDate',
   DeliveryTime: 'DeliveryTime',
@@ -60,7 +59,7 @@ export const SaleBillDetailsCoulumnskey = {
   HoldFromSale: 'HoldFromSale',
 };
 export const SaleBillDetailsCreateTableCoulumns =
-  `SalesBillDetailsID TEXT  PRIMARY KEY NOT NULL, SalesBillID  TEXT, BillNumber  TEXT, FiscalSpanID  INTEGER, BillType INTEGER, ` +
+  `SalesInvoiceDetailsID TEXT  PRIMARY KEY NOT NULL, SalesInvoiceID  TEXT, InvoiceNumber  TEXT, FiscalSpanID  INTEGER, InvoiceType INTEGER, ` +
   `SerialNumber INTEGER, ProductCode TEXT, ProductName TEXT, ProductName2 TEXT, ` +
   `ProductType INTEGER, PriceType INTEGER, Quantity FLOAT, UOMType INTEGER, UOMFragment FLOAT, ` +
   `UOMCode TEXT, UOMName TEXT, Price FLOAT, PriceOriginal FLOAT, DiscountRate FLOAT, ` +
@@ -68,42 +67,41 @@ export const SaleBillDetailsCreateTableCoulumns =
   `Tax1Code  TEXT, Tax1Name  TEXT, Tax1Rate  FLOAT, Tax1Amount FLOAT, ` +
   `Tax2Code TEXT, Tax2Name  TEXT, Tax2Rate  FLOAT, ` +
   `Tax2Amount  FLOAT, GrandAmount  FLOAT, GroupDataID  TEXT, ProductBarCode TEXT, ` +
-  `ReturnSalesBillDetailID TEXT, DeliveryStatus  BOOlEAN, DeliveryDate  TEXT, ` +
+  `ReturnSalesInvoiceDetailID TEXT, DeliveryStatus  BOOlEAN, DeliveryDate  TEXT, ` +
   `DeliveryTime  TEXT, DeliveryNote  TEXT, DeliveredDate  TEXT, ` +
   `DeliveredTime TEXT,  Remarks TEXT, SalesAgentCode  TEXT, IsParentAddOn  BOOlEAN, ` +
   `AddOnGroupCode  TEXT, AddOnParentSalesInvoiceDetailsID  TEXT, OrignalQuantity BOOlEAN, AddonProductDetailcode  TEXT, ` +
   `Ingredients TEXT, EarnedPoints INTEGER, RedeemPoints  INTEGER, Status  INTEGER,  ` +
-  `ProductCategoryCode  TEXT, HoldFromSale TEXT , Description TEXT`;
+  `ProductCategoryCode  TEXT, HoldFromSale TEXT`;
 
 export const SaleBillDetailsInsertCoulumns =
-  `SalesBillDetailsID, SalesBillID, BillNumber, FiscalSpanID, billType, SerialNumber, ProductCode, ProductName, ` +
+  `SalesInvoiceDetailsID, SalesInvoiceID, InvoiceNumber, FiscalSpanID, InvoiceType, SerialNumber, ProductCode, ProductName, ` +
   `ProductName2, ProductType, PriceType, Quantity, UOMType, UOMFragment, UOMCode, UOMName, ` +
   `Price, PriceOriginal, DiscountRate, DiscountAmount, TaxGroupID, ` +
   `IsTax1IncludedInPrice, IsTax2IncludedInPrice, Tax1Code, Tax1Name, Tax1Rate, ` +
   `Tax1Amount, Tax2Code, Tax2Name, Tax2Rate, Tax2Amount, GrandAmount, GroupDataID, ` +
-  `ProductBarCode, ReturnSalesBillDetailID, DeliveryStatus, DeliveryDate, DeliveryTime, DeliveryNote, DeliveredDate, ` +
+  `ProductBarCode, ReturnSalesInvoiceDetailID, DeliveryStatus, DeliveryDate, DeliveryTime, DeliveryNote, DeliveredDate, ` +
   `DeliveredTime,  Remarks, SalesAgentCode, IsParentAddOn, AddOnGroupCode, AddOnParentSalesInvoiceDetailsID, OrignalQuantity, AddonProductDetailcode, ` +
-  `Ingredients, EarnedPoints, RedeemPoints, Status, ProductCategoryCode, HoldFromSale, Description`;
+  `Ingredients, EarnedPoints, RedeemPoints, Status, ProductCategoryCode, HoldFromSale`;
 
 export const InsertSaleBillDetails = async values => {
   let InsertDataQuery = `INSERT INTO ${SaleBillDetailsTable} (${SaleBillDetailsInsertCoulumns}) VALUES`;
 
   let Name = values?.ProductName;
   let Name2 = values?.ProductName2;
-  let desc = values?.Description;
 
   InsertDataQuery =
     InsertDataQuery +
     "('" +
-    values.SalesBillDetailsID +
+    values.SalesInvoiceDetailsID +
     "','" +
-    values.SalesBillID +
+    values.SalesInvoiceID +
     "','" +
-    values.BillNumber +
+    values.InvoiceNumber +
     "','" +
     values.FiscalSpanID +
     "','" +
-    values.BillType +
+    values.InvoiceType +
     "','" +
     values.SerialNumber +
     "','" +
@@ -163,7 +161,7 @@ export const InsertSaleBillDetails = async values => {
     "','" +
     values.ProductBarCode +
     "','" +
-    values.ReturnSalesBillDetailID +
+    values.ReturnSalesInvoiceDetailID +
     "','" +
     values.DeliveryStatus +
     "','" +
@@ -202,14 +200,10 @@ export const InsertSaleBillDetails = async values => {
     values.ProductCategoryCode +
     "','" +
     values.HoldFromSale +
-    // "','" +
-    // values.ReQuantity +
-    "','" +
-    desc +
     "')";
 
   InsertDataQuery = InsertDataQuery + ';';
-  console.log('Insert Sale Bill Details..', InsertDataQuery);
+  // console.log('Insert Sale Bill Details Logs..', InsertDataQuery);
   let InsertSaleBillDetails = await ExecuteQuery(InsertDataQuery, []);
   console.log('Insert Sale Bill Details..', InsertSaleBillDetails);
 };

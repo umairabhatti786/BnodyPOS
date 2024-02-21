@@ -1,6 +1,8 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {connect} from 'react-redux';
+import {Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {CreateTable, DeleteTable} from '../sqliteHelper';
 import {
   InsertStringsList,
@@ -150,37 +152,20 @@ import {
   ProductCardIngredientsListTable,
 } from '../sqliteTables/ProductCardIngredientsList';
 import {
-  InsertPaymentMethodList,
-  PaymentMethodListCreateTableCoulumns,
-  PaymentMethodTable,
-} from '../sqliteTables/PaymentMethods';
-
-const reduceImageSizes = (
-  path,
-  maxWidth,
-  maxHeight,
-  compressFormat,
-  quality,
-) => {
-  ImageResizer.createResizedImage(
-    path,
-    maxWidth,
-    maxHeight,
-    compressFormat,
-    quality,
-  )
-    .then(response => {
-      // response.uri is the URI of the new image that can now be displayed, uploaded...
-      // response.path is the path of the new image
-      // response.name is the name of the new image with the extension
-      // response.size is the size of the new image
-      return response.uri;
-    })
-    .catch(err => {
-      // Oops, something went wrong. Check that the filename is correct and
-      // inspect err to get more details.
-    });
-};
+  InsertRestTablesTableCells,
+  RestTablesTable,
+  RestTablesTableCreateTableCoulumns,
+} from '../sqliteTables/RestTables';
+import {
+  AreaListTable,
+  InsertAreaListTableCells,
+  AreaListTableCreateTableCoulumns,
+} from '../sqliteTables/AreasList';
+import {
+  OrderTackerList,
+  InsertOrderTackerListCells,
+  OrderTackerListCreateTableCoulumns,
+} from '../sqliteTables/OrderTackers';
 
 const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
   let date,
@@ -203,8 +188,16 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
       'GET',
     ),
   );
-  // console.log('response.......', response1);
-  if (response1.success && response1?.TerminalConfiguration) {
+  console.log('response.......', response1?.success);
+  // if (response1?.message === "Unauthorized") {
+  //   Alert.alert("Alert", "Your Session is Expirerd Please Login again", [
+  //     { text: "OK", onPress: () => goToLogin() },
+  //   ]);
+  // }
+
+  console.log('API response fetch Configuration', response1);
+
+  if (response1?.success && response1?.TerminalConfiguration) {
     let productList = [],
       finalUpdatedProducts = [],
       finalUpdatedProductAddOnGroup = [];
@@ -238,7 +231,9 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
     await DeleteTable(LoyaltyRewardsListTable);
     await DeleteTable(ProductCardAddOnEquivalentProductsListTable);
     await DeleteTable(ProductCardIngredientsListTable);
-    await DeleteTable(PaymentMethodTable);
+    await DeleteTable(RestTablesTable);
+    await DeleteTable(AreaListTable);
+    await DeleteTable(OrderTackerList);
 
     CreateTable(A4PrintCellsTable, A4PrintCellsCreateTableCoulumns);
     CreateTable(A4PrintStylesTable, A4PrintStylesCreateTableCoulumns);
@@ -304,7 +299,11 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
       ProductCardIngredientsListTable,
       ProductCardIngredientsListCreateTableCoulumns,
     );
-    CreateTable(PaymentMethodTable, PaymentMethodListCreateTableCoulumns);
+    //area and table tables
+    CreateTable(RestTablesTable, RestTablesTableCreateTableCoulumns);
+    CreateTable(AreaListTable, AreaListTableCreateTableCoulumns);
+    CreateTable(OrderTackerList, OrderTackerListCreateTableCoulumns);
+
     // console.log('Login Screen accessToken ', accessToken);
     let stringsListEnglish = Object.fromEntries(
       response1.StringsList.map(e => ['_' + e.SmartStringID, e.Name]),
@@ -327,25 +326,26 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
     InsertA4PrintStyles(response1.A4PrintStyles),
       InsertCategoriesList(response1.ProductsInfo?.ProductCardFamilyList),
       //  Filter the Addons list to only include the hold from sale check is off
+      (finalUpdatedProductAddOnGroup =
+        response1.ProductsInfo?.ProductCardAddOnGroupList?.filter(
+          x => x.HoldFromSale === false,
+        ));
 
-      //   finalUpdatedProductAddOnGroup =
-      //     response1.ProductsInfo?.ProductCardAddOnGroupList?.filter(
-      //       x => x.HoldFromSale === false,
-      //     )
-      // if (
-      //   Array.isArray(finalUpdatedProductAddOnGroup) &&
-      //   finalUpdatedProductAddOnGroup !== undefined
-      // ) {
-      //   InsertProductCardAddOnGroupList(finalUpdatedProductAddOnGroup);
-      // }
+    if (
+      Array.isArray(finalUpdatedProductAddOnGroup) &&
+      finalUpdatedProductAddOnGroup !== undefined
+    ) {
+      InsertProductCardAddOnGroupList(finalUpdatedProductAddOnGroup);
+    }
 
-      InsertProductCardAddOnGroupList(
-        response1.ProductsInfo?.ProductCardAddOnGroupList,
-      ),
-      // InsertProductDetails(
-      //     response1.ProductsInfo?.ProductCardSummaryList,
-      // );
-      InsertProductList(productList);
+    // InsertProductCardAddOnGroupList(
+    //   response1.ProductsInfo?.ProductCardAddOnGroupList,
+    // ),
+    // InsertProductDetails(
+    //     response1.ProductsInfo?.ProductCardSummaryList,
+    // );
+    InsertProductList(productList);
+
     if (
       Array.isArray(response1?.TerminalConfiguration?.SalesAgents) &&
       response1.TerminalConfiguration?.SalesAgents.length > 0
@@ -366,6 +366,7 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
       });
       InsertSalesAgentsList(uniqueSaleAgent);
     }
+
     // InsertSalesAgentsList(response1?.TerminalConfiguration?.SalesAgents);
     InsertSalesFamilySummaryList(
       response1.ProductsInfo?.SalesFamilySummaryList,
@@ -373,22 +374,6 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
       InsertSalesPostingConfigurationList(
         response1.SalesPostingConfigurationList,
       );
-    if (
-      Array.isArray(response1.SalesPostingConfigurationList) &&
-      response1.SalesPostingConfigurationList.length > 0
-    ) {
-      let InsertValue = [];
-      response1.SalesPostingConfigurationList.forEach(element => {
-        let obj = {};
-        obj.PaymentType = element.PaymentType;
-        obj.PaymentTypeName = element.PaymentTypeName;
-        obj.PaymentTypeName2 = element.PaymentTypeName2;
-        obj.Sales = '0';
-        InsertValue.push(obj);
-      });
-      InsertPaymentMethodList(InsertValue);
-    }
-
     InsertStringsList(stringsListEnglish),
       InsertStringsList(stringsListArabic),
       InsertTaxesPostingConfigurationList(
@@ -396,18 +381,15 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
       ),
       InsertTaxMethodsList(response1?.TaxSetupParent?.TaxMethodsList),
       InsertTaxRateParentList(response1?.TaxSetupParent?.TaxRateParentList);
-
-    /////////here to stay//////////
-    // await reduceImageSizes(response1?.TerminalConfiguration.CompanyLogo, 100, 100, "PNG", 70)
-    ///////
     InsertTerminalConfiguration(response1?.TerminalConfiguration);
     InsertUserConfiguration(response1?.UserConfiguration);
-    InsertWeighingScaleConfiguration(response1?.WeighingScaleConfiguration);
+    if (response1?.WeighingScaleConfiguration)
+      InsertWeighingScaleConfiguration(response1?.WeighingScaleConfiguration);
     InsertTerminalSetup(TerminalSetupCoulumnskey);
     if (type !== 'rebootTerminal') {
       InsertDrawerSetup(DrawerSetupCoulumnskey);
     }
-
+    // Filter the Product list to only include the hold from sale check is off
     finalUpdatedProducts =
       response1.ProductsInfo?.ProductCardSummaryList?.filter(
         x => x.HoldFromSale === false,
@@ -418,17 +400,30 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
     ) {
       InsertUpdateProductDetailList(finalUpdatedProducts);
     }
-    InsertLoyaltyDetailLists(response1.LoyaltyDetailList);
-    InsertLoyaltyList(response1.LoyaltyList);
-    InsertLoyaltyRewardNamesList(response1.LoyaltyRewardNamesList);
-    InsertLoyaltyRewardsLists(response1.LoyaltyRewardsList);
-    // console.log("addon equivaletnt Products", response1?.ProductsInfo?.ProductCardAddOnEquivalentProductsList)
-    InsertProductCardAddOnEquivalentProductsList(
-      response1?.ProductsInfo?.ProductCardAddOnEquivalentProductsList,
-    );
-    InsertProductCardIngredientsList(
-      response1?.ProductsInfo?.ProductCardIngredientsList,
-    );
+
+    // InsertUpdateProductDetailList(finalUpdatedProduct);
+    if (response1.LoyaltyDetailList)
+      InsertLoyaltyDetailLists(response1.LoyaltyDetailList);
+    if (response1.LoyaltyList) InsertLoyaltyList(response1.LoyaltyList);
+    if (response1.LoyaltyRewardNamesList)
+      InsertLoyaltyRewardNamesList(response1.LoyaltyRewardNamesList);
+    if (response1.LoyaltyRewardsList)
+      InsertLoyaltyRewardsLists(response1.LoyaltyRewardsList);
+
+    if (response1?.ProductsInfo?.ProductCardAddOnEquivalentProductsList)
+      InsertProductCardAddOnEquivalentProductsList(
+        response1?.ProductsInfo?.ProductCardAddOnEquivalentProductsList,
+      );
+    if (response1?.ProductsInfo?.ProductCardIngredientsList)
+      InsertProductCardIngredientsList(
+        response1?.ProductsInfo?.ProductCardIngredientsList,
+      );
+
+    InsertRestTablesTableCells(response1?.TableList);
+    InsertAreaListTableCells(response1?.AreaList);
+    // if (Array.isArray(response1?.TerminalConfiguration?.OrderTakers))
+    if (response1?.TerminalConfiguration?.OrderTakers)
+      InsertOrderTackerListCells(response1?.TerminalConfiguration?.OrderTakers);
 
     stringList.stringsListEnglish = stringsListEnglish;
     stringList.stringsListArabic = stringsListArabic;
@@ -438,11 +433,14 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
 
     // console.log('Login Screen Data ', UserLogin);
     let data = {type: 'configrution', data: stringList};
-    const res = await props.dispatch(SaveAllData(data));
+    await props.dispatch(SaveAllData(data));
+    // console.log(res);
+
     console.log(
       'DEFAULT_GTAX',
       response1.TerminalConfiguration.DefaultGlobalProductTaxGroupSalesBill,
     );
+
     if (
       response1?.TerminalConfiguration?.DefaultGlobalProductTaxGroupSalesBill &&
       response1?.TerminalConfiguration
@@ -455,6 +453,13 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
     else {
       await AsyncStorage.removeItem('DEFAULT_GTAX');
     }
+    if (response1?.CounterList) {
+      await AsyncStorage.setItem(
+        'COUNTER_LIST',
+        JSON.stringify(response1.CounterList),
+      );
+    }
+
     if (type === 'rebootTerminal') {
       props.navigation.replace('Main');
     } else {
@@ -470,6 +475,7 @@ const AddDataInDb = async (props, type, accessToken, loginUserInfo) => {
     return false;
   }
 };
+
 const mapStateToProps = state => {
   return {
     TerminalConfiguration: state.user.SaveAllData.TerminalConfiguration,

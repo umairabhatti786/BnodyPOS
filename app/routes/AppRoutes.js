@@ -1,7 +1,7 @@
-import React from 'react';
-import RootStack from '../navigation/RootStack';
+import * as React from "react";
+import RootStack from "../navigation/RootStack";
 
-const AppRouter = props => {
+const AppRouter = (props) => {
   // console.log('AppRouter');
   return <RootStack />;
 };

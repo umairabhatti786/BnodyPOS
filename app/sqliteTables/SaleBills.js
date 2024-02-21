@@ -3,11 +3,14 @@ import {ExecuteQuery} from '../sqliteHelper';
 export const SaleBillsTable = 'SaleBills';
 
 export const SaleBillsCoulumnskey = {
-  salesBillID: 'salesBillID',
-  billNumber: 'billNumber',
+  salesInvoiceID: 'salesInvoiceID',
+  InvoiceNumber: 'InvoiceNumber',
   fiscalSpanID: 'fiscalSpanID',
-  billDate: 'billDate',
-  billType: 'billType',
+  InvoiceDate: 'InvoiceDate',
+  InvoiceType: 'InvoiceType',
+  OrderCode: 'OrderCode',
+  TableCode: 'TableCode',
+  OrderType: 'OrderType',
   paymentType: 'paymentType',
   godownCode: 'godownCode',
   buyerCode: 'buyerCode',
@@ -35,9 +38,9 @@ export const SaleBillsCoulumnskey = {
   roundOffAmount: 'roundOffAmount',
   roundOffDifference: 'roundOffDifference',
   posUserID: 'posUserID',
-  returnedBillNumber: 'returnedBillNumber',
+  returnedInvoiceNumber: 'returnedInvoiceNumber',
   returnedFiscalSpanID: 'returnedFiscalSpanID',
-  returnedBillDate: 'returnedBillDate',
+  returnedInvoiceDate: 'returnedInvoiceDate',
   isProcessed: 'isProcessed',
   isUploaded: 'isUploaded',
   startTime: 'startTime',
@@ -49,7 +52,7 @@ export const SaleBillsCoulumnskey = {
   globalTaxGroupID: 'globalTaxGroupID',
   isGlobalTax1IncludedInPrice: 'isGlobalTax1IncludedInPrice',
   isGlobalTax2IncludedInPrice: 'isGlobalTax2IncludedInPrice',
-  billTime: 'billTime',
+  InvoiceTime: 'InvoiceTime',
   paymentTypeName: 'paymentTypeName',
   BillDetails: 'BillDetails ',
 
@@ -73,32 +76,32 @@ export const SaleBillsCoulumnskey = {
   rewardType: 'rewardType',
 };
 export const SaleBillsCreateTableCoulumns =
-  `salesBillID TEXT  PRIMARY KEY NOT NULL, billNumber  TEXT, fiscalSpanID  INTEGER, billDate  TEXT, billType INTEGER, ` +
-  `paymentType INTEGER, godownCode TEXT, buyerCode TEXT, buyerName TEXT, ` +
+  `salesInvoiceID TEXT  PRIMARY KEY NOT NULL, InvoiceNumber  TEXT, fiscalSpanID  INTEGER, InvoiceDate  TEXT, InvoiceType INTEGER, ` +
+  `OrderCode TEXT, TableCode TEXT, OrderType INTEGER, paymentType INTEGER, godownCode TEXT, buyerCode TEXT, buyerName TEXT, ` +
   `cardDetails TEXT, loyaltyCode TEXT, salesagentCode TEXT, salesmanName TEXT, grandAmount FLOAT, ` +
-  `globalDiscountRate FLOAT, globalDiscountAmount TEXT, globalTax1Code TEXT, globalTax1Name TEXT, globalTax1Rate FLOAT, ` +
+  `globalDiscountRate FLOAT, globalDiscountAmount FLOAT, globalTax1Code TEXT, globalTax1Name TEXT, globalTax1Rate FLOAT, ` +
   `globalTax1Amount FLOAT, globalTax2Code TEXT, globalTax2Name  TEXT, globalTax2Rate  FLOAT, ` +
   `globalTax2Amount  FLOAT, surplusChargesAmount  FLOAT, netAmount  FLOAT, advancePaidInCash FLOAT, ` +
   `counterCode TEXT, roundOffAmount  FLOAT, roundOffDifference  FLOAT, ` +
-  `posUserID  INTEGER, returnedBillNumber  TEXT, returnedFiscalSpanID  INTEGER, returnedBillDate TEXT, ` +
+  `posUserID  INTEGER, returnedInvoiceNumber  TEXT, returnedFiscalSpanID  INTEGER, returnedInvoiceDate TEXT, ` +
   `isProcessed INTEGER, isUploaded  INTEGER, startTime  TEXT, ` +
   `endTime  TEXT, tagNo  TEXT, cashTender  FLOAT, ` +
   `creditAmount FLOAT,  globalTaxGroupID TEXT, isGlobalTax1IncludedInPrice  INTEGER, isGlobalTax2IncludedInPrice  INTEGER, ` +
-  `billTime  TEXT, paymentTypeName  TEXT, BillDetails TEXT, buyerVAT  TEXT, ` +
-  `buyerCCR TEXT, buyerPhone INTEGER, buyerAddress  TEXT, deliveryType  TEXT, ` +
+  `InvoiceTime  TEXT, paymentTypeName  TEXT, BillDetails TEXT, buyerVAT  TEXT, ` +
+  `buyerCCR TEXT, buyerPhone TEXT, buyerAddress  TEXT, deliveryType  TEXT, ` +
   `deliveryTypeNote  TEXT, totalPTax1Name  TEXT, totalTax1Amount  FLOAT, ` +
   `totalPTax2Name TEXT, totalTax2Amount FLOAT, totalGlobalTaxAmount  FLOAT, totalTaxAmount  FLOAT, ` +
   `totalProductTaxAmount  FLOAT, earnedPoints  INTEGER, redeemPoints  INTEGER, ` +
   `status INTEGER, isLoyaltyInvoice INTEGER, rewardType  INTEGER`;
 
 export const SaleBillsInsertCoulumns =
-  `salesBillID, billNumber, fiscalSpanID, billDate, billType, paymentType, godownCode, buyerCode, ` +
+  `salesInvoiceID, InvoiceNumber, fiscalSpanID, InvoiceDate, InvoiceType, OrderCode, TableCode, OrderType, paymentType, godownCode, buyerCode, ` +
   `buyerName, cardDetails, loyaltyCode, salesagentCode, salesmanName, grandAmount, globalDiscountRate, globalDiscountAmount, ` +
   `globalTax1Code, globalTax1Name, globalTax1Rate, globalTax1Amount, globalTax2Code, ` +
   `globalTax2Name, globalTax2Rate, globalTax2Amount, surplusChargesAmount, netAmount, ` +
-  `advancePaidInCash, counterCode, roundOffAmount, roundOffDifference, posUserID, returnedBillNumber, returnedFiscalSpanID, ` +
-  `returnedBillDate, isProcessed, isUploaded, startTime, endTime, tagNo, cashTender, ` +
-  `creditAmount,  globalTaxGroupID, isGlobalTax1IncludedInPrice, isGlobalTax2IncludedInPrice, billTime, paymentTypeName, BillDetails, buyerVAT, ` +
+  `advancePaidInCash, counterCode, roundOffAmount, roundOffDifference, posUserID, returnedInvoiceNumber, returnedFiscalSpanID, ` +
+  `returnedInvoiceDate, isProcessed, isUploaded, startTime, endTime, tagNo, cashTender, ` +
+  `creditAmount,  globalTaxGroupID, isGlobalTax1IncludedInPrice, isGlobalTax2IncludedInPrice, InvoiceTime, paymentTypeName, BillDetails, buyerVAT, ` +
   `buyerCCR, buyerPhone, buyerAddress, deliveryType, deliveryTypeNote, totalPTax1Name, totalTax1Amount, ` +
   `totalPTax2Name, totalTax2Amount, totalGlobalTaxAmount, totalTaxAmount, totalProductTaxAmount, earnedPoints, redeemPoints, ` +
   `status, isLoyaltyInvoice, rewardType`;
@@ -109,15 +112,21 @@ export const InsertSaleBills = async values => {
   InsertDataQuery =
     InsertDataQuery +
     "('" +
-    values.salesBillID +
+    values.SalesInvoiceID +
     "','" +
-    values.billNumber +
+    values.InvoiceNumber +
     "','" +
     values.fiscalSpanID +
     "','" +
-    values.billDate +
+    values.InvoiceDate +
     "','" +
-    values.billType +
+    values.InvoiceType +
+    "','" +
+    values.OrderCode +
+    "','" +
+    values.TableCode +
+    "','" +
+    values.OrderType +
     "','" +
     values.paymentType +
     "','" +
@@ -171,11 +180,11 @@ export const InsertSaleBills = async values => {
     "','" +
     values.posUserID +
     "','" +
-    values.returnedBillNumber +
+    values.ReturnedInvoiceNumber +
     "','" +
     values.returnedFiscalSpanID +
     "','" +
-    values.returnedBillDate +
+    values.ReturnedInvoiceDate +
     "','" +
     values.isProcessed +
     "','" +
@@ -197,7 +206,7 @@ export const InsertSaleBills = async values => {
     "','" +
     values.isGlobalTax2IncludedInPrice +
     "','" +
-    values.billTime +
+    values.InvoiceTime +
     "','" +
     values.paymentTypeName +
     "','" +
@@ -243,5 +252,5 @@ export const InsertSaleBills = async values => {
   InsertDataQuery = InsertDataQuery + ';';
 
   let InsertSaleBills = await ExecuteQuery(InsertDataQuery, []);
-  //   console.log('Insert Product Details..', SaleBills);
+  console.log('Insert Insert SaleBills Logs..', InsertSaleBills);
 };

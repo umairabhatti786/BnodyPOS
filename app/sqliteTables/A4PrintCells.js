@@ -1,4 +1,4 @@
-import {ExecuteQuery} from '../sqliteHelper';
+import { ExecuteQuery } from '../sqliteHelper';
 
 export const A4PrintCellsTable = 'A4PrintCells';
 

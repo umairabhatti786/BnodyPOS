@@ -1,103 +1,77 @@
-
-
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>API_KEY</key>
-    <string>AIzaSyB4IiJ7-RLQuovoGa_sj5HaBNBZ5vPYzT0</string>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleDisplayName</key>
-    <string>BnodyRestaurantPOS</string>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$(MARKETING_VERSION)</string>
-    <key>CFBundleSignature</key>
-    <string>????</string>
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>com.googleusercontent.apps.153444834280-lfs7alll1ltv8ehhr4j7d9uv9c509to1</string>
-            </array>
-        </dict>
-    </array>
-    <key>CFBundleVersion</key>
-    <string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>FacebookAppID</key>
-    <string>371059782002541</string>
-    <key>FacebookDisplayName</key>
-    <string>Loyalty</string>
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>fbapi</string>
-        <string>fb-messenger-share-api</string>
-        <string>fbauth2</string>
-        <string>fbshareextension</string>
-    </array>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSExceptionDomains</key>
-        <dict>
-            <key>localhost</key>
-            <dict>
-                <key>NSExceptionAllowsInsecureHTTPLoads</key>
-                <true/>
-            </dict>
-        </dict>
-    </dict>
-     <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>YOUR TEXT</string>
-  <key>NSBluetoothPeripheralUsageDescription</key>
-  <string>YOUR TEXT</string>
-    <key>NSCameraUsageDescription</key>
-    <string>Your message to user when the camera is accessed for the first time</string>
-   <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>This app requires access to the Location</string>
-    <key>NSLocationAlwaysUsageDescription</key>
-    <string>This app requires access to the Location</string>
-    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
-    <string>This app requires access to the Location</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app requires access to the Location</string>
-       <key>NSPhotoLibraryUsageDescription</key>
-    <string>Your message to user when the photo library is accessed for the first time</string>
-    <key>NSRemoteNotificationUsageDescription</key>
-    <string>Stay informed about your pets' activities and events with push notifications from Pawspact.</string>
-    <key>NSCalendarsUsageDescription</key>
-<string>This app requires access to the calendar</string>
-
-   <key>UIAppFonts</key>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Bnody Restaurant</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.153444834280-lfs7alll1ltv8ehhr4j7d9uv9c509to1</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string></string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>YOUR TEXT</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>YOUR TEXT</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This app requires access to the calendar</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Your message to user when the camera is accessed for the first time</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app requires access to the Location</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app requires access to the Location</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<string>This app requires access to the Location</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires access to the Location</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Your message to user when the photo library is accessed for the first time</string>
+	<key>UIAppFonts</key>
 	<array>
 		<string>Proxima Nova Alt Bold.ttf</string>
 		<string>Proxima Nova Alt Light.ttf</string>
 		<string>Proxima Nova Alt Thin.ttf</string>
 		<string>Proxima Nova Black.ttf</string>
-		<string>Proxima Nova Blod.ttf</string>
+		<string>Proxima Nova Bold.ttf</string>
 		<string>Proxima Nova ExtraBlod.ttf</string>
 		<string>Proxima Nova Thin.ttf</string>
-		<string>ProximaNova-Boldlt.ttf</string>
+		<string>ProximaNova-BoldItalic.ttf</string>
 		<string>ProximaNova-Light.ttf</string>
 		<string>ProximaNova-LightItalic.ttf</string>
 		<string>ProximaNova-Regular.ttf</string>
 		<string>ProximaNova-RegularItalic.ttf</string>
 		<string>ProximaNova-Semibold.ttf</string>
-		<string>ProximaNova-SemiboldItalic.ttf</string>
 		<string>ProximaNova-SemiboldItalic.ttf</string>
 		<string>ProximaNovaCond-Light.ttf</string>
 		<string>ProximaNovaCond-LightIt.ttf</string>
@@ -105,7 +79,7 @@
 		<string>ProximaNovaCond-RegularIt.ttf</string>
 		<string>ProximaNovaCond-Semibold.ttf</string>
 		<string>ProximaNovaCond-SemiboldIt.ttf</string>
-        <string>AntDesign.ttf</string>
+		<string>AntDesign.ttf</string>
 		<string>Entypo.ttf</string>
 		<string>EvilIcons.ttf</string>
 		<string>Feather.ttf</string>
@@ -122,25 +96,19 @@
 		<string>SimpleLineIcons.ttf</string>
 		<string>Zocial.ttf</string>
 	</array>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>fetch</string>
-        <string>remote-notification</string>
-    </array>
-    <key>UILaunchStoryboardName</key>
-    <string>LaunchScreen</string>
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>armv7</string>
-    </array>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-    <key>UIViewControllerBasedStatusBarAppearance</key>
-    <false/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 </dict>
 </plist>
-

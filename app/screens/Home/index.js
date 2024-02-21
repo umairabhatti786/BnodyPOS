@@ -1,40 +1,43 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ScopedStorage from "react-native-scoped-storage";
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
+import * as ScopedStorage from "react-native-scoped-storage";
 import moment from "moment";
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  useCallback,
-  forwardRef,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState, forwardRef } from "react";
 import uuid from "react-native-uuid";
 import { captureRef } from "react-native-view-shot";
 import { connect } from "react-redux";
 import QRCode from "react-native-qrcode-svg";
 import RNFS from "react-native-fs";
+import { Invoice } from "@axenda/zatca";
+import ResetDrawerSetup from "../../constant/ResetDrawerSetup";
+// import {
+//   BluetoothEscposPrinter,
+//   BluetoothManager
+// } from 'react-native-bluetooth-escpos-printer'
 import {
   Alert,
   PermissionsAndroid,
   NativeEventEmitter,
+  NativeAppEventEmitter,
   I18nManager,
   Platform,
   NativeModules,
+  Vibration,
   Keyboard,
+  View,
+  Text,
+  SafeAreaView,
+  BackHandler,
+  PixelRatio,
+  Image,
 } from "react-native";
-import * as RNLocalize from "react-native-localize";
-import Toast from "react-native-root-toast";
-// import ImageEditor from '@react-native-community/image-editor';
+
 // import EscPosPrinter, {
 //   getPrinterSeriesByName,
 //   IPrinter,
 // } from 'react-native-esc-pos-printer';
 // import Encoder from 'esc-pos-encoder';
-
-import { Invoice } from "@axenda/zatca";
-import RNPrint from "react-native-print";
+import Toast from "react-native-root-toast";
 import { ServerCall } from "../../redux/actions/asynchronousAction";
 import {
   DeleteColumnById,
@@ -51,6 +54,7 @@ import {
   InsertHoldInvoice,
 } from "../../sqliteTables/HoldInvoice";
 import { ProductCardAddOnGroupListTable } from "../../sqliteTables/ProductCardAddOnGroupList";
+
 import { SalesFamilySummaryListTable } from "../../sqliteTables/SalesFamilySummaryList";
 import { ProductListTable } from "../../sqliteTables/ProductList";
 import {
@@ -64,6 +68,7 @@ import { TerminalConfigurationTable } from "../../sqliteTables/TerminalConfigura
 import { TerminalSetupTable } from "../../sqliteTables/TerminalSetup";
 import { UpdateProductDetailListTable } from "../../sqliteTables/UpdateProductDetailList";
 import Design from "./design";
+
 import calculateTaxeGroups from "../../helpers/TaxCalculationHelper";
 import { LoyaltyRewardsListTable } from "../../sqliteTables/LoyaltyRewardsList";
 import { LoyaltyListTable } from "../../sqliteTables/LoyaltyList";
@@ -78,32 +83,51 @@ import {
 } from "../../sqliteTables/ProductCardIngredientsList";
 import sizeHelper from "../../helpers/sizeHelper";
 import { UserConfigurationTable } from "../../sqliteTables/UserConfiguration";
+import styles from "./style";
 import { A4PrintStylesTable } from "../../sqliteTables/A4PrintStyles";
-import ResetDrawerSetup from "../../constant/ResetDrawerSetup";
-import { PaymentMethodTable } from "../../sqliteTables/PaymentMethods";
-import base64 from "react-native-base64";
+import { AreaListTable } from "../../sqliteTables/AreasList";
+import { OrderTackerList } from "../../sqliteTables/OrderTackers";
+import { object } from "yup";
+import { RestTablesTable } from "../../sqliteTables/RestTables";
+import AppColor from "../../constant/AppColor";
 var Sound = require("react-native-sound");
-const numberToWord = require("number-to-words");
-const numberToArb = require("tafgeetjs");
+import { list } from "../../constant/global";
+import RNPrint from "react-native-print";
 import NetInfo from "@react-native-community/netinfo";
 const { PrinterNativeModule } = NativeModules;
-const PermissionFile = NativeModules.PermissionFile;
+const numberToWord = require("number-to-words");
+const numberToArb = require("tafgeetjs");
 const HomeScreen = (props) => {
+  const PermissionFile = NativeModules.PermissionFile;
   const [options, setOptions] = useState([
-    { label: props.StringsList._32, value: "getHoldInvoice" },
-    { label: props.StringsList._105, value: "reprint" },
-    { label: props.StringsList._319, value: "returnBill" },
+    { label: props.StringsList._373, value: "holdInvoice" },
+    { label: props.StringsList._436, value: "scanner" },
     { label: props.StringsList._30, value: "buyer" },
     { label: props.StringsList._437, value: "loyaltyCard" },
   ]);
   const [payments, setPayments] = useState([
+    { label: props.StringsList._314, value: 1 },
+    { label: props.StringsList._55, value: 2 },
+    { label: props.StringsList._325, value: 3 },
+  ]);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [paymentsValue, setPaymentsValue] = useState(null);
+  const [refundPayments, setRefundPayments] = useState([
     { label: props.StringsList._314, value: "1" },
-    { label: props.StringsList._55, value: "2" },
-    { label: props.StringsList._325, value: "3" },
+    { label: "on Account", value: "2" },
+  ]);
+  const [refundPaymentsOpen, setRefundPaymentsOpen] = useState(false);
+  const [refundPaymentsValue, setRefundPaymentsValue] = useState(null);
+  const [orderUpdate, setOrderUpdate] = useState([
+    { label: props.StringsList._522, value: 1 },
+    { label: props.StringsList._523, value: 2 },
   ]);
   const [printType, setPrintType] = useState(null);
-  const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [orderPickerOpen, setOrderPickerOpen] = useState(false);
+  const [orderValue, setOrderValue] = useState(0);
+  const [isLogout, setisLogout] = useState(false);
   const [optionsOpen, setoptionsOpen] = useState(false);
+  const [isInnerPrinter, setInnerPrinter] = useState(false);
   const [isToggle, setToggle] = useState(false);
   const [allCategoreis, setAllCategories] = useState([]);
   const [categoryProducts, setCategoryProducts] = useState([]);
@@ -111,18 +135,20 @@ const HomeScreen = (props) => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [subPrice, setsubPrice] = useState(0);
   const [focus, setfocus] = useState(0);
+  const [isFocusSearch, setFocusSearch] = useState(false);
   const [isPopup, setPopup] = useState(false);
   const [AgentList, setAgentList] = useState([]);
   const [TerminalConfiguration, setTerminalConfiguration] = useState({});
-  const [paymentsValue, setPaymentsValue] = useState(null);
   const [optionsValue, seOptionsValue] = useState(null);
   const [uriImage, setUriImage] = useState(null);
   const [isInvoice, setInvoice] = useState(false);
+  const [shortInvoice, setShortInvoice] = useState(false);
   const [isTerminalSetup, setTerminalSetup] = useState(false);
   const [isPairPrinterFamily, setPairPrinterFamily] = useState(false);
   const [manuallyCount, setmanuallyCount] = useState(1);
-  const [isLoading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState(null);
+  const [orderNumber, setOrderNumber] = useState(null);
   const [returnInvoiceNumber, setReturnInvoiceNumber] = useState(null);
   const [salesBillID, setSalesBillID] = useState(null);
   const [creditAmount, setCreditAmount] = useState(0);
@@ -167,7 +193,6 @@ const HomeScreen = (props) => {
   const [printerStatus, setPrinterStatus] = useState(false);
   const [noFamilyFound, setNoFamilyFound] = useState(false);
   const [returnBill, setReturnBill] = useState([]);
-
   const [EarnPointPArry, setEarnPointPArry] = useState([]);
   const [EarnPointCArry, setEarnPointCArry] = useState([]);
   const [EarnPointIArry, setEarnPointIArry] = useState([]);
@@ -191,23 +216,83 @@ const HomeScreen = (props) => {
   const [selectedcat, setSelectedcat] = useState({});
   const [selectedCatIndex, setSelectedCatIndex] = useState(0);
   const [lastBillNumber, setLastBillNumber] = useState(null);
+  const [lastOrderNumber, setLastOrderNumber] = useState(null);
   const [addProductLoader, setAddProductLoader] = useState(false);
   const [companyVATRegistor, setCompanyVATRegistor] = useState(false);
   const [barCode, setBarCode] = useState(true);
   const [barCodeText, setbarCodeText] = useState("");
   const [billFormatType, setBillFormatType] = useState(1);
-  const [billDates, setBillDate] = useState(null);
-  const [isLogout, setisLogout] = useState(false);
-  const [billingType, setBillingType] = useState(null);
+  const [displayModal, setDisplayModal] = useState(false);
+  const viewref = useRef(null);
+  const viewShotRef = useRef(null);
+  const flatListRef = useRef(null);
+  const buyerViewRef = useRef(null);
+  const loyaltyCardViewRef = useRef(null);
+  const qrRef = useRef(null);
+  const drawerRef = useRef(null);
+  const qrRef2 = useRef(null);
+  const ref_searchBar = useRef(null);
+  const [isdisabled, setisDisabled] = useState(false);
+  const [guestItem, setGuestItem] = useState([]);
+  const [selectedGuest, setSelectedGuest] = useState("");
+  const [areaItem, setAreaItem] = useState([]);
+  const [selectedArea, setSelectedArea] = useState("");
+  const [tableItem, setTableItem] = useState([]);
+  const [masterTableItems, setMasterTableItems] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [optionType, setOptionType] = useState("productSearch");
+  const [notesModal, setNotesModal] = useState(false);
+  const [notesDetail, setNotesDetail] = useState();
+  const [storageItems, setStorageItems] = useState(null);
+  const [enableTBut, setEnableTbut] = useState(true);
+  const [openModal, setOpenModal] = useState(false);
+  const [orderItems, setOrderItems] = useState([
+    { id: 0, value: "Select Type" },
+    { id: 1, value: props.StringsList._329 },
+    { id: 2, value: props.StringsList._328 },
+    { id: 3, value: props.StringsList._26 },
+  ]);
+  const [orderType, setOrderType] = useState({ id: 0, value: "Select Type" });
+  const [orderTaker, setOrderTaker] = useState([]);
+  const [orderTakerType, setOrderTakerType] = useState({
+    DiscountLimit: 0,
+    Phone: "",
+    Email: "",
+    OrderTakerName: I18nManager?.isRTL ? "يختار" : "Select",
+    SalesAgentCode: 0,
+  });
+  const [disable, setDisable] = useState(false);
+  const [isRequriedLogin, setIsRequriedLogin] = useState(false);
+  const [isBillNeedPost, setBillNeedPost] = useState(false);
+  const [orderCode, setOrderCode] = useState(true);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [isSearch, setIsSearch] = useState(false);
+  const [placeholder, setPlaceHolder] = useState("Please Select Option");
+  const [billingStyleId, setBillingStyleId] = useState(2);
+  const [billingType, setBillingType] = useState();
   const [isBillingType, setisBillingType] = useState(false);
-  const [clientCustomInvoice, setClientCustomInvoice] = useState(false);
-  const [isCustomInvoice, setIsCustomInvoice] = useState(false);
-  const [isPaidCash, setIsPaidCash] = useState(false);
-  const [cashAmount, setCashAmount] = useState("");
-  const [productTaxes, setProductTaxes] = useState([]);
+  const [billingTypeData, setBillingTypeData] = useState([
+    { id: 1, name: "A4 Billing", name2: "A4 الفواتير", isSelected: false },
+    { id: 2, name: "Thermal 2", name2: "الحرارية 2", isSelected: false },
+    { id: 3, name: "Thermal 1", name2: "الحرارية 1", isSelected: false },
+  ]);
+  const [invoiceDates, setInvoiceDate] = useState(null);
+  const [saleBilType, setSaleBilType] = useState();
+  const [isSaleBilType, setISSaleBilType] = useState(false);
+  const [toggled, setToggled] = useState(false);
+  const [placedwithPay, setPlaceWithPay] = useState(false);
+  const [orderPopup, setOrderPopup] = useState(false);
+  const [payemntAdded, setPaymentAdded] = useState(false);
+  const [productIndex, setProductIndex] = useState(null);
+  const [paymentView, setPaymentView] = useState(false);
+  const [railStart, setRailStart] = useState(false);
+  const [selectedProductNotes, setSelectedProductsNotes] = useState();
+  const [selectedOrderType, setSelectedOrderType] = useState(0);
   const [customerNotes, setCustomerNotes] = useState("");
   const [customerNotesOpen, setCustomerNotesOpen] = useState(false);
-  const [billingTypeData, setBillingTypeData] = useState([
+  const [showButton, setShowButton] = useState(false);
+  const [refORderNumber, setRefOrderNumber] = useState(null);
+  const [saleBilData, setSaleBilData] = useState([
     {
       id: 1,
       name: "Ordinary Sales Bill",
@@ -222,33 +307,29 @@ const HomeScreen = (props) => {
     },
     { id: 3, name: "Tax Invoice", name2: "فاتورة ضريبية", isSelected: false },
   ]);
-  const [billingStyleId, setBillingStyleId] = useState(2);
-  const [isInnerPrinter, setInnerPrinter] = useState(false);
-  const [isBillNeedPost, setBillNeedPost] = useState(false);
-  const [refundPayments, setRefundPayments] = useState([
-    { label: props.StringsList._314, value: "1" },
-    { label: "on Account", value: "2" },
-  ]);
-  const [descriptionModal, setDescriptionModal] = useState(false);
-  const [descriptionDetail, setDescriptionDetail] = useState();
-  const [selectedProductNotes, setSelectedProductsNotes] = useState();
-  const [totalReprintCount, setTotalReprintCount] = useState(null);
 
-  const viewref = useRef(null);
-  const viewShotRef = useRef(null);
-  const flatListRef = useRef(null);
-  const buyerViewRef = useRef(null);
-  const loyaltyCardViewRef = useRef(null);
-  const qrRef = useRef(null);
-  const drawerRef = useRef(null);
-  const qrRef2 = useRef(null);
-  const ref_searchBar = useRef(null);
-  let lastBillDetail = null;
+  // const [connectionStatus, setConnectionStatus] = useState(false);
+  // const [connectionType, setConnectionType] = useState(null);
+  // const handleNetworkChange = state => {
+  //   setConnectionStatus(state.isConnected);
+  //   setConnectionType(state?.type);
+  // };
+  // useEffect(() => {
+  //   const netInfoSubscription = NetInfo.addEventListener(handleNetworkChange);
+  //   return () => {
+  //     alert(`ConnectionStatus ${connectionStatus}`);
+  //     netInfoSubscription && netInfoSubscription();
+  //   };
+  // }, []);
+  const getNetInfo = async () => {
+    let networkState = false;
+    await NetInfo.fetch().then((state) => {
+      networkState = state.isConnected;
+    });
+    return networkState;
+  };
   let productGroupList = [];
-  let pGL = [],
-    localIndex;
   let mins = 15 * 60 * 1000;
-
   useEffect(() => {
     setInterval(async () => {
       let status = await getNetInfo();
@@ -261,185 +342,6 @@ const HomeScreen = (props) => {
     }, mins);
   }, []);
 
-  const onSaveNotes = (item) => {
-    let notesArray = [...selectedProducts];
-    let newArray = notesArray.map((p) => {
-      var temp = Object.assign({}, p);
-      if (temp.ProductBarCode === item.ProductBarCode) {
-        temp.Description = descriptionDetail;
-      }
-      return temp;
-    });
-    setSelectedProducts(newArray);
-    setDescriptionModal(false);
-  };
-
-  useEffect(async () => {
-    const OsVer = Platform.constants["Release"];
-    console.log("android version", OsVer);
-
-    const unsubscri = props.navigation.addListener("focus", async () => {
-      setLoading(true);
-      // console.log(
-      //   'getBrand',
-      //   getDeviceType(),
-      //   getBrand(),
-      //   getBundleId(),
-      //   getDeviceId(),
-      // );
-
-      let ConnectedBluetoothInfo = await AsyncStorage.getItem(
-        "ConnectedBluetoothInfo"
-      );
-      if (ConnectedBluetoothInfo) {
-        console.log("ConnectedBluetoothInfo", ConnectedBluetoothInfo);
-        let printAdress = ConnectedBluetoothInfo?.split("|");
-        setPrinterMacAddress(printAdress[1]);
-        setPrinterName(printAdress[0]);
-        if (printAdress[0] === "InnerPrinter") {
-          setInnerPrinter(true);
-        } else {
-          setInnerPrinter(false);
-        }
-      }
-      let bilT = await AsyncStorage.getItem("SaleBIL_STYLE");
-      if (bilT) {
-        let billTypeSe = await JSON.parse(bilT);
-        console.log("bill type is ", billTypeSe);
-        setBillingType(billTypeSe);
-      } else {
-        setBillingType({
-          id: 3,
-          name: "Tax Invoice",
-          name2: "فاتورة ضريبية",
-          isSelected: true,
-        });
-      }
-      let BT = await AsyncStorage.getItem("BILLING_STYLE");
-      BT = BT ? JSON.parse(BT) : 2;
-      setBillingStyleId(BT.id);
-      getAllCategories();
-      let agentArray = [],
-        loyaltyArray = [],
-        paymentArray = [];
-      getData(LoyaltyListTable, (cb) => {
-        // console.log("LoyaltyListTable..", cb)
-
-        cb.forEach((element) => {
-          loyaltyArray.push({
-            label: element?.LoyaltyName,
-            value: element?.LoyaltyName,
-            ...element,
-          });
-        });
-      });
-      setLoyaltyList(loyaltyArray);
-      getData(SalesAgentsTable, (sa) => {
-        sa.forEach((element) => {
-          agentArray.push({
-            label: element?.SalesAgentName,
-            value: element?.UserCode,
-            ...element,
-          });
-        });
-      });
-
-      let cashalert = await AsyncStorage.getItem("CASH_PAID_ALERT");
-
-      // createInvoiceNumber();
-      await getData(TerminalSetupTable, (cb) => {
-        setTerminalSetupObj(cb[0]);
-        // console.log("TerminalSetupTable...", cb)
-      });
-      let companyCode = "";
-      await getData(TerminalConfigurationTable, async (TC) => {
-        setTerminalConfiguration(TC[0]);
-        // reduceImageSizes(TC[0].CompanyLogoType +
-        //   ',' + TC[0].CompanyLogo);
-        companyCode = TC[0].CompanyCode;
-        let isnum = /^\d+$/.test(TC[0].ValueAddedTaxNumber);
-        //let isCherector = /^[a-z]+$/i.test("a")
-        // numberCher = /^[a-z0-9]+$/i.test("1245566555")
-        let isZero = TC[0].ValueAddedTaxNumber === "000000000000000";
-        // console.log('TerminalConfigurationTable...', TC);
-        if (TC[0].ValueAddedTaxNumber.length === 15 && isnum && !isZero)
-          setCompanyVATRegistor(true);
-        //  console.table("TerminalConfigurationTable...", TC[0])
-      });
-      if (cashalert === "true") {
-        setIsCustomInvoice(true);
-      }
-      await getData(UserConfigurationTable, async (TC) => {
-        setUserConfiguration(TC[0]);
-        setUserDiscountLimit(TC[0]?.DiscountLimit);
-        //console.log("UserConfigurationTable...", TC)
-        if (TC[0].SalesRefundAllowed === 0) {
-          setOptions([
-            { label: props.StringsList._32, value: "getHoldInvoice" },
-            { label: props.StringsList._30, value: "buyer" },
-            { label: props.StringsList._437, value: "loyaltyCard" },
-          ]);
-        }
-        await getData(SalesPostingConfigurationListTable, (cb) => {
-          cb.forEach((element) => {
-            if (element?.PaymentTypeName === "Credit") {
-              if (TC[0]?.AllowCreditSale === "true") {
-                paymentArray.push({
-                  label: I18nManager.isRTL
-                    ? element?.PaymentTypeName2
-                    : element?.PaymentTypeName,
-                  value: element?.PaymentType,
-                  ...element,
-                });
-              }
-            } else {
-              paymentArray.push({
-                label: I18nManager.isRTL
-                  ? element?.PaymentTypeName2
-                  : element?.PaymentTypeName,
-                value: element?.PaymentType,
-                ...element,
-              });
-            }
-          });
-        });
-      });
-      // console.log('UserPaymentmethods...', paymentArray);
-      setPayments(paymentArray);
-      setAgentList(agentArray);
-
-      let DefaultGTax = await AsyncStorage.getItem("DEFAULT_GTAX");
-      await getData(TaxRateParentListTable, (cb) => {
-        let t = cb.filter((t) => t.TaxLevel === 2);
-        t.unshift({ TaxFamilyName: "None", TaxFamilyCode: "None" });
-        if (Array.isArray(t) && t.length > 0) {
-          let defaultT = t.find((t) => t.TaxFamilyCode === DefaultGTax);
-          if (defaultT) {
-            initialglobalTaxFun(defaultT, "", "");
-          }
-        }
-        setGlobalTaxList(t);
-      });
-
-      soundLoading();
-      getData(DrawerSetupTable, (cb) => {
-        setDrawerSetupArr(cb[0]);
-      });
-
-      let saleAgent = await AsyncStorage.getItem("SELECTED_AGNETS");
-      if (saleAgent) {
-        saleAgent = JSON.parse(saleAgent);
-
-        setSelectedAgent(saleAgent);
-      }
-
-      let uri = await AsyncStorage.getItem("FILE_URI");
-      console.log("FILE_URI", uri);
-    });
-    return () => {
-      unsubscri;
-    };
-  }, [props.navigation]);
   const postBillsbyInterval = async () => {
     let uri = await AsyncStorage.getItem("FILE_URI");
     console.log("Folder uri", uri);
@@ -447,15 +349,28 @@ const HomeScreen = (props) => {
     let newBillList = [];
     await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
+        cb[i].OrderType = Number(cb[i].OrderType);
         if (
           (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
           (cb[i].isProcessed == "false" || !cb[i].isProcessed)
         ) {
           await getDataById(
             SaleBillDetailsTable,
-            "salesBillID",
-            cb[i].salesBillID,
+            "salesInvoiceID",
+            cb[i].salesInvoiceID,
             (billProducts) => {
+              billProducts.forEach((element) => {
+                element.IsTax1IncludedInPrice =
+                  element.IsTax1IncludedInPrice === 0 ? false : true;
+                element.IsTax2IncludedInPrice =
+                  element.IsTax2IncludedInPrice === 0 ? false : true;
+                element.IsParentAddOn =
+                  element.IsParentAddOn === 0 ||
+                  element.IsParentAddOn === "false"
+                    ? false
+                    : true;
+                element.DeliveryStatus = false;
+              });
               (cb[i].isProcessed = false), (cb[i].isUploaded = true);
               cb[i].BillDetails = billProducts;
               (cb[i].isGlobalTax1IncludedInPrice =
@@ -474,7 +389,12 @@ const HomeScreen = (props) => {
       if (newBillList.length > 0) {
         let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
         const response1 = await props.dispatch(
-          ServerCall(UserLogin, "SalesBill/CreateSalesBill", newBillList)
+          ServerCall(
+            UserLogin,
+            "SalesBill/CreateSalesBill",
+            "POST",
+            newBillList
+          )
         );
         console.log("bill posting response by interval", response1);
         if (response1 === "success") {
@@ -496,7 +416,7 @@ const HomeScreen = (props) => {
             }
           } else {
             try {
-              const folderName = "Bnody POS";
+              const folderName = "Bnody Restaurant";
               const fileName = "invoices.txt";
 
               const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
@@ -542,7 +462,7 @@ const HomeScreen = (props) => {
             }
           } else {
             try {
-              const folderName = "Bnody POS";
+              const folderName = "Bnody Restaurant";
               const fileName = "invoices.txt";
 
               const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
@@ -569,299 +489,1791 @@ const HomeScreen = (props) => {
       }
     });
   };
-  // const reduceImageSizes = async path => {
-  //   console.log('our image is', path);
-  //   let cropData = {
-  //     offset: {x: 0, y: 0},
-  //     size: {width: 100, height: 100},
-  //     displaySize: {width: 100, height: 100},
-  //     resizeMode: 'contain',
-  //   };
-  //   ImageEditor.cropImage(path, cropData).then(url => {
-  //     console.log('Cropped image uri', url);
-  //   });
-  // };
 
-  const initialglobalTaxFun = async (itm, type, n, totalAmount, disAmount) => {
-    if (itm.TaxFamilyCode !== "None") {
-      let tPrice = totalAmount ? totalAmount : totalPrice;
-      let subPr = type === "returnInvoice" ? subPrice : type;
-      let disA =
-        disAmount || disAmount === 0 ? disAmount : globalDiscountAmount;
-      setSelectedGlobalTaxObj(itm);
-      // console.log("globalTaxFun calling....", itm)
-      let taxAmt = await calculateTaxeGroups(
-        0,
-        subPr,
-        disA,
-        itm.TaxFamilyCode,
-        1,
-        null,
-        0,
-        TerminalConfiguration,
-        0,
-        0,
-        true
-      );
-      taxAmt.globalTaxGroupID = itm.TaxFamilyCode;
-      taxAmt.globalTaxGroupName = itm.TaxFamilyName;
-
-      let tax = taxAmt.Tax2Amount
-        ? taxAmt.Tax1Amount + taxAmt.Tax2Amount
-        : taxAmt.Tax1Amount
-        ? taxAmt.Tax1Amount
-        : 0;
-      let diA = taxAmt.DiscountAmount ? taxAmt.DiscountAmount : 0;
-
-      if (tax > 0) {
-        tPrice = subPr + tax - diA;
-
-        setTotalPrice(tPrice);
-      } else {
-        tPrice = subPr - disA;
-
-        setTotalPrice(tPrice);
-      }
-      setGlobalTaxObj(taxAmt);
-      setGlobalTax(tax);
-      setLoading(false);
-    } else {
-      let tPrice = totalPrice - globalTax;
-      console.log("globalTax else", tPrice);
-      setTotalPrice(tPrice);
-      setSelectedGlobalTaxObj(null);
-      setGlobalTaxObj(null);
-      setGlobalTax(0);
-      // setLoading(false);
+  useEffect(async () => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    let table = JSON.parse(tableData);
+    // console.log('connectionStatus', connectionStatus);
+    if (table) {
+      changeTableStatus(table?.TableCodeID);
     }
-  };
-  const getNetInfo = async () => {
-    let networkState = false;
-    await NetInfo.fetch().then((state) => {
-      networkState = state.isConnected;
+    setLoading(true);
+    getStorageItem();
+    let ConnectedBluetoothInfo = await AsyncStorage.getItem(
+      "ConnectedBluetoothInfo"
+    );
+    if (ConnectedBluetoothInfo) {
+      console.log("ConnectedBluetoothInfo", ConnectedBluetoothInfo);
+      let printAdress = ConnectedBluetoothInfo?.split("|");
+      setPrinterMacAddress(printAdress[1]);
+      setPrinterName(printAdress[0]);
+      if (printAdress[0] === "InnerPrinter") {
+        setInnerPrinter(true);
+      } else {
+        setInnerPrinter(false);
+      }
+    }
+
+    getLastOrderNumber();
+    tableInfoData();
+    getAllCategories();
+
+    let agentArray = [],
+      loyaltyArray = [],
+      paymentArray = [];
+    getData(LoyaltyListTable, (cb) => {
+      cb.forEach((element) => {
+        loyaltyArray.push({
+          label: element?.LoyaltyName,
+          value: element?.LoyaltyName,
+          ...element,
+        });
+      });
     });
-    return networkState;
-  };
-  useEffect(() => {
-    setTimeout(() => {
-      checkLocalDBBills();
-    }, 5000);
-  }, []);
+    setLoyaltyList(loyaltyArray);
+    await getData(SaleBillsTable, async (cb) => {
+      for (let i = 0; i < cb.length; i++) {
+        if (
+          (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
+          (cb[i].isProcessed == "false" || !cb[i].isProcessed)
+        ) {
+          setBillNeedPost(true);
+        } else {
+          setBillNeedPost(false);
+        }
+      }
+    });
+    getData(SalesAgentsTable, (sa) => {
+      sa.forEach((element) => {
+        agentArray.push({
+          label: element?.SalesAgentName,
+          value: element?.UserCode,
+          ...element,
+        });
+      });
+    });
 
-  const checkLocalDBBills = async () => {
-    setPrintType(null);
-    try {
-      await getData(DrawerSetupTable, async (cb) => {
-        console.log("isInitialLogin ", cb[0]?.isInitialLogin === "true");
-        if (cb[0]?.isInitialLogin === "true") {
-          updateColunm(
-            DrawerSetupTable,
-            ["isInitialLogin"],
-            "id",
-            "D12345678",
-            "false"
-          );
-          const OsVer = Platform.constants["Release"];
+    await getData(A4PrintStylesTable, (A4) => {}),
+      await getData(TerminalSetupTable, (cb) => {
+        console.log("TerminalSetupTable", cb[0]);
+        setTerminalSetupObj(cb[0]);
+      });
 
-          if (Platform.OS === "android") {
-            let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
-            const isBills = await RNFS.exists(path);
-            if (isBills) {
-              let uri = await AsyncStorage.getItem("FILE_URI");
-              console.log("Folder uri android", uri);
-              const Data = await ScopedStorage.readFile(uri, "utf8");
+    await getData(TerminalConfigurationTable, async (TC) => {
+      setTerminalConfiguration(TC[0]);
+      let isnum = /^\d+$/.test(TC[0].ValueAddedTaxNumber);
 
-              console.log("File content:", Data);
-              // let Data = await PermissionFile.getInvoices(uri);
-              // console.log('Data =================>', Data);
-              let newBillList = Data;
-              let bills = await JSON.parse(newBillList);
-              if (bills.length > 0) {
-                //
-                const lastObject = bills[bills.length - 1];
-                const lastBillNumber = lastObject.BillDetails[0].BillNumber;
-                let lastBill = lastBillNumber.split("-");
-                const numericPart = lastBill[lastBill.length - 1].replace(
-                  /^0+/,
-                  ""
-                );
-                console.log("Last Bill Number:=====>", numericPart);
-                //
-                let status = await getNetInfo();
-                console.log("Net Status =====>", status);
-                if (status === true) {
-                  postingBill(newBillList);
-                } else {
-                  Alert.alert(
-                    "Panding Bills",
-                    "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
-                    [
-                      {
-                        text: "OKAY",
-                        onPress: async () => {
-                          let columnName = ["LastBillNumber"];
-                          let columnValue = [Number(numericPart)];
-                          await getData(
-                            TerminalConfigurationTable,
-                            async (TC) => {
-                              if (TC[0]?.UserCode) {
-                                updateColunm(
-                                  TerminalConfigurationTable,
-                                  columnName,
-                                  "UserCode",
-                                  TC[0]?.UserCode,
-                                  columnValue
-                                );
-                              }
-                            }
-                          );
+      let isZero = TC[0].ValueAddedTaxNumber === "000000000000000";
 
-                          console.log("Press OK");
-                        },
-                      },
-                    ]
-                  );
-                }
-              }
+      if (TC[0].ValueAddedTaxNumber.length === 15 && isnum && !isZero)
+        setCompanyVATRegistor(true);
+    });
+
+    let saleAgent = [];
+    await getData(SalesAgentsTable, (cb) => {
+      saleAgent = cb;
+    });
+
+    await getData(UserConfigurationTable, async (TC) => {
+      setUserConfiguration(TC[0]);
+      setUserDiscountLimit(TC[0]?.DiscountLimit);
+      let sAgent = saleAgent.find(
+        (x) => x.SalesAgentCode === TC[0].SalesAgentCode
+      );
+      if (sAgent) {
+        setSelectedAgent(sAgent);
+      } else {
+        let obj = {
+          SalesAgentCode: TC[0].SalesAgentCode,
+          SalesAgentName: TC[0].SalesAgentName,
+        };
+        setSelectedAgent(obj);
+      }
+
+      if (TC[0].SalesRefundAllowed === 0) {
+        setOptions([
+          { label: props.StringsList._32, value: "getHoldInvoice" },
+          { label: props.StringsList._30, value: "buyer" },
+          { label: props.StringsList._437, value: "loyaltyCard" },
+        ]);
+      }
+      await getData(SalesPostingConfigurationListTable, (cb) => {
+        cb.forEach((element) => {
+          if (element?.PaymentTypeName === "Credit") {
+            if (TC[0]?.AllowCreditSale === "true") {
+              paymentArray.push({
+                label: I18nManager.isRTL
+                  ? element?.PaymentTypeName2
+                  : element?.PaymentTypeName,
+                value: element?.PaymentType,
+                ...element,
+              });
             }
           } else {
-            try {
-              const folderName = "Bnody POS";
-              const fileName = "invoices.txt";
+            paymentArray.push({
+              label: I18nManager.isRTL
+                ? element?.PaymentTypeName2
+                : element?.PaymentTypeName,
+              value: element?.PaymentType,
+              ...element,
+            });
+          }
+        });
+      });
+    });
+    setPayments(paymentArray);
+    setAgentList(agentArray);
 
-              const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
+    let DefaultGTax = await AsyncStorage.getItem("DEFAULT_GTAX");
+    console.log("DefaultGTax ===============>", DefaultGTax);
+    await getData(TaxRateParentListTable, (cb) => {
+      let t = cb.filter((t) => t.TaxLevel === 2);
 
-              const folderPath = `${libraryDirectoryPath}/${folderName}`;
-              const filePath = `${folderPath}/${fileName}`;
+      t.unshift({ TaxFamilyName: "None", TaxFamilyCode: "None" });
+      if (Array.isArray(t) && t.length > 0) {
+        let defaultT = t.find((t) => t.TaxFamilyCode === DefaultGTax);
+        if (defaultT) {
+          initialglobalTaxFun(defaultT, "", "");
+        }
+      }
+      setGlobalTaxList(t);
+    });
 
-              const fileExists = await RNFS.exists(filePath);
-              if (fileExists) {
-                const Data = await RNFS.readFile(uri, "utf8");
+    soundLoading();
+    getData(DrawerSetupTable, (cb) => {
+      setDrawerSetupArr(cb[0]);
+    });
+  }, []);
+  useEffect(() => {
+    let id = props?.route?.params?.id;
+    let type = props?.route?.params?.type;
+    setPrintType(type);
+    if (id !== undefined && orderCode === true && type !== "") {
+      if (list.isRefundReturnedCall === true) {
+        try {
+          console.log("Refund research hit");
+          setFocusSearch(false);
+          setPrintType(null);
+          getReturnInvoice(type, id);
+          list.isRefundReturnedCall = false;
+        } catch (error) {
+          console.log(error);
+        }
+      }
+    } else if (id === undefined && orderCode === true && type === "holdInvoice")
+      if (list.isHoldedInvoiceOpened === true) {
+        try {
+          setTimeout(() => {
+            setFocusSearch(false);
+            setPrintType(null);
+            setisHoldInvoices(true);
+          }, 100);
+        } catch (error) {
+          console.log(error);
+        }
+      }
+  });
+  useEffect(() => {
+    const unsubscri = props.navigation.addListener("focus", async () => {
+      await getData(TerminalSetupTable, (cb) => {
+        console.log("TerminalSetupTable", cb[0]);
+        setTerminalSetupObj(cb[0]);
+      });
+      let bilT = await AsyncStorage.getItem("SaleBIL_STYLE");
+      if (bilT) {
+        let billTypeSe = await JSON.parse(bilT);
+        console.log("bill type is =======>", billTypeSe);
+        setBillingType(billTypeSe);
+      } else {
+        setBillingType({
+          id: 3,
+          name: "Tax Invoice",
+          name2: "فاتورة ضريبية",
+          isSelected: true,
+        });
+      }
+      let BT = await AsyncStorage.getItem("BILLING_STYLE");
+      BT = BT ? JSON.parse(BT) : 2;
+      console.log(" BT is =======>", BT.id);
+      setBillingStyleId(BT.id);
+      // let tableData = await AsyncStorage.getItem('SELECTED_TABLE');
+      if (list.billHasOrder === true) {
+        setOrderCode(false);
+      } else {
+        setOrderCode(true);
+      }
+      // if (tableData && list?.products?.length > 0) {
+      //   setToggle(true);
+      // } else {
+      //   setToggle(false);
+      // }
+      getStorageItem();
+      getLastOrderNumber();
+    });
 
-                console.log("File content:", Data);
-                // let Data = await PermissionFile.getInvoices(uri);
-                // console.log('Data =================>', Data);
-                let newBillList = Data;
-                let bills = await JSON.parse(newBillList);
-                if (bills.length > 0) {
-                  //
-                  const lastObject = bills[bills.length - 1];
-                  const lastBillNumber = lastObject.BillDetails[0].BillNumber;
-                  let lastBill = lastBillNumber.split("-");
-                  const numericPart = lastBill[lastBill.length - 1].replace(
-                    /^0+/,
-                    ""
-                  );
-                  console.log("Last Bill Number:=====>", numericPart);
-                  //
-                  let status = await getNetInfo();
-                  console.log("Net Status =====>", status);
-                  if (status === true) {
-                    postingBill(newBillList);
-                  } else {
-                    Alert.alert(
-                      "Panding Bills",
-                      "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
-                      [
-                        {
-                          text: "OKAY",
-                          onPress: async () => {
-                            let columnName = ["LastBillNumber"];
-                            let columnValue = [Number(numericPart)];
-                            await getData(
-                              TerminalConfigurationTable,
-                              async (TC) => {
-                                if (TC[0]?.UserCode) {
-                                  updateColunm(
-                                    TerminalConfigurationTable,
-                                    columnName,
-                                    "UserCode",
-                                    TC[0]?.UserCode,
-                                    columnValue
-                                  );
-                                }
-                              }
-                            );
+    return () => {
+      unsubscri;
+    };
+  }, [props.navigation]);
 
-                            console.log("Press OK");
-                          },
-                        },
-                      ]
-                    );
-                  }
-                }
-              }
+  useEffect(async () => {
+    if (
+      orderDetails &&
+      productIndex < orderDetails?.ResOrderDetailList.length
+    ) {
+      let array = [];
 
-              await RNFS.writeFile(filePath, "", "utf8");
-              console.log("File created successfully:", filePath);
-            } catch (error) {
-              console.error("Error creating folder and file:", error);
+      let parntProducts = orderDetails?.ResOrderDetailList.filter(
+        (x) => x.IsParentAddOn === true
+      );
+      let addonnProducts = orderDetails?.ResOrderDetailList.filter(
+        (x) => x.IsParentAddOn === false
+      );
+      for (let index = 0; index < parntProducts.length; index++) {
+        const element = parntProducts[index];
+        if (array.length === 0 && element.IsParentAddOn === true) {
+          array.push(element);
+          let Addonsofthis = addonnProducts.filter(
+            (x) => x.AddOnParentOrderDetailCode === element.OrderDetailCode
+          );
+          if (Addonsofthis) {
+            for (let x = 0; x < Addonsofthis.length; x++) {
+              const y = Addonsofthis[x];
+              array.push(y);
             }
           }
+        } else {
+          let itemAddons = addonnProducts.filter(
+            (x) => x.AddOnParentOrderDetailCode === element.OrderDetailCode
+          );
+          if (itemAddons) {
+            array.push(element);
+            for (let x = 0; x < itemAddons.length; x++) {
+              const y = itemAddons[x];
+              array.push(y);
+            }
+          } else {
+            array.push(element);
+          }
+        }
+      }
+      let i = productIndex;
+      const element = array[i];
+      let findProduct;
+      if (element.IsParentAddOn) {
+        await getData(UpdateProductDetailListTable, (productsDetail) => {
+          findProduct = productsDetail.find(
+            (e) => e.ProductBarCode === element.ProductBarCode
+          );
+          if (findProduct) {
+            let finalPrice = element.Price.toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            );
+            findProduct.AddOnGroupCode = element.AddOnGroupCode;
+            findProduct.AddOnGroupDetailCode = element.AddOnGroupDetailCode;
+            findProduct.AddOnParentSalesInvoiceDetailsID =
+              element.AddOnParentOrderDetailCode;
+            findProduct.AddOnParentOrderDetailCode =
+              element.AddOnParentOrderDetailCode;
+            findProduct.ParentInvoiceDetailsID =
+              element.AddOnParentOrderDetailCode;
+            findProduct.DiscountAmount = element.DiscountAmount;
+            findProduct.DiscountRate = element.DiscountRate;
+            findProduct.Ingredients = element.Ingredients;
+            findProduct.IsParentAddOn = element.IsParentAddOn;
+            findProduct.OrderCode = element.OrderCode;
+            findProduct.OrderDetailCode = element.OrderDetailCode;
+            findProduct.Price = Number(element.Price);
+            findProduct.ProductBarCode = element.ProductBarCode;
+            findProduct.ProductCode = element.ProductCode;
+            findProduct.ProductNote = element.ProductNote;
+            findProduct.ProductName = element.ProductName;
+            findProduct.ProductType = element.ProductType;
+            findProduct.Quantity = element.Quantity;
+            findProduct.SerialNumber = element.SerialNumber;
+            findProduct.UnitCode = element.UnitCode;
+            findProduct.UnitFragment = element.UnitFragment;
+            findProduct.UnitType = element.UnitType;
+            findProduct.UOMName = element.UOMName;
+            findProduct.PriceOriginal = Number(element.Price);
+            findProduct.SalesInvoiceDetailsID = element.OrderDetailCode;
+            findProduct.OrignalQuantity = element.Quantity;
+            findProduct.ProductNote = element.ProductNote;
+          }
+          if (findProduct && findProduct.IsParentAddOn === true) {
+            onSelectUpdatedProduct(findProduct, [], "increment");
+          }
+        });
+      } else if (!element.IsParentAddOn) {
+        const element = array[i];
+        await getDataJoinById(
+          ProductCardAddOnGroupListTable,
+          UpdateProductDetailListTable,
+          "AddOnGroupCode",
+          element.AddOnGroupCode,
+          async (addonProducts) => {
+            let findAddonProduct = addonProducts.find(
+              (e) => e.ProductBarCode === element.ProductBarCode
+            );
+            console.log("fetch AddonProduct...", findAddonProduct);
+            if (findAddonProduct) {
+              let finalPrice = element.Price.toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              );
 
-          // if (OsVer >= 11) {
+              findAddonProduct.AddOnGroupCode = element.AddOnGroupCode;
+              findAddonProduct.AddOnGroupDetailCode =
+                element.AddOnGroupDetailCode;
+              findAddonProduct.AddOnParentSalesInvoiceDetailsID =
+                element.AddOnParentOrderDetailCode;
+              findAddonProduct.AddOnParentOrderDetailCode =
+                element.AddOnParentOrderDetailCode;
+              findAddonProduct.ParentInvoiceDetailsID =
+                element.AddOnParentOrderDetailCode;
+              findAddonProduct.DiscountAmount = element.DiscountAmount;
+              findAddonProduct.DiscountRate = element.DiscountRate;
+              findAddonProduct.Ingredients = element.Ingredients;
+              findAddonProduct.IsParentAddOn = element.IsParentAddOn;
+              findAddonProduct.OrderCode = element.OrderCode;
+              findAddonProduct.OrderDetailCode = element.OrderDetailCode;
+              findAddonProduct.Price = Number(element.Price);
+              findAddonProduct.ProductBarCode = element.ProductBarCode;
+              findAddonProduct.ProductCode = element.ProductCode;
+              findAddonProduct.ProductNote = element.ProductNote;
+              findAddonProduct.ProductName = element.ProductName;
+              findAddonProduct.ProductType = element.ProductType;
+              findAddonProduct.Quantity = element.Quantity;
+              findAddonProduct.SerialNumber = element.SerialNumber;
+              findAddonProduct.UnitCode = element.UnitCode;
+              findAddonProduct.UnitFragment = element.UnitFragment;
+              findAddonProduct.UnitType = element.UnitType;
+              findAddonProduct.UOMName = element.UOMName;
+              findAddonProduct.PriceOriginal = Number(element.Price);
+              findAddonProduct.SalesInvoiceDetailsID = element.OrderDetailCode;
+              findAddonProduct.OrignalQuantity = findAddonProduct.Quantity;
+              findAddonProduct.GrandAmount = 0;
+            }
+            let parentItem = parntProducts.find(
+              (parentProduct) =>
+                parentProduct.OrderDetailCode ===
+                findAddonProduct.AddOnParentOrderDetailCode
+            );
+            findAddonProduct.OrignalQuantity =
+              element.Quantity / parentItem.Quantity;
+            findAddonProduct.parentQuantity = parentItem.Quantity;
+            findAddonProduct.parentIndex = productIndex;
 
-          // } else {
-          //   let path = "/storage/emulated/0/Downloads/Bnody POS/Invoices.txt";
-          //   if (RNFS.exists(path)) {
-          //     let uri = await AsyncStorage.getItem("FILE_URI");
-          //     console.log("Folder uri android 10 ", uri);
-          //     let Data = await PermissionFile.getInvoices(uri);
-          //     let newBillList = Data;
-          //     let bills = await JSON.parse(newBillList);
-          //     if (bills.length > 0) {
-          //       //
-          //       const lastObject = bills[bills.length - 1];
-          //       const lastBillNumber = lastObject.BillDetails[0].BillNumber;
-          //       let lastBill = lastBillNumber.split("-");
-          //       const numericPart = lastBill[lastBill.length - 1].replace(
-          //         /^0+/,
-          //         ""
-          //       );
-          //       console.log("Last Bill Number:=====>", numericPart);
-          //       //
-          //       if (status === true) {
-          //         postingBill(newBillList);
-          //       } else {
-          //         Alert.alert(
-          //           "Panding Bills",
-          //           "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
-          //           [
-          //             {
-          //               text: "OKAY",
-          //               onPress: async () => {
-          //                 let columnName = ["LastBillNumber"];
-          //                 let columnValue = [Number(numericPart)];
-          //                 await getData(
-          //                   TerminalConfigurationTable,
-          //                   async (TC) => {
-          //                     if (TC[0]?.UserCode) {
-          //                       updateColunm(
-          //                         TerminalConfigurationTable,
-          //                         columnName,
-          //                         "UserCode",
-          //                         TC[0]?.UserCode,
-          //                         columnValue
-          //                       );
-          //                     }
-          //                   }
-          //                 );
+            onSelectUpdatedProduct(findAddonProduct, [], "returnInvoice");
+          }
+        );
+      }
+    } else {
+      // This Metthod is use to re-arrange all the items with their addOns
 
-          //                 console.log("Press OK");
-          //               },
-          //             },
-          //           ]
-          //         );
-          //       }
-          //     }
-          //   }
-          // }
+      // Find out the Parent Product
+      let parntProducts = selectedProducts.filter(
+        (x) => x.IsParentAddOn === true
+      );
+      let productsArray = []; // Final array
+      // Find out the addOns Product
+      let addonnProducts = selectedProducts.filter(
+        (x) => x.IsParentAddOn === false
+      );
+      for (let index = 0; index < parntProducts.length; index++) {
+        const element = parntProducts[index];
+        if (productsArray.length === 0 && element.IsParentAddOn === true) {
+          productsArray.push(element);
+          let Addonsofthis = addonnProducts.filter(
+            (x) => x.AddOnParentOrderDetailCode === element.OrderDetailCode
+          );
+          if (Addonsofthis) {
+            for (let x = 0; x < Addonsofthis.length; x++) {
+              const y = Addonsofthis[x];
+              productsArray.push(y);
+            }
+          }
+        } else {
+          let itemAddons = addonnProducts.filter(
+            (x) => x.AddOnParentOrderDetailCode === element.OrderDetailCode
+          );
+          if (itemAddons) {
+            productsArray.push(element);
+            for (let x = 0; x < itemAddons.length; x++) {
+              const y = itemAddons[x];
+              productsArray.push(y);
+            }
+          } else {
+            productsArray.push(element);
+          }
+        }
+      }
+      setSelectedProducts(productsArray);
+      setLoading(false);
+    }
+  }, [productIndex]);
+
+  useEffect(() => {
+    let orderId = props?.route?.params?.id;
+    let type = props?.route?.params?.type;
+    if (orderId !== undefined && orderCode === true && type === undefined) {
+      getOrderDetails(orderId);
+    }
+  });
+
+  useEffect(() => {
+    orderStatus();
+  }, [orderValue]);
+  const orderStatus = () => {
+    if (orderValue === 1 && orderCode === false) {
+      updateState();
+      onNewInvoice();
+    } else if (orderValue === 2 && orderCode === false) {
+      setShowButton(true);
+      setRefOrderNumber(null);
+    }
+  };
+  const onSaveNotes = (item) => {
+    let notesArray = [...selectedProducts];
+    let newArray = notesArray.map((p) => {
+      var temp = Object.assign({}, p);
+      if (temp.ProductBarCode === item.ProductBarCode) {
+        temp.notes = notesDetail;
+      }
+      return temp;
+    });
+    setSelectedProducts(newArray);
+    setNotesModal(false);
+  };
+
+  const getOrderBySearch = () => {
+    if (selectedProducts.length > 0 && orderCode === true) {
+      Alert.alert(props.StringsList._537, props.StringsList._475, [
+        { text: "OK", onPress: () => getOrder() },
+        {
+          text: "Cancel",
+          onPress: () => {
+            console.log("Cancel Presed");
+          },
+          style: "cancel",
+        },
+      ]);
+    } else if (
+      selectedProducts.length > 0 &&
+      orderCode === false &&
+      showButton === true
+    ) {
+      Alert.alert(props.StringsList._537, props.StringsList._475, [
+        { text: "OK", onPress: () => getOrder() },
+        {
+          text: "Cancel",
+          onPress: () => {
+            console.log("Cancel Presed");
+          },
+          style: "cancel",
+        },
+      ]);
+    } else {
+      console.log("Searching order... ");
+      getOrder();
+    }
+  };
+  const getOrder = async () => {
+    if (isFocusSearch === true) {
+      setIsSearch(false);
+      setRefOrderNumber(searchText);
+      // console.log("setOrder number is ===> : " + searchText);
+      let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+      list.billHasOrder = true;
+      setLoading(true);
+      let caltureCode = I18nManager.isRTL ? "ar-SA" : "en-US";
+      try {
+        const response = await props.dispatch(
+          ServerCall(
+            token,
+            `Order/FetchOrder?orderCode=${searchText}&CultureCode=${caltureCode}`,
+            "GET"
+          )
+        );
+        console.log("order Details responce=====>", response);
+
+        if (response?.message === "Unauthorized") {
+          Alert.alert(props.StringsList._537, props.StringsList._276, [
+            { text: "OK", onPress: () => onClickPowerOff() },
+          ]);
+          setIsSearch(false);
+          setLoading(false);
+        } else if (!response?.ResOrderDetailList) {
+          Alert.alert(props.StringsList._537, props.StringsList._474, [
+            {
+              text: "OK",
+              onPress: () => {
+                setIsSearch(false);
+                setToggle(false);
+                setOrderCode(true);
+                restState();
+                setLoading(false);
+              },
+            },
+          ]);
+        } else if (response?.IsPaid) {
+          Alert.alert(
+            props.StringsList._537,
+            response?.OrderCode + " : " + props.StringsList._505,
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  setIsSearch(false);
+                  setToggle(false);
+                  setOrderCode(true);
+                  restState();
+                  setLoading(false);
+                },
+              },
+            ]
+          );
+        } else if (
+          response?.Status === 4 &&
+          response.StatusName === "Cancelled"
+        ) {
+          Alert.alert(
+            props.StringsList._537,
+            response?.OrderCode + " : " + props.StringsList._2,
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  setIsSearch(false);
+                  setToggle(false);
+                  setOrderCode(true);
+                  restState();
+                  setLoading(false);
+                },
+              },
+            ]
+          );
+        } else {
+          createNewInvoiceNumber();
+          setShowButton(false);
+          setsubPrice(0);
+          setTotalPrice(0);
+          setSelectedProducts([]);
+          setOrderNumber(response?.OrderCode);
+          setCustomerNotes(response?.CustomerNote);
+          setSalesBillID(uuid.v4());
+
+          setOrderValue(0);
+          list.ordID = response?.OrderType;
+          let details = response?.ResOrderDetailList;
+          setToggle(true);
+          setOrderCode(false);
+          list.isOrderPlaced = true;
+
+          setOrderDetails(response);
+          setProductIndex(0);
+        }
+      } catch (e) {
+        console.log(e, "error");
+        setLoading(false);
+      }
+    } else {
+      setSearchText("");
+    }
+  };
+  const getOrderDetails = async (orderId) => {
+    setIsSearch(false);
+    setRefOrderNumber(orderId);
+
+    let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+    list.billHasOrder = true;
+    setLoading(true);
+    try {
+      const response = await props.dispatch(
+        ServerCall(token, "Order/FetchOrder?orderCode=" + orderId, "GET")
+      );
+      console.log("order Details responce", response);
+
+      if (response?.message === "Unauthorized") {
+        Alert.alert(props.StringsList._537, props.StringsList._276, [
+          { text: "OK", onPress: () => onClickPowerOff() },
+        ]);
+        setIsSearch(false);
+        setLoading(false);
+      } else if (!response?.ResOrderDetailList) {
+        Alert.alert(props.StringsList._537, props.StringsList._474, [
+          {
+            text: "OK",
+            onPress: () => {
+              setToggle(false);
+              setOrderCode(true);
+              setIsSearch(false);
+            },
+          },
+        ]);
+        setLoading(false);
+      } else if (response?.IsPaid) {
+        Alert.alert(
+          props.StringsList._537,
+          response?.OrderCode + " : " + " is " + props.StringsList._505,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setIsSearch(false);
+                setToggle(false);
+                setOrderCode(true);
+                restState();
+                setLoading(false);
+              },
+            },
+          ]
+        );
+      } else if (
+        response?.Status === 4 &&
+        response.StatusName === "Cancelled"
+      ) {
+        Alert.alert(
+          props.StringsList._537,
+          response?.OrderCode + " : " + props.StringsList._2,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setIsSearch(false);
+                setToggle(false);
+                setOrderCode(true);
+                restState();
+                setLoading(false);
+              },
+            },
+          ]
+        );
+      } else {
+        setIsSearch(false);
+        createNewInvoiceNumber();
+        setSelectedProducts([]);
+        setTotalPrice(0);
+        setsubPrice(0);
+        setSalesBillID(uuid.v4());
+        setOrderNumber(response?.OrderCode);
+        setCustomerNotes(response?.CustomerNote);
+        list.ordID = response?.OrderType;
+        let details = response?.ResOrderDetailList;
+        setToggle(true);
+        setOrderCode(false);
+        list.isOrderPlaced = true;
+
+        setOrderDetails(response);
+        setProductIndex(0);
+      }
+    } catch (e) {
+      console.log(e, "error");
+      setLoading(false);
+    }
+  };
+
+  const placewithpay = (val) => {
+    if (val === "1") {
+      setPaymentsValue(val);
+      setPlaceWithPay(true);
+      setPaymentView(true);
+    } else if (val === "2") {
+      if (buyerInfo) {
+        if (payemntAdded) {
+          setPaymentsValue(val);
+          setPlaceWithPay(true);
+          setPaymentView(true);
+        } else {
+        }
+      }
+    } else if (val === "4" || val === "5") {
+      if (payemntAdded) {
+        setPaymentsValue(val);
+        setPlaceWithPay(true);
+        setPaymentView(true);
+      } else {
+        setRailStart(false);
+      }
+    }
+  };
+
+  const checkJSonValidity = async (isJson) => {
+    try {
+      let jsonParsing = await JSON.parse(isJson);
+      if (jsonParsing.message === "Unauthorized") {
+        return true;
+      }
+    } catch (error) {
+      console.log("response is string and not converted to json", error);
+
+      return false;
+    }
+  };
+
+  const placeOrderWithPay = async (key) => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    let table = JSON.parse(tableData);
+    setPlaceWithPay(false);
+    let productfinalArray = [];
+    let isProductHasZaroPrice = false;
+
+    for (let i = 0; i < selectedProducts.length; i++) {
+      if (
+        Number(selectedProducts[i].PriceOriginal) == 0 &&
+        Number(selectedProducts[i].PriceWithOutTax) == 0 &&
+        selectedProducts[i]?.IsParentAddOn
+      ) {
+        isProductHasZaroPrice = true;
+      }
+
+      let obj = {
+        OrderDetailCode: selectedProducts[i]?.SalesInvoiceDetailsID,
+        OrderCode: String(orderNumber),
+        AddOnGroupCode: selectedProducts[i]?.AddOnGroupCode,
+        AddOnParentOrderDetailCode: selectedProducts[i]?.ParentInvoiceDetailsID
+          ? selectedProducts[i]?.ParentInvoiceDetailsID
+          : "",
+        DiscountRate: selectedProducts[i]?.DiscountRate,
+        DiscountAmount: Number(selectedProducts[i]?.DiscountAmount),
+        Ingredients: String(selectedProducts[i]?.Ingredients),
+        IsParentAddOn:
+          selectedProducts[i]?.IsParentAddOn === 1 ||
+          selectedProducts[i]?.IsParentAddOn === true
+            ? true
+            : false,
+        Price: Number(
+          (selectedProducts[i]?.PriceOriginal).toFixed(
+            TerminalConfiguration.DecimalsInAmount
+          )
+        ),
+        PriceType: selectedProducts[i]?.PriceType,
+        ProductBarCode: selectedProducts[i]?.ProductBarCode,
+        ProductCode: selectedProducts[i]?.ProductCode,
+        ProductNote: selectedProducts[i]?.notes,
+        ProductType: selectedProducts[i]?.ProductType,
+        Quantity:
+          selectedProducts[i]?.IsParentAddOn === false
+            ? selectedProducts[i]?.Quantity *
+              selectedProducts[i]?.OrignalQuantity
+            : selectedProducts[i]?.Quantity,
+        SerialNumber: selectedProducts[i]?.SerialNumber,
+        UnitCode: selectedProducts[i]?.UOMCode,
+        UnitFragment: selectedProducts[i]?.UOMFragment
+          ? selectedProducts[i]?.UOMFragment
+          : 0,
+        UnitType: selectedProducts[i]?.UOMType
+          ? selectedProducts[i]?.UOMType
+          : 0,
+      };
+
+      productfinalArray.push(obj);
+    }
+    let CurrentDate = moment().format();
+    let date = String(CurrentDate).split("T");
+    let yourDate = date[0];
+    let time = date[1].split("+");
+    let recordstamp = yourDate + " " + time[0];
+    console.log(yourDate, " <== date time==> ", time[0]);
+    if (!isProductHasZaroPrice) {
+      try {
+        let placeOrderJson = [
+          {
+            OrderCode: String(orderNumber),
+            RefOrderNumber: refORderNumber ? refORderNumber : "",
+            TableCode: String(
+              list.ordID === 1 ? storageItems?.TableCodeID : ""
+            ),
+            CustomerNote: customerNotes,
+            ResUserID: Number(TerminalConfiguration?.UserCode),
+            TimeRequired: Number(terminalSetup?.requiredTime),
+            OrderType: Number(list.ordID),
+            Status: 1,
+            OrderTime: time[0],
+            CompletionTime: "",
+            RecordTimeStamp: recordstamp,
+            OperationMode: "INSERT",
+            RestaurantSalesAgentCode: orderTakerType?.SalesAgentCode
+              ? String(orderTakerType?.SalesAgentCode)
+              : "",
+            CounterCode: TerminalConfiguration?.TerminalCode,
+            ResOrderDetailList: productfinalArray,
+            IsPaid: true,
+          },
+        ];
+
+        let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+
+        console.log("orderPlaceJson", placeOrderJson);
+
+        setLoading(true);
+        const response = await props.dispatch(
+          ServerCall(token, "Order/CreateOrder", "POST", placeOrderJson)
+        );
+        console.log("Place order api request responce =====>", response);
+        // let jsonResponse;
+        let isJson = await checkJSonValidity(response);
+
+        // if (response) {
+        if (response === "success") {
+          let columnName = ["LastOrderNumber"];
+          let columnValue = [Number(TerminalConfiguration.LastOrderNumber) + 1];
+          console.log("bill number is", columnValue);
+          updateColunm(
+            TerminalConfigurationTable,
+            columnName,
+            "UserCode",
+            TerminalConfiguration?.UserCode,
+            columnValue
+          );
+          list.isOrderPlaced = true;
+          if (list.ordID === 1 && table) {
+            emptyAsyncTableObj();
+          } else if (list.ordID !== 1 && table) {
+            changeTableStatus(table?.TableCodeID);
+          }
+
+          setLoading(false);
+          Toast.show(
+            I18nManager.isRTL
+              ? "تم تقديم الطلب مع الفاتورة بنجاح "
+              : "Order Has been Placed with Invoice Successfully",
+            Toast.LONG
+          );
+          return true;
+        } else if (isJson) {
+          try {
+            let jsonParsing = await JSON.parse(response);
+            if (jsonParsing.message === "Unauthorized") {
+              Alert.alert(props.StringsList._537, props.StringsList._276, [
+                { text: "OK", onPress: () => onClickPowerOff() },
+                setLoading(false),
+              ]);
+              setLoading(false);
+            }
+          } catch (error) {
+            console.log("response is string and not converted to json", error);
+          }
+          // setLoading(true);
+
+          return false;
+        } else {
+          setToggled(false);
+          setToggle(true);
+          if (table) {
+            changeTableStatus(table?.TableCodeID);
+          }
+          setLoading(false);
+          return false;
+        }
+      } catch (e) {
+        console.log("ordder place error", e);
+        setLoading(false);
+        return false;
+      }
+    } else {
+      setPaymentsValue(null);
+      setMessage(props.StringsList._270);
+      setDisplayAlert(true);
+      setRailStart(false);
+      return false;
+    }
+  };
+
+  const placeOrderWithoutPay = async (key) => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    let table = JSON.parse(tableData);
+    console.log("table id", table?.TableCodeID);
+    let productfinalArray = [];
+    let isProductHasZaroPrice = false;
+    for (let i = 0; i < selectedProducts.length; i++) {
+      if (
+        Number(selectedProducts[i].PriceOriginal) == 0 &&
+        Number(selectedProducts[i].PriceWithOutTax) == 0 &&
+        selectedProducts[i]?.IsParentAddOn
+      ) {
+        isProductHasZaroPrice = true;
+      }
+
+      let obj = {
+        OrderDetailCode: selectedProducts[i]?.SalesInvoiceDetailsID,
+        OrderCode: orderNumber,
+        AddOnGroupCode: selectedProducts[i]?.AddOnGroupCode,
+        AddOnParentOrderDetailCode: selectedProducts[i].ParentInvoiceDetailsID
+          ? selectedProducts[i]?.ParentInvoiceDetailsID
+          : "",
+        DiscountRate: selectedProducts[i]?.DiscountRate,
+        DiscountAmount: Number(selectedProducts[i]?.DiscountAmount),
+        Ingredients: String(selectedProducts[i]?.Ingredients),
+        IsParentAddOn:
+          selectedProducts[i]?.IsParentAddOn === 1 ||
+          selectedProducts[i]?.IsParentAddOn === true
+            ? true
+            : false,
+        Price: Number(
+          (selectedProducts[i]?.PriceOriginal).toFixed(
+            TerminalConfiguration.DecimalsInAmount
+          )
+        ),
+        PriceType: selectedProducts[i]?.PriceType,
+        ProductBarCode: selectedProducts[i]?.ProductBarCode,
+        ProductNote: selectedProducts[i]?.notes,
+        ProductCode: selectedProducts[i]?.ProductCode,
+        ProductType: selectedProducts[i]?.ProductType,
+        OrignalQuantity: selectedProducts[i]?.OrignalQuantity
+          ? selectedProducts[i]?.OrignalQuantity
+          : selectedProducts[i]?.Quantity,
+        Quantity:
+          selectedProducts[i]?.IsParentAddOn === false
+            ? selectedProducts[i]?.Quantity *
+              selectedProducts[i]?.OrignalQuantity
+            : selectedProducts[i]?.Quantity,
+        SerialNumber: selectedProducts[i]?.SerialNumber,
+        UnitCode: selectedProducts[i]?.UOMCode,
+        UnitFragment: selectedProducts[i]?.UOMFragment
+          ? selectedProducts[i]?.UOMFragment
+          : 0,
+        UnitType: selectedProducts[i]?.UOMType
+          ? selectedProducts[i]?.UOMType
+          : 0,
+      };
+      productfinalArray.push(obj);
+    }
+    let CurrentDate = moment().format();
+    let date = String(CurrentDate).split("T");
+    let yourDate = date[0];
+    let time = date[1].split("+");
+    let recordstamp = yourDate + " " + time[0];
+    console.log(yourDate, " <== date time==> ", time[0]);
+
+    if (!isProductHasZaroPrice) {
+      try {
+        let placeOrderJson = [
+          {
+            OrderCode: orderNumber,
+            RefOrderNumber: refORderNumber ? refORderNumber : "",
+            TableCode: String(
+              list.ordID === 1 ? storageItems?.TableCodeID : ""
+            ),
+            CustomerNote: customerNotes,
+            ResUserID: Number(TerminalConfiguration?.UserCode),
+            TimeRequired: Number(terminalSetup?.requiredTime),
+            OrderType: Number(list.ordID),
+            Status: terminalSetup?.IsKitchenDisplay === "false" ? 3 : 1,
+            OrderTime: time[0],
+            CompletionTime: "",
+            RecordTimeStamp: recordstamp,
+            OperationMode: "INSERT",
+            RestaurantSalesAgentCode: String(
+              orderTakerType?.SalesAgentCode
+                ? orderTakerType?.SalesAgentCode
+                : ""
+            ),
+            CounterCode: TerminalConfiguration?.TerminalCode,
+            ResOrderDetailList: productfinalArray,
+            IsPaid: false,
+          },
+        ];
+
+        let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+
+        console.log("orderPlaceJson", placeOrderJson);
+        setLoading(true);
+
+        const response = await props.dispatch(
+          ServerCall(token, "Order/CreateOrder", "POST", placeOrderJson)
+        );
+        console.log("Place order api request responce =====>", response);
+        let isJson = await checkJSonValidity(response);
+
+        if (response === "success") {
+          setShortInvoice(true);
+
+          let columnName = ["LastOrderNumber"];
+          let columnValue = [Number(TerminalConfiguration.LastOrderNumber) + 1];
+          console.log("bill number is", columnValue);
+          updateColunm(
+            TerminalConfigurationTable,
+            columnName,
+            "UserCode",
+            TerminalConfiguration?.UserCode,
+            columnValue
+          );
+
+          captureRef(qrRef2.current, {
+            format: "png",
+            quality: 1.0,
+          }).then(
+            async (urii) => {
+              console.log("uri======>", urii);
+              let ConnectedBluetoothInfo = await AsyncStorage.getItem(
+                "ConnectedBluetoothInfo"
+              );
+              let printAdress = ConnectedBluetoothInfo?.split("|");
+              if (
+                Array.isArray(printAdress) &&
+                printAdress !== undefined &&
+                printAdress[1]
+              ) {
+                let invoiceInfoObj = [
+                  {
+                    printerMacAddress: printAdress[1],
+                    printerName: printAdress[0],
+                    ar: I18nManager.isRTL ? "ar" : "en",
+                  },
+                ];
+                console.log("invoice information object", printAdress[1], urii);
+                setTimeout(() => {
+                  PrinterNativeModule.printing(
+                    JSON.stringify(invoiceInfoObj),
+                    urii,
+                    "[]"
+                  );
+
+                  invoiceInfoObj = [];
+                  getData(TerminalSetupTable, (cb) => {
+                    setTerminalSetupObj(cb[0]);
+                  });
+                  Toast.show(
+                    I18nManager.isRTL
+                      ? "تم تقديم الطلب بنجاح "
+                      : "Order Has been Placed Successfully",
+                    Toast.LONG
+                  );
+
+                  if (list.ordID === 1 && table) {
+                    emptyAsyncTableObj();
+                  } else if (list.ordID !== 1 && table) {
+                    changeTableStatus(table?.TableCodeID);
+                  }
+                  setShortInvoice(false);
+                  restState();
+                });
+              } else {
+                getData(
+                  TerminalSetupTable,
+                  (cb) => {
+                    setTerminalSetupObj(cb[0]);
+                  },
+
+                  0
+                );
+
+                if (list.ordID === 1 && storageItems) {
+                  emptyAsyncTableObj();
+                } else if (list.ordID !== 1 && table) {
+                  changeTableStatus(table?.TableCodeID);
+                }
+                setShortInvoice(false);
+                restState();
+              }
+            },
+            (error) => console.error("Oops, snapshot failed", error)
+          );
+        } else if (isJson) {
+          try {
+            let jsonParse = await JSON.parse(response);
+            if (jsonParse.message === "Unauthorized") {
+              Alert.alert(props.StringsList._537, props.StringsList._276, [
+                { text: "OK", onPress: () => onClickPowerOff() },
+                setLoading(false),
+              ]);
+            }
+          } catch (error) {
+            console.log("response is string and not converted to json", error);
+          }
+          return false;
+        } else {
+          if (table) {
+            changeTableStatus(table?.TableCodeID);
+          }
+          console.log("Error order Not Placed");
+          setLoading(false);
+        }
+      } catch (e) {
+        setLoading(false);
+        console.log(e, "error");
+      }
+    } else {
+      setPaymentsValue(null);
+      setMessage(props.StringsList._270);
+      setDisplayAlert(true);
+      setRailStart(false);
+      return false;
+    }
+  };
+
+  const UpdateOrderWithPaidStatus = async (key) => {
+    let productfinalArray = [];
+    let isProductHasZaroPrice = false;
+    for (let i = 0; i < selectedProducts.length; i++) {
+      if (
+        Number(selectedProducts[i].PriceOriginal) == 0 &&
+        Number(selectedProducts[i].PriceWithOutTax) == 0 &&
+        selectedProducts[i]?.IsParentAddOn
+      ) {
+        isProductHasZaroPrice = true;
+      }
+
+      let obj = {
+        OrderDetailCode: selectedProducts[i]?.OrderDetailCode
+          ? selectedProducts[i]?.OrderDetailCode
+          : selectedProducts[i]?.SalesInvoiceDetailsID,
+        OrderCode: orderDetails?.OrderCode,
+        AddOnGroupCode: selectedProducts[i]?.AddOnGroupCode,
+        AddOnParentOrderDetailCode: selectedProducts[i]
+          ?.AddOnParentOrderDetailCode
+          ? selectedProducts[i]?.AddOnParentOrderDetailCode
+          : selectedProducts[i]?.AddOnParentSalesInvoiceDetailsID,
+        DiscountRate: selectedProducts[i]?.DiscountRate,
+        DiscountAmount: Number(selectedProducts[i]?.DiscountAmount),
+        Ingredients: String(selectedProducts[i]?.Ingredients),
+        IsParentAddOn:
+          selectedProducts[i]?.IsParentAddOn === true ||
+          selectedProducts[i]?.IsParentAddOn === 1
+            ? true
+            : false,
+        Price: Number(
+          (selectedProducts[i]?.PriceOriginal).toFixed(
+            TerminalConfiguration.DecimalsInAmount
+          )
+        ),
+        PriceType: selectedProducts[i]?.PriceType,
+        ProductBarCode: selectedProducts[i]?.ProductBarCode,
+        ProductCode: selectedProducts[i]?.ProductCode,
+        ProductNote: selectedProducts[i]?.ProductNote
+          ? selectedProducts[i]?.ProductNote
+          : selectedProducts[i]?.notes,
+        ProductType: selectedProducts[i]?.ProductType,
+        Quantity:
+          selectedProducts[i]?.IsParentAddOn === false
+            ? selectedProducts[i]?.Quantity *
+              selectedProducts[i]?.OrignalQuantity
+            : selectedProducts[i]?.Quantity,
+        SerialNumber: selectedProducts[i]?.SerialNumber,
+        UnitCode: selectedProducts[i]?.UOMCode,
+        UnitFragment: selectedProducts[i]?.UOMFragment
+          ? selectedProducts[i]?.UOMFragment
+          : 0,
+        UnitType: selectedProducts[i]?.UOMType
+          ? selectedProducts[i]?.UOMType
+          : 0,
+        IsUpdated: selectedProducts[i]?.IsUpdated,
+      };
+
+      productfinalArray.push(obj);
+    }
+    let CurrentDate = moment().format();
+    let date = String(CurrentDate).split("T");
+    let yourDate = date[0];
+    let time = date[1].split("+");
+    let recordstamp = yourDate + " " + time[0];
+    console.log(yourDate, " <== date time==> ", time[0]);
+    if (!isProductHasZaroPrice) {
+      try {
+        let placeOrderJson = [
+          {
+            OrderCode: orderDetails?.OrderCode,
+            TableCode: orderDetails?.TableCode,
+            CustomerNote: customerNotes,
+            ResUserID: orderDetails?.ResUserID,
+            TimeRequired: orderDetails?.TimeRequired,
+            OrderType: orderDetails?.OrderType,
+            Status: orderDetails?.Status,
+            OrderTime: orderDetails?.OrderTime,
+            UpdationTime: recordstamp,
+            CompletionTime: "",
+            RecordTimeStamp: orderDetails?.RecordTimeStamp.substring(11),
+            OperationMode: "UPDATE",
+            RestaurantSalesAgentCode: orderDetails?.RestaurantSalesAgentCode,
+            CounterCode: orderDetails?.CounterCode,
+            ResOrderDetailList: productfinalArray,
+            IsPaid: true,
+          },
+        ];
+
+        let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+
+        console.log("orderPlaceJson", placeOrderJson);
+        setLoading(true);
+
+        const response = await props.dispatch(
+          ServerCall(token, "Order/CreateOrder", "POST", placeOrderJson)
+        );
+        console.log("Update Order With Paid Status responce =====>", response);
+        let isJson = await checkJSonValidity(response);
+
+        if (response === "success") {
+          // let columnName = ['LastOrderNumber'];
+          // let columnValue = [Number(TerminalConfiguration.LastOrderNumber) + 1];
+          // console.log('bill number is', columnValue);
+          // updateColunm(
+          //   TerminalConfigurationTable,
+          //   columnName,
+          //   'UserCode',
+          //   TerminalConfiguration?.UserCode,
+          //   columnValue,
+          // );
+          setLoading(false);
+        } else if (isJson) {
+          try {
+            let jsonParse = await JSON.parse(response);
+            if (jsonParse.message === "Unauthorized") {
+              Alert.alert(props.StringsList._537, props.StringsList._276, [
+                { text: "OK", onPress: () => onClickPowerOff() },
+                setLoading(false),
+              ]);
+            }
+          } catch (error) {
+            console.log("response is string and not converted to json", error);
+          }
+          return false;
+        } else {
+          console.log("Error order Not Placed");
+        }
+        // }
+        setLoading(false);
+      } catch (e) {
+        console.log(e, "error");
+      }
+    } else {
+      setPaymentsValue(null);
+      setMessage(props.StringsList._270);
+      setDisplayAlert(true);
+      setRailStart(false);
+      setLoading(false);
+    }
+  };
+
+  const UpdateOrder = async (key) => {
+    let productfinalArray = [];
+    let isProductHasZaroPrice = false;
+    for (let i = 0; i < selectedProducts.length; i++) {
+      if (
+        Number(selectedProducts[i].PriceOriginal) == 0 &&
+        Number(selectedProducts[i].PriceWithOutTax) == 0 &&
+        selectedProducts[i]?.IsParentAddOn
+      ) {
+        isProductHasZaroPrice = true;
+      }
+      let obj = {
+        OrderDetailCode: selectedProducts[i]?.OrderDetailCode
+          ? selectedProducts[i]?.OrderDetailCode
+          : selectedProducts[i]?.SalesInvoiceDetailsID,
+        OrderCode: orderDetails?.OrderCode,
+        AddOnGroupCode: selectedProducts[i]?.AddOnGroupCode,
+        AddOnParentOrderDetailCode: selectedProducts[i]
+          ?.AddOnParentOrderDetailCode
+          ? selectedProducts[i]?.AddOnParentOrderDetailCode
+          : selectedProducts[i]?.AddOnParentSalesInvoiceDetailsID,
+        DiscountRate: selectedProducts[i]?.DiscountRate,
+        DiscountAmount: Number(selectedProducts[i]?.DiscountAmount),
+        Ingredients: String(selectedProducts[i]?.Ingredients),
+        IsParentAddOn:
+          selectedProducts[i]?.IsParentAddOn === true ||
+          selectedProducts[i]?.IsParentAddOn === 1
+            ? true
+            : false,
+        Price: Number(
+          selectedProducts[i]?.PriceOriginal.toFixed(
+            TerminalConfiguration.DecimalsInAmount
+          )
+        ),
+        PriceType: selectedProducts[i]?.PriceType,
+        ProductBarCode: selectedProducts[i]?.ProductBarCode,
+        ProductCode: selectedProducts[i]?.ProductCode,
+        ProductNote: selectedProducts[i]?.ProductNote
+          ? selectedProducts[i]?.ProductNote
+          : selectedProducts[i]?.notes,
+        ProductType: selectedProducts[i]?.ProductType,
+        Quantity:
+          selectedProducts[i]?.IsParentAddOn === false
+            ? selectedProducts[i]?.Quantity *
+              selectedProducts[i]?.OrignalQuantity
+            : selectedProducts[i]?.Quantity,
+        SerialNumber: selectedProducts[i]?.SerialNumber,
+        UnitCode: selectedProducts[i]?.UOMCode,
+        UnitFragment: selectedProducts[i]?.UOMFragment
+          ? selectedProducts[i]?.UOMFragment
+          : 0,
+        UnitType: selectedProducts[i]?.UOMType
+          ? selectedProducts[i]?.UOMType
+          : 0,
+        IsUpdated: selectedProducts[i]?.IsUpdated,
+      };
+
+      productfinalArray.push(obj);
+    }
+    let CurrentDate = moment().format();
+    let date = String(CurrentDate).split("T");
+    let yourDate = date[0];
+    let time = date[1].split("+");
+    let recordstamp = yourDate + " " + time[0];
+    console.log(yourDate, " <== date time==> ", time[0]);
+    if (!isProductHasZaroPrice) {
+      try {
+        let placeOrderJson = [
+          {
+            OrderCode: orderDetails?.OrderCode,
+            TableCode: orderDetails?.TableCode,
+            CustomerNote: customerNotes,
+            ResUserID: orderDetails?.ResUserID,
+            TimeRequired: orderDetails?.TimeRequired,
+            OrderType: orderDetails?.OrderType,
+            Status:
+              terminalSetup?.IsKitchenDisplay === "false"
+                ? 3
+                : orderDetails?.Status,
+            OrderTime: orderDetails?.OrderTime,
+            CompletionTime: "",
+            UpdationTime: recordstamp,
+            RecordTimeStamp: orderDetails?.RecordTimeStamp.substring(11),
+            OperationMode: "UPDATE",
+            RestaurantSalesAgentCode: orderDetails?.RestaurantSalesAgentCode,
+            CounterCode: orderDetails?.CounterCode,
+            ResOrderDetailList: productfinalArray,
+          },
+        ];
+
+        let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+
+        console.log("updatePlaceJson", placeOrderJson);
+        setLoading(true);
+
+        const response = await props.dispatch(
+          ServerCall(token, "Order/CreateOrder", "POST", placeOrderJson)
+        );
+        console.log("Update order api request responce =====>", response);
+        let isJson = await checkJSonValidity(response);
+        if (response) {
+          if (response === "success") {
+            let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+            let table = JSON.parse(tableData);
+            console.log("table id", table?.TableCodeID);
+            setShortInvoice(true);
+            captureRef(qrRef2.current, {
+              format: "png",
+              quality: 1.0,
+            }).then(
+              async (urii) => {
+                console.log("uri======>", urii);
+                let ConnectedBluetoothInfo = await AsyncStorage.getItem(
+                  "ConnectedBluetoothInfo"
+                );
+                let printAdress = ConnectedBluetoothInfo?.split("|");
+
+                if (
+                  Array.isArray(printAdress) &&
+                  printAdress !== undefined &&
+                  printAdress[1]
+                ) {
+                  let invoiceInfoObj = [
+                    {
+                      printerMacAddress: printAdress[1],
+                      printerName: printAdress[0],
+                      ar: I18nManager.isRTL ? "ar" : "en",
+                    },
+                  ];
+                  console.log(
+                    "invoice information object",
+                    printAdress[1],
+                    urii
+                  );
+                  setTimeout(() => {
+                    PrinterNativeModule.printing(
+                      JSON.stringify(invoiceInfoObj),
+                      urii,
+                      "[]"
+                    );
+
+                    invoiceInfoObj = [];
+                    getData(TerminalSetupTable, (cb) => {
+                      setTerminalSetupObj(cb[0]);
+                    });
+                    Toast.show(
+                      I18nManager.isRTL
+                        ? "تم تحديث الطلب بنجاح "
+                        : "Order Has been Update Successfully",
+                      Toast.LONG
+                    );
+                    if (list.ordID === 1 && table) {
+                      emptyAsyncTableObj();
+                    } else if (list.ordID !== 1 && table) {
+                      changeTableStatus(table?.TableCodeID);
+                    }
+                    setShortInvoice(false);
+                    setOrderValue(0);
+                    setShowButton(false);
+                    restState();
+                  });
+                } else {
+                  getData(
+                    TerminalSetupTable,
+                    (cb) => {
+                      setTerminalSetupObj(cb[0]);
+                    },
+
+                    0
+                  );
+                  if (list.ordID === 1 && table) {
+                    emptyAsyncTableObj();
+                  } else if (list.ordID !== 1 && table) {
+                    changeTableStatus(table?.TableCodeID);
+                  }
+                  setShortInvoice(false);
+                  setOrderValue(0);
+                  setShowButton(false);
+                  restState();
+                }
+              },
+              (error) => console.error("Oops, snapshot failed", error)
+            );
+          } else if (isJson) {
+            try {
+              let jsonParse = await JSON.parse(response);
+              if (jsonParse.message === "Unauthorized") {
+                Alert.alert(props.StringsList._537, props.StringsList._276, [
+                  { text: "OK", onPress: () => onClickPowerOff() },
+                  setLoading(false),
+                ]);
+              }
+            } catch (error) {
+              console.log(
+                "response is string and not converted to json",
+                error
+              );
+            }
+            return false;
+          } else {
+            console.log("Error order Not Placed");
+          }
+        }
+        setLoading(false);
+      } catch (e) {
+        setLoading(false);
+        console.log(e, "error");
+      }
+    } else {
+      setPaymentsValue(null);
+      setMessage(props.StringsList._270);
+      setDisplayAlert(true);
+      setRailStart(false);
+      setLoading(false);
+    }
+  };
+
+  const CancelOrder = async (key) => {
+    let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+    setLoading(true);
+    try {
+      let CancelorderJson = [
+        {
+          OrderCode: orderDetails?.OrderCode,
+          TableCode: orderDetails?.TableCodeID,
+          CustomerNote: orderDetails?.CustomerNote,
+          ResUserID: orderDetails?.ResUserID,
+          TimeRequired: orderDetails?.TimeRequired,
+          OrderType: orderDetails?.orderType?.id,
+          Status: 4,
+          OrderTime: orderDetails?.OrderTime,
+          CompletionTime: "",
+          RecordTimeStamp: orderDetails?.RecordTimeStamp.substring(11),
+          OperationMode: "UPDATE",
+          RestaurantSalesAgentCode: orderDetails?.RestaurantSalesAgentCode,
+          CounterCode: orderDetails?.CounterCode,
+          ResOrderDetailList: orderDetails?.ResOrderDetailList,
+        },
+      ];
+
+      console.log("CancelorderJson", CancelorderJson);
+      const response = await props.dispatch(
+        ServerCall(token, "Order/CreateOrder", "POST", CancelorderJson)
+      );
+      console.log("Cancel order api request responce", response);
+
+      if (response) {
+        if (response === "success") {
+          let table = await AsyncStorage.getItem("SELECTED_TABLE");
+
+          console.log("here", JSON.parse(table));
+          await AsyncStorage.removeItem("SELECTED_TABLE");
+
+          restState();
+          console.log("Table Removed");
+
+          await getData(TerminalSetupTable, (cb) => {
+            setTerminalSetupObj(cb[0]);
+          });
+          setLoading(false);
+          Toast.show(
+            I18nManager.isRTL
+              ? "تم إلغاء الطلب بنجاح"
+              : "Order Has been Cancelled Successfully",
+            Toast.LONG
+          );
+        } else if (response === "Unauthorized") {
+          setLoading(true);
+          Alert.alert(props.StringsList._537, props.StringsList._276, [
+            { text: "OK", onPress: () => onClickPowerOff() },
+            setLoading(false),
+          ]);
+        } else {
+          console.log("Error");
+        }
+      }
+      setLoading(false);
+    } catch (e) {
+      console.log(e, "error");
+      setLoading(false);
+    }
+  };
+  const onPressSave = () => {
+    setOpenModal(false);
+  };
+  const onPressSaveTime = () => {
+    setOrderPopup(false);
+  };
+  const holdBillFunction = () => {
+    setMessage(props.StringsList._78);
+    setAlertType("holdInvoice");
+    setDisplayAlert(true);
+    setisPromptAlert(true);
+  };
+  const PrinterFunc = async (type, index) => {
+    if (type === "billingType") {
+      let d = [...billingTypeData];
+
+      d.forEach(async (e) => {
+        if (e.isSelected) {
+          await AsyncStorage.setItem("BILLING_STYLE", JSON.stringify(e));
         }
       });
-    } catch (err) {
-      console.warn(err);
-      return;
+      setisBillingType(false);
+    } else if (type === "saleBilType") {
+      let d = [...saleBilData];
+
+      d.forEach(async (e) => {
+        if (e.isSelected) {
+          await AsyncStorage.setItem("SaleBIL_STYLE", JSON.stringify(e));
+        }
+      });
+      setISSaleBilType(false);
+    } else {
+      alert("error");
     }
+  };
+
+  const selectSaleBilType = (item) => {
+    let d = [...saleBilData];
+    console.log("billingType...", item);
+    d.forEach((e) => {
+      if (item.name === e.name) {
+        e.isSelected = true;
+      } else {
+        e.isSelected = false;
+      }
+    });
+    if (item.name !== "Set") {
+      setSaleBilType(item);
+    }
+    setSaleBilData(d);
+  };
+
+  const selectBillingType = (item) => {
+    let d = [...billingTypeData];
+    console.log("billingType...", item);
+    let bid = "";
+    d.forEach((e) => {
+      if (item.name === e.name) {
+        e.isSelected = true;
+        bid = e.id;
+      } else {
+        e.isSelected = false;
+      }
+    });
+    setBillingStyleId(bid);
+    if (item.name !== "Set") {
+      setBillingType(item);
+    }
+    setBillingTypeData(d);
+  };
+
+  const onOpenModal = () => {
+    setNotesModal(true);
+  };
+
+  const onCloseTimeModal = () => {
+    setNotesModal(false);
+  };
+  const onSelect = (selectedItem, index) => {
+    let filterAreas = areas.find((x) => x.Name === selectedItem);
+
+    if (filterAreas) {
+      let filterTables = masterTableItems.filter(
+        (x) =>
+          filterAreas.Name === x.AreaName &&
+          // x.TotalCapacity >= selectedGuest &&
+          x.IsAvailable === 1
+      );
+      console.log("=========>", filterTables);
+      setTableItem(filterTables);
+    } else {
+      console.log("Error: Data not found");
+    }
+  };
+
+  const tableInfoData = () => {
+    let array = Array.from({ length: 30 }, (_, i) => i + 1);
+    setGuestItem(array);
+
+    getData(AreaListTable, (arealist) => {
+      let myArray = [];
+      setAreas(arealist);
+      for (let i = 0; i < arealist.length; i++) {
+        myArray.push(arealist[i].Name);
+      }
+      setAreaItem(myArray);
+    });
+    getData(RestTablesTable, (tablesRecord) => {
+      let tableArray = [];
+      for (let i = 0; i < tablesRecord.length; i++) {
+        tableArray.push(tablesRecord[i]);
+      }
+      setMasterTableItems(tableArray);
+    });
+    getData(OrderTackerList, (taker) => {
+      let orderTakerArray = [];
+      for (let i = 0; i < taker.length; i++) {
+        orderTakerArray.push(taker[i]);
+      }
+      orderTakerArray.unshift({
+        DiscountLimit: 0,
+        Phone: "",
+        Email: "",
+        OrderTakerName: "---Select---",
+        SalesAgentCode: 0,
+      });
+      setOrderTaker(orderTakerArray);
+    });
+  };
+
+  const DineInOrder = () => {
+    return (
+      <SafeAreaView
+        style={[
+          styles.iconContainer,
+          {
+            backgroundColor:
+              orderType.id === 0 ? AppColor.gray1 : AppColor.green,
+          },
+        ]}
+      >
+        <View style={[styles.iconView]}>
+          <Image
+            style={[styles.icon]}
+            source={require("../../assets/images/order.png")}
+          />
+          {/* <Icon
+          name={I18nManager.isRTL ? 'angle-double-left' : 'angle-double-right'}
+          // size={sizeHelper.calHp(30)}
+          style={{height: sizeHelper.calHp(30)}}
+          color={orderType.id === 0 ? AppColor.black : AppColor.yellowColor}
+        /> */}
+        </View>
+      </SafeAreaView>
+    );
+  };
+  // All other functions for Menu
+  const rebootAlert = () => {
+    Alert.alert(props.StringsList._537, props.StringsList._249, [
+      {
+        text: "yes",
+        onPress: async () => {
+          rebootTerminalFunction();
+        },
+      },
+      {
+        text: "Cancel",
+
+        style: "cancel",
+      },
+    ]);
+  };
+  const rebootTerminalFunction = async (type) => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    let table = JSON.parse(tableData);
+    console.log("table", table?.TableCodeID);
+    if (isBillNeedPost) {
+      console.log(isBillNeedPost);
+      let msg = errorMessages.GetCounterMessage(
+        "PendingInvoices",
+        props.StringsList
+      );
+      setMessage(msg);
+      setDisplayAlert(true);
+    } else {
+      setLoading(true);
+
+      setIsRequriedLogin(true);
+      if (table) {
+        changeTableStatus(table?.TableCodeID);
+      }
+      let accessToken = await AsyncStorage.getItem("ACCESS_TOKEN");
+      console.log("accessToken", accessToken);
+      let res = await DBTable.AddDataInDb(props, "rebootTerminal", accessToken);
+
+      await AsyncStorage.removeItem("SELECTED_AGNETS");
+
+      setLoading(false);
+      if (!res) {
+        let msg = errorMessages.GetCounterMessage(
+          "OfflineCounterNotAuthorizedMessage",
+          props.StringsList
+        );
+        setMessage(msg);
+        setDisplayAlert(true);
+        setAlertType("rebootTerminal");
+      }
+    }
+  };
+  const onClickLogoutFunction = () => {
+    Alert.alert(props.StringsList._537, props.StringsList._443, [
+      {
+        text: "yes",
+        onPress: async () => {
+          ResetDrawerSetup();
+          onClickPowerOff();
+        },
+      },
+      {
+        text: "Cancel",
+
+        style: "cancel",
+      },
+    ]);
+  };
+  const onClickPowerOff = async () => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    let table = JSON.parse(tableData);
+    console.log("table", table?.TableCodeID);
+    if (table) {
+      changeTableStatus(table?.TableCodeID);
+    }
+    if (drawerSetupArr.isInitialCashSet === "true") {
+      // setisLogout(true);
+    }
+    let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+    let loginUserInfo = await AsyncStorage.getItem("LOGIN_USER_INFO");
+    loginUserInfo = JSON.parse(loginUserInfo);
+    setTimeout(async () => {
+      const response = await props.dispatch(
+        ServerCall(token, "AuthorizeUser/SignOut", "POST", loginUserInfo)
+      );
+      setisLogout(false);
+      ResetDrawerSetup();
+      props.navigation.replace("Auth");
+      await AsyncStorage.removeItem("ACCESS_TOKEN");
+      setLoading(false);
+    }, 1000);
   };
   const postBills = async () => {
     setLoading(true);
@@ -869,15 +2281,28 @@ const HomeScreen = (props) => {
     let newBillList = [];
     await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
+        cb[i].OrderType = Number(cb[i].OrderType);
         if (
           (cb[i].isUploaded == "false" || !cb[i].isUploaded) &&
           (cb[i].isProcessed == "false" || !cb[i].isProcessed)
         ) {
           await getDataById(
             SaleBillDetailsTable,
-            "salesBillID",
-            cb[i].salesBillID,
+            "salesInvoiceID",
+            cb[i].salesInvoiceID,
             (billProducts) => {
+              billProducts.forEach((element) => {
+                element.IsTax1IncludedInPrice =
+                  element.IsTax1IncludedInPrice === 0 ? false : true;
+                element.IsTax2IncludedInPrice =
+                  element.IsTax2IncludedInPrice === 0 ? false : true;
+                element.IsParentAddOn =
+                  element.IsParentAddOn === 0 ||
+                  element.IsParentAddOn === "false"
+                    ? false
+                    : true;
+                element.DeliveryStatus = false;
+              });
               (cb[i].isProcessed = false), (cb[i].isUploaded = true);
               cb[i].BillDetails = billProducts;
               (cb[i].isGlobalTax1IncludedInPrice =
@@ -897,7 +2322,12 @@ const HomeScreen = (props) => {
         let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
 
         const response1 = await props.dispatch(
-          ServerCall(UserLogin, "SalesBill/CreateSalesBill", newBillList)
+          ServerCall(
+            UserLogin,
+            "SalesBill/CreateSalesBill",
+            "POST",
+            newBillList
+          )
         );
 
         console.log("bill posting response", response1);
@@ -917,7 +2347,8 @@ const HomeScreen = (props) => {
               const OsVer = Platform.constants["Release"];
               console.log("android version", OsVer);
 
-              let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+              let path =
+                "/storage/emulated/0/Documents/Bnody Restaurant/Invoices.txt";
               const isDeleted = await ScopedStorage.deleteFile(path).then(
                 () => {
                   Toast.show("Invoice File Deleted after posting", {
@@ -971,7 +2402,8 @@ const HomeScreen = (props) => {
               }
             );
             if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-              let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+              let path =
+                "/storage/emulated/0/Documents/Bnody Restaurant/Invoices.txt";
               const isDeleted = await ScopedStorage.deleteFile(path).then(
                 () => {
                   Toast.show("Invoice File Deleted after posting", {
@@ -1001,29 +2433,242 @@ const HomeScreen = (props) => {
       setLoading(false);
     });
   };
-  const updatePostedIvoice = (array) => {
-    for (let i = 0; i < array.length; i++) {
-      let columnName = ["isUploaded", "isProcessed"];
-      let columnValue = [true, false];
-      updateColunm(
-        SaleBillsTable,
-        columnName,
-        "salesBillID",
-        array[i].salesBillID,
-        columnValue
+
+  useEffect(() => {
+    setTimeout(() => {
+      checkLocalDBBills();
+    }, 5000);
+  }, []);
+
+  const checkLocalDBBills = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: "Permissions for write access",
+          message: "Give permission to your storage to write a file",
+          buttonPositive: "ok",
+        }
       );
+
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        getData(DrawerSetupTable, async (cb) => {
+          if (cb[0]?.isInitialLogin === "true") {
+            updateColunm(
+              DrawerSetupTable,
+              ["isInitialLogin"],
+              "id",
+              "D12345678",
+              "false"
+            );
+            const OsVer = Platform.constants["Release"];
+
+            if (OsVer >= 11) {
+              let path =
+                "/storage/emulated/0/Documents/Restaurant/Invoices.txt";
+              if (await RNFS.exists(path)) {
+                let uri = await AsyncStorage.getItem("FILE_URI");
+                console.log("Folder uri android 11 and above", uri);
+                let Data = await PermissionFile.getInvoices(uri);
+                let newBillList = Data;
+                let bills = await JSON.parse(newBillList);
+                if (bills.length > 0) {
+                  //
+                  let maxOrderCode = null;
+                  const lastObject = bills[bills.length - 1];
+                  const lastBillNumber =
+                    lastObject.BillDetails[0].InvoiceNumber;
+
+                  let lastBill = lastBillNumber.split("-");
+                  const numericPartInvoice = lastBill[
+                    lastBill.length - 1
+                  ].replace(/^0+/, "");
+                  console.log("Last Bill Number =====>", numericPartInvoice);
+                  bills.forEach((item) => {
+                    if (item.OrderCode) {
+                      const orderCodeParts = item.OrderCode.split("-");
+                      if (orderCodeParts.length > 1) {
+                        const orderCodeValue = parseInt(orderCodeParts[1], 10);
+                        if (
+                          !isNaN(orderCodeValue) &&
+                          (maxOrderCode === null ||
+                            orderCodeValue > maxOrderCode)
+                        ) {
+                          maxOrderCode = orderCodeValue;
+                        }
+                      }
+                    }
+                  });
+
+                  console.log("The maximum OrderCode value is:", maxOrderCode);
+                  //
+                  let status = await getNetInfo();
+                  console.log("Net Status =====>", status);
+                  if (status === true) {
+                    postingBill(newBillList);
+                  } else {
+                    Alert.alert(
+                      "Panding Bills",
+                      "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
+                      [
+                        {
+                          text: "OKAY",
+                          onPress: async () => {
+                            let columnNameInvoice = ["LastBillNumber"];
+                            let columnValueInvoice = [
+                              Number(numericPartInvoice),
+                            ];
+                            let columnNameOrder = ["LastOrderNumber"];
+                            let columnValueOrder = [Number(maxOrderCode)];
+                            await getData(
+                              TerminalConfigurationTable,
+                              async (TC) => {
+                                if (TC[0]?.UserCode) {
+                                  updateColunm(
+                                    TerminalConfigurationTable,
+                                    columnNameInvoice,
+                                    "UserCode",
+                                    TC[0]?.UserCode,
+                                    columnValueInvoice
+                                  );
+                                  updateColunm(
+                                    TerminalConfigurationTable,
+                                    columnNameOrder,
+                                    "UserCode",
+                                    TC[0]?.UserCode,
+                                    columnValueOrder
+                                  );
+                                }
+                              }
+                            );
+
+                            console.log("Press OK");
+                          },
+                        },
+                      ]
+                    );
+                  }
+                }
+              }
+            } else {
+              let path =
+                "/storage/emulated/0/Downloads/Restaurant/Invoices.txt";
+              if (RNFS.exists(path)) {
+                let uri = await AsyncStorage.getItem("FILE_URI");
+                console.log("Folder uri android 10 ", uri);
+                let Data = await PermissionFile.getInvoices(uri);
+                let newBillList = Data;
+                let bills = await JSON.parse(newBillList);
+                if (bills.length > 0) {
+                  let maxOrderCode = null;
+                  const lastObject = bills[bills.length - 1];
+                  const lastBillNumber =
+                    lastObject.BillDetails[0].InvoiceNumber;
+
+                  let lastBill = lastBillNumber.split("-");
+                  const numericPartInvoice = lastBill[
+                    lastBill.length - 1
+                  ].replace(/^0+/, "");
+                  console.log("Last Bill Number =====>", numericPartInvoice);
+                  bills.forEach((item) => {
+                    if (item.OrderCode) {
+                      const orderCodeParts = item.OrderCode.split("-");
+                      if (orderCodeParts.length > 1) {
+                        const orderCodeValue = parseInt(orderCodeParts[1], 10);
+                        if (
+                          !isNaN(orderCodeValue) &&
+                          (maxOrderCode === null ||
+                            orderCodeValue > maxOrderCode)
+                        ) {
+                          maxOrderCode = orderCodeValue;
+                        }
+                      }
+                    }
+                  });
+
+                  console.log("The maximum OrderCode value is:", maxOrderCode);
+                  //
+                  let status = await getNetInfo();
+                  console.log("Net Status =====>", status);
+                  if (status === true) {
+                    postingBill(newBillList);
+                  } else {
+                    Alert.alert(
+                      "Panding Bills",
+                      "Some of Your bills are pending to post kindly connect to your internet connection to post bills",
+                      [
+                        {
+                          text: "OKAY",
+                          onPress: async () => {
+                            let columnNameInvoice = ["LastBillNumber"];
+                            let columnValueInvoice = [
+                              Number(numericPartInvoice),
+                            ];
+                            let columnNameOrder = ["LastOrderNumber"];
+                            let columnValueOrder = [Number(maxOrderCode)];
+                            await getData(
+                              TerminalConfigurationTable,
+                              async (TC) => {
+                                if (TC[0]?.UserCode) {
+                                  updateColunm(
+                                    TerminalConfigurationTable,
+                                    columnNameInvoice,
+                                    "UserCode",
+                                    TC[0]?.UserCode,
+                                    columnValueInvoice
+                                  );
+                                  updateColunm(
+                                    TerminalConfigurationTable,
+                                    columnNameOrder,
+                                    "UserCode",
+                                    TC[0]?.UserCode,
+                                    columnValueOrder
+                                  );
+                                }
+                              }
+                            );
+
+                            console.log("Press OK");
+                          },
+                        },
+                      ]
+                    );
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        console.log("permission denied");
+        return;
+      }
+    } catch (err) {
+      console.warn(err);
+      return;
     }
   };
   const postingBill = async (newBillList) => {
     setLoading(true);
     setPrintType(null);
-    let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
+    let path = "/storage/emulated/0/Documents/Bnody Restaurant/Invoices.txt";
     let uri = await AsyncStorage.getItem("FILE_URI");
     console.log("Folder uri android 11 and above", uri);
     let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
     let bill = await JSON.parse(newBillList);
+    bill.forEach((elem) => {
+      elem.BillDetails.forEach((element) => {
+        element.IsTax1IncludedInPrice =
+          element.IsTax1IncludedInPrice === 0 ? false : true;
+        element.IsTax2IncludedInPrice =
+          element.IsTax2IncludedInPrice === 0 ? false : true;
+        element.IsParentAddOn = element.IsParentAddOn === 0 ? false : true;
+        element.DeliveryStatus = false;
+      });
+    });
     const response1 = await props.dispatch(
-      ServerCall(UserLogin, "SalesBill/CreateSalesBill", bill)
+      ServerCall(UserLogin, "SalesBill/CreateSalesBill", "POST", bill)
     );
     if (response1 === "success") {
       setLoading(true);
@@ -1043,7 +2688,7 @@ const HomeScreen = (props) => {
         }
       } else {
         try {
-          const folderName = "Bnody POS";
+          const folderName = "Bnody Restaurant";
           const fileName = "invoices.txt";
 
           const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
@@ -1089,769 +2734,2449 @@ const HomeScreen = (props) => {
 
     setLoading(false);
   };
-
-  const convertArabicNumbersToEnglish = (arabicText) => {
-    let arabic_numbers = "٠١٢٣٤٥٦٧٨٩".split("");
-    let n = "";
-    let englishNumber = false;
-
-    for (let i = 0; i < arabicText?.length; i++) {
-      var number = arabic_numbers.find((x) => x == arabicText[i]);
-      if (number) {
-        englishNumber = false;
-      } else {
-        englishNumber = true;
-        return arabicText;
-      }
-
-      if (!englishNumber) {
-        let state = arabic_numbers.indexOf(arabicText[i]);
-        n += state;
-      }
-
-      //   if(state > 0){
-      //        n+=state;
-      //   }else{
-      //        n+=arabicText[i];
-      //   }
-    }
-    return n;
-  };
-  const QR = forwardRef(() => {
-    var tax = globalTax,
-      proTax = 0,
-      prodis = 0;
-    for (let i = 0; i < selectedProducts?.length; i++) {
-      let pro = selectedProducts[i];
-
-      tax = tax + pro.tax;
-      proTax = proTax + pro.tax;
-      prodis = pro?.DiscountAmount
-        ? prodis + Number(pro.DiscountAmount)
-        : prodis + 0;
-    }
-    setSumOfProductsTax(proTax);
-    setSumOfProductsDiscount(prodis);
-    let VAT = TerminalConfiguration?.ValueAddedTaxNumber
-      ? TerminalConfiguration?.ValueAddedTaxNumber
-      : "000000000000000";
-
-    let invoiceTotal = totalPrice.toFixed(
-      TerminalConfiguration.DecimalsInAmount
-    );
-    let invoiceVatTotal = tax.toFixed(TerminalConfiguration.DecimalsInAmount);
-
-    const currentDateISO = new Date().toISOString();
-    console.log(currentDateISO);
-    // let currentDate = moment().format("YYYY-MM-DD H:mm:ss");
-    // console.log("current Date", currentDate);
-    const invoice = new Invoice({
-      sellerName: TerminalConfiguration.CompanyName,
-      vatRegistrationNumber: convertArabicNumbersToEnglish(VAT),
-      invoiceTimestamp: currentDateISO,
-      invoiceTotal: invoiceTotal,
-      invoiceVatTotal: invoiceVatTotal,
-    });
-
-    let imageData = invoice.toBase64();
-    if (imageData !== null) {
-      qrRef.current = imageData;
-      return (
-        <QRCode ref={qrRef} size={sizeHelper.calWp(300)} value={imageData} />
-      );
-    }
-  });
-
-  // const QR = () => {
-  //   var tax = globalTax,
-  //     proTax = 0,
-  //     prodis = 0;
-  //   for (let i = 0; i < selectedProducts?.length; i++) {
-  //     let pro = selectedProducts[i];
-
-  //     tax = tax + pro.tax;
-  //     proTax = proTax + pro.tax;
-  //     prodis = pro?.DiscountAmount
-  //       ? prodis + Number(pro.DiscountAmount)
-  //       : prodis + 0;
-  //   }
-  //   setSumOfProductsTax(proTax);
-  //   setSumOfProductsDiscount(prodis);
-  //   let VAT = TerminalConfiguration?.ValueAddedTaxNumber
-  //     ? TerminalConfiguration?.ValueAddedTaxNumber
-  //     : "000000000000000";
-  //   let currentDate = moment().format("YYYY-MM-DD H:mm:ss");
-  //   let invoiceTotal = totalPrice.toFixed(
-  //     TerminalConfiguration.DecimalsInAmount
-  //   );
-  //   let invoiceVatTotal = tax.toFixed(TerminalConfiguration.DecimalsInAmount);
-  //   console.log("current Date", currentDate);
-
-  //   const invoice = new Invoice({
-  //     sellerName: TerminalConfiguration.CompanyName,
-  //     vatRegistrationNumber: convertArabicNumbersToEnglish(VAT),
-  //     invoiceTimestamp: currentDate,
-  //     invoiceTotal: invoiceTotal,
-  //     invoiceVatTotal: invoiceVatTotal,
-  //   });
-  //   // console.log("imageData......imageData", TerminalConfiguration.CompanyName, VAT, currentDate, invoiceTotal, invoiceVatTotal, convertArabicNumbersToEnglish(VAT))
-  //   let imageData = invoice.toBase64();
-  //   console.log("imageData......imageData", imageData);
-
-  //   if (imageData !== null) {
-  //     return (
-  //       <QRCode
-  //         ref={qrRef}
-  //         size={sizeHelper.calWp(300)}
-  //         value={imageData}
-  //         getRef={(c) => {
-  //           console.log("====>", c);
-  //           if (!c.toDataURL) {
-  //             return;
-  //           } else {
-  //             c.toDataURL((base64Image) => {
-  //               qrRef.current = base64Image;
-  //             });
-  //           }
-  //         }}
-  //       />
-  //     );
-  //   }
-  // };
-
-  // const callback = dataURL => {
-  //   // createInvoiceStyle(dataURL)
-  // };
-
-  // const getDataURL = () => {
-  //   // qrRef.current.toDataURL(callback);
-  // };
-
-  const soundLoading = () => {
-    let sound = new Sound(
-      require("../../assets/sounds/beep01.mp3"),
-      (error) => {
-        if (error) {
-          console.log("failed to load the sound", error);
-        }
-      }
-    );
-    setBeepSound(sound);
-  };
-
-  const SoundPlay = () => {
-    beepSound.play((success) => {
-      if (success) {
-        console.log("successfully finished playing");
-      } else {
-        console.log("playback failed due to audio decoding errors");
-      }
-    });
-  };
-
-  const updateTerminalConfiguration = (ADamount) => {
-    let columnName = ["LastBillNumber"];
-    let columnValue = [Number(TerminalConfiguration.LastBillNumber) + 1];
-    updateColunm(
-      TerminalConfigurationTable,
-      columnName,
-      "UserCode",
-      TerminalConfiguration.UserCode,
-      columnValue
-    );
-    let StartFromValue = [Number(terminalSetup.StartFrom) + 1];
-    updateColunm(
-      TerminalSetupTable,
-      ["StartFrom"],
-      "id",
-      "12345678",
-      StartFromValue
-    );
-
-    payments.forEach((element) => {
-      if (paymentsValue === "1" || Number(paymentsValue) > 5) {
-        if (element.value == paymentsValue) {
-          let columnNameDrawer = ["Sales"];
-          getData(PaymentMethodTable, (cb) => {
-            // console.log("LoyaltyListTable..", cb)
-            let amount = cb.find((x) => x.PaymentType == paymentsValue);
-            let salePrice;
-            if (amount) {
-              salePrice = Number(amount.Sales) + Number(totalPrice);
-            } else {
-              salePrice = Number(totalPrice);
-            }
-            let columnValueDrawer = [salePrice];
-            updateColunm(
-              PaymentMethodTable,
-              columnNameDrawer,
-              "PaymentType",
-              element.value,
-              columnValueDrawer
-            );
-          });
-        }
-      } else {
-        if (paymentsValue == element.value) {
-          let salePrice = Number(drawerSetupArr.CashSales) + Number(ADamount);
-          let columnNameDrawer = ["Sales"];
-          // console.log('estimatedAmountinDrawer..advancePaidInCash', ADamount);
-          getData(PaymentMethodTable, (cb) => {
-            // console.log("LoyaltyListTable..", cb)
-            let amount = cb.find((x) => x.PaymentType == paymentsValue);
-            let creditSales;
-            if (amount) {
-              creditSales =
-                Number(amount.Sales) + Number(totalPrice - ADamount);
-            } else {
-              creditSales = Number(totalPrice - ADamount);
-            }
-            let columnValueDrawer = [creditSales];
-            updateColunm(
-              PaymentMethodTable,
-              columnNameDrawer,
-              "PaymentType",
-              element.value,
-              columnValueDrawer
-            );
-          });
-
-          updateColunm(
-            PaymentMethodTable,
-            columnNameDrawer,
-            "PaymentType",
-            "1",
-            [salePrice]
-          );
-        }
-      }
-    });
-
-    if (paymentsValue === "1") {
-      let estimatedAmountinDrawer =
-        Number(drawerSetupArr.estimatedAmountinDrawer) + Number(totalPrice);
-
-      let salePrice = Number(drawerSetupArr.CashSales) + Number(totalPrice);
-      let columnNameDrawer = ["CashSales", "estimatedAmountinDrawer"];
-
-      let columnValueDrawer = [salePrice, estimatedAmountinDrawer];
+  const updatePostedIvoice = (array) => {
+    for (let i = 0; i < array.length; i++) {
+      let columnName = ["isUploaded", "isProcessed"];
+      let columnValue = [true, false];
       updateColunm(
-        DrawerSetupTable,
-        columnNameDrawer,
-        "id",
-        "D12345678",
-        columnValueDrawer
+        SaleBillsTable,
+        columnName,
+        "salesInvoiceID",
+        array[i].salesInvoiceID,
+        columnValue
       );
+    }
+  };
+  const getLastInvoiceNumber = async () => {
+    let number = "";
+    await getData(TerminalConfigurationTable, (cb) => {
+      // console.log('TerminalConfigurationTable', cb[0]?.LastBillNumber);
+
+      let preZero = "0000000";
+      let silceNumber =
+        Number(cb[0]?.LastBillNumber) >= 100000
+          ? preZero.length - 5
+          : Number(cb[0]?.LastBillNumber) >= 10000
+          ? preZero.length - 4
+          : Number(cb[0]?.LastBillNumber) >= 1000
+          ? preZero.length - 3
+          : Number(cb[0]?.LastBillNumber) >= 100
+          ? preZero.length - 2
+          : Number(cb[0]?.LastBillNumber) >= 10
+          ? preZero.length - 1
+          : preZero.length;
+
+      let invoiceNumber =
+        Number(cb[0]?.LastBillNumber) >= 999999
+          ? cb[0].BillPrefix + "-" + Number(cb[0].LastBillNumber)
+          : cb[0].BillPrefix +
+            "-" +
+            preZero.slice(1 - silceNumber) +
+            Number(cb[0].LastBillNumber);
+      number = invoiceNumber;
+    });
+    console.log("last bill number", number);
+    return number;
+  };
+  const onClickMenuFunction = async (type) => {
+    setFocusSearch(false);
+    switch (type) {
+      case "holdInvoice":
+        setisHoldInvoices(true);
+        setPrintType(null);
+        break;
+
+      case "orderTime":
+        setFocusSearch(false);
+        setOrderPopup(true);
+        setPrintType(null);
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  const addProductToList = async (itm, type, index, proArray, SP, TP) => {
+    setLoading(true);
+    setoptionsOpen(false);
+    setPaymentsOpen(false);
+    setPrintType(null);
+    let executeCalculation = true;
+    let localIndex;
+    let addonFinalQuantity = 0,
+      groupType = "";
+    if (returnInvoiceNumber) {
+      setPrintType("returnInvoice");
     } else {
-      let estimatedAmountinDrawer =
-        Number(drawerSetupArr.estimatedAmountinDrawer) + Number(ADamount);
-      let salePrice = Number(drawerSetupArr.CashSales) + Number(ADamount);
+      setPrintType(null);
+    }
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
 
-      console.log("estimatedAmountinDrawer..advancePaidInCash", ADamount);
-      let creditSales =
-        Number(drawerSetupArr.creditSales) + Number(totalPrice - ADamount);
-      let columnNameDrawer = [
-        "CashSales",
-        "creditSales",
-        "estimatedAmountinDrawer",
-      ];
-      let columnValueDrawer = [salePrice, creditSales, estimatedAmountinDrawer];
-      updateColunm(
-        DrawerSetupTable,
-        columnNameDrawer,
-        "id",
-        "D12345678",
-        columnValueDrawer
+    itm.IsUpdated = IsUpdated;
+    let notes = "";
+    itm.notes = notes;
+    itm.IsParentAddOn =
+      itm.IsParentAddOn === 1 || itm.IsParentAddOn === true ? true : false;
+    if (!returnInvoiceNumber && !invoiceNumber) {
+      onNewInvoice();
+    }
+    let item = { ...itm },
+      selectedProduct = [...selectedProducts],
+      sPrice = subPrice,
+      tPrice = totalPrice;
+    if (terminalSetup?.BeepSound === "true") {
+      SoundPlay();
+    }
+    if (retunProducts.length > 0 && !itm.IsParentAddOn) {
+      let retp = [...retunProducts];
+      // console.log("Retun Products...", retp)
+      retp.splice(index, 1);
+      setReturnProducts(retp);
+    }
+    let isAlredySelected = false;
+    localIndex = index;
+
+    if (selectedProducts.length > 0) {
+      let isProductHaveChange = selectedProducts.find(
+        (x) => x.SalesInvoiceDetailsID === item?.ParentInvoiceDetailsID
       );
+
+      if (
+        isProductHaveChange !== undefined &&
+        isProductHaveChange &&
+        showButton
+      ) {
+        isProductHaveChange.IsUpdated = true;
+      }
+
+      let newQuantity;
+
+      let isProductExist = selectedProducts.find(
+        (x) =>
+          x?.ProductBarCode === item?.ProductBarCode &&
+          x?.PriceOriginal === item?.PriceOriginal &&
+          x.haveAddon == true &&
+          x.IsParentAddOn === item?.IsParentAddOn
+      );
+
+      if (isProductExist && !isToggle) {
+        let sameProductWithoutAddon = selectedProducts.findIndex(
+          (x) =>
+            x?.ProductBarCode === item?.ProductBarCode &&
+            x?.PriceOriginal === item?.PriceOriginal &&
+            x.haveAddon == undefined &&
+            x.IsParentAddOn === item?.IsParentAddOn
+        );
+        if (sameProductWithoutAddon) {
+          item.addAsNew = false;
+          localIndex = sameProductWithoutAddon;
+        } else {
+          item.addAsNew = true;
+        }
+      } else if (
+        isProductExist === undefined &&
+        isToggle &&
+        !item?.IsParentAddOn
+      ) {
+        item.addAsNew = true;
+      } else {
+        item.addAsNew = false;
+      }
+      if (item.addAsNew === false) {
+        for (let i = 0; i < selectedProduct.length; i++) {
+          let product = selectedProduct[i];
+
+          let ind;
+          if (localIndex == undefined) {
+            ind = i;
+          } else {
+            ind = localIndex;
+          }
+          if (
+            i === ind ||
+            (product?.AddOnParentSalesInvoiceDetailsID ===
+              item.SalesInvoiceDetailsID &&
+              type !== "returnInvoice")
+          ) {
+            if (
+              product?.ProductBarCode === item?.ProductBarCode &&
+              product?.PriceOriginal === item?.PriceOriginal
+            ) {
+              newQuantity =
+                type !== "increment"
+                  ? product.Quantity - 1
+                  : product.Quantity + 1;
+            }
+            if (
+              (product?.ProductBarCode === item?.ProductBarCode &&
+                product?.PriceOriginal === item?.PriceOriginal) ||
+              (product?.AddOnParentSalesInvoiceDetailsID ===
+                item.SalesInvoiceDetailsID &&
+                type !== "returnInvoice")
+            ) {
+              if (
+                product?.AddOnParentSalesInvoiceDetailsID ===
+                item.SalesInvoiceDetailsID
+              ) {
+                groupType = "addon";
+              }
+              let discount = 0;
+              isAlredySelected = true;
+              let Amount = Number(product.PriceOriginal * newQuantity),
+                pd = product.DiscountAmount ? product.DiscountAmount : 0,
+                dr = product.DiscountRate ? product.DiscountRate : 0;
+              if (pd >= Amount && printType === null && dr === 0) {
+                pd = 0;
+              }
+
+              product.DiscountAmount = pd;
+
+              if (product.ProductType === 3) {
+                if (printType === "returnInvoice") {
+                  if (newQuantity <= product.maxQuantity) {
+                    let totalQuantity = item.totalQuantity;
+
+                    let discountAfterDivision = Number(
+                      (item.originalDiscount / totalQuantity) * newQuantity
+                    );
+
+                    if (
+                      product.DiscountRate > 0 &&
+                      printType === "returnInvoice"
+                    ) {
+                      pd = product.DiscountAmount;
+                    } else {
+                      pd = discountAfterDivision;
+                    }
+                  }
+                }
+                executeCalculation = false;
+                if (groupType === "addon") {
+                  if (!product?.IsParentAddOn) {
+                    addonFinalQuantity = newQuantity * product.OrignalQuantity;
+                    pd = 0;
+                  }
+                  changeProductGroupAddon(
+                    itm,
+                    product,
+                    type,
+                    addonFinalQuantity,
+                    Number(dr),
+                    Number(pd),
+                    printType
+                  );
+                } else {
+                  changeProductGroupItem(
+                    itm,
+                    type,
+                    newQuantity,
+                    Number(dr),
+                    Number(pd)
+                  );
+                }
+              } else {
+                if (printType === "returnInvoice") {
+                  let totalQuantity = item.totalQuantity;
+                  let discountAfterDivision = Number(
+                    (item.originalDiscount / totalQuantity) * newQuantity
+                  );
+                  if (product.IsParentAddOn) {
+                    if (product.DiscountRate > 0) {
+                      pd = Number(product.DiscountAmount);
+                    } else {
+                      pd = Number(discountAfterDivision);
+                    }
+                  }
+                }
+                if (!product?.IsParentAddOn) {
+                  addonFinalQuantity = newQuantity * product.OrignalQuantity;
+                  pd = 0;
+                  dr = 0;
+                }
+                let taxAmt = await calculateTaxeGroups(
+                  product.IsParentAddOn ? newQuantity : addonFinalQuantity,
+                  Amount,
+                  pd,
+                  product.TaxGroupID,
+                  1,
+                  null,
+                  0,
+                  TerminalConfiguration,
+                  product.PriceOriginal,
+                  dr
+                );
+                console.log("Amount.....taxAmt", taxAmt);
+                product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+                  (product.Tax1Rate = taxAmt.Tax1Percentage
+                    ? taxAmt.Tax1Percentage
+                    : 0);
+
+                if (product.Tax1Fragment == 2 || product.Tax2Fragment == 2) {
+                  taxAmt.Tax1Amount = product.IsParentAddOn
+                    ? taxAmt.Tax1Amount * newQuantity
+                    : taxAmt.Tax1Amount * addonFinalQuantity;
+                  taxAmt.DiscountAmount = product.DiscountRate
+                    ? (product.PriceWithOutTax *
+                        newQuantity *
+                        product.DiscountRate) /
+                      100
+                    : pd;
+                } else {
+                  taxAmt.DiscountAmount = product.DiscountRate
+                    ? (product.PriceWithOutTax *
+                        newQuantity *
+                        product.DiscountRate) /
+                      100
+                    : pd;
+                }
+                product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+
+                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+                  (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
+                  (product.Tax2Rate = taxAmt?.Tax2Percentage
+                    ? taxAmt?.Tax2Percentage
+                    : 0);
+
+                product.Tax2Amount = taxAmt?.Tax2Amount
+                  ? taxAmt?.Tax2Amount
+                  : 0;
+
+                if (type === "increment") {
+                  if (taxAmt) {
+                    let proQ;
+
+                    if (!product.IsParentAddOn) {
+                      proQ =
+                        type === "increment"
+                          ? (newQuantity - 1) * product.OrignalQuantity
+                          : newQuantity * product.OrignalQuantity;
+                    } else {
+                      proQ =
+                        type === "increment" ? newQuantity - 1 : newQuantity;
+                    }
+                    // console.log("proQ !== product.maxQuantity...", proQ, newQuantity, product)
+                    if (
+                      proQ === product.maxQuantity &&
+                      printType === "returnInvoice"
+                    ) {
+                      product.Tax1Amount = product.tax;
+                    }
+
+                    if (proQ !== product.maxQuantity) {
+                      let totalQuantity = product.totalQuantity;
+                      product.Quantity = newQuantity;
+                      let discountAfterDivision = Number(
+                        (product.originalDiscount / totalQuantity) * newQuantity
+                      );
+                      if (
+                        printType === "returnInvoice" &&
+                        product.IsParentAddOn &&
+                        product.DiscountRate === 0
+                      ) {
+                        discount = discountAfterDivision;
+                      } else if (dr > 0) {
+                        discount = taxAmt.DiscountAmount
+                          ? taxAmt.DiscountAmount
+                          : parseFloat(
+                              (dr *
+                                (product.PriceWithOutTax * newQuantity +
+                                  taxAmt.Tax1Amount)) /
+                                100
+                            );
+                      } else {
+                        discount = product.DiscountAmount;
+                      }
+                      let GAmount = 0;
+                      if (
+                        taxAmt.calculationId === 9 ||
+                        taxAmt.calculationId === 1
+                      ) {
+                        GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
+                      } else {
+                        GAmount = !product.IsTax1IncludedInPrice
+                          ? Number(
+                              product.PriceOriginal * product.Quantity -
+                                discount +
+                                taxAmt.Tax1Amount
+                            )
+                          : Number(
+                              product.PriceOriginal * product.Quantity -
+                                discount
+                            );
+                      }
+
+                      product.GrandAmount = Number(
+                        GAmount.toFixed(TerminalConfiguration.DecimalsInAmount)
+                      );
+                      discount = Number(discount);
+                      product.DiscountAmount = Number(
+                        discount.toFixed(TerminalConfiguration.DecimalsInAmount)
+                      );
+                      product.tax = product.Tax1Amount + product.Tax2Amount;
+                      executeCalculation = true;
+                    } else {
+                      setMessage(props.StringsList._230);
+                      setDisplayAlert(true);
+                      setLoading(false);
+                    }
+                  }
+                } else if (type === "decrement") {
+                  let totalQuantity = product.totalQuantity;
+                  product.Quantity = newQuantity;
+                  let discountAfterDivision = Number(
+                    (product.originalDiscount / totalQuantity) * newQuantity
+                  );
+                  if (
+                    printType === "returnInvoice" &&
+                    product.IsParentAddOn &&
+                    product.DiscountRate === 0
+                  ) {
+                    discount = discountAfterDivision;
+                  } else {
+                    discount = taxAmt.DiscountAmount
+                      ? taxAmt.DiscountAmount
+                      : parseFloat(
+                          (dr *
+                            (product.PriceWithOutTax * newQuantity +
+                              taxAmt.Tax1Amount)) /
+                            100
+                        );
+                  }
+                  let GAmount = 0;
+                  if (
+                    taxAmt.calculationId === 9 ||
+                    taxAmt.calculationId === 1
+                  ) {
+                    GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
+                  } else {
+                    GAmount = !product.IsTax1IncludedInPrice
+                      ? Number(
+                          product.PriceOriginal * product.Quantity -
+                            discount +
+                            taxAmt.Tax1Amount
+                        )
+                      : Number(
+                          product.PriceOriginal * product.Quantity - discount
+                        );
+                  }
+                  product.GrandAmount = Number(
+                    GAmount.toFixed(TerminalConfiguration.DecimalsInAmount)
+                  );
+                  if (printType === "returnInvoice" && !product.IsParentAddOn) {
+                    discount = Number(0);
+                  } else {
+                    discount = Number(discount);
+                  }
+
+                  product.DiscountAmount = discount.toFixed(
+                    TerminalConfiguration.DecimalsInAmount
+                  );
+                  product.tax = product.Tax1Amount + product.Tax2Amount;
+                  executeCalculation = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      let time = moment().format("HH:mm:ss");
+      setStartTime(time);
+    }
+    if (!isAlredySelected) {
+      if (!isReturnInvoice) {
+        if (item.parentQuantity > 0) {
+          item.Quantity = item.parentQuantity;
+        } else {
+          item.Quantity = 1;
+        }
+
+        let Amount = Number(item.PriceOriginal) * item.Quantity;
+
+        if (item.ProductType === 3) {
+          if (item?.ProductType === 3 && !item?.IsParentAddOn) {
+            let taxAmountIncludedInPrice = 0;
+
+            let tax1AmountTotal = 0,
+              tax1ActualAmountTotal = 0,
+              tax2AmountTotal = 0,
+              tax2ActualAmountTotal = 0;
+            let listOfPG;
+            item.Pricefortax = item.PriceOriginal;
+
+            let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
+              let groupTaxCodes = cb.filter(
+                (x) => x.SalesFamilyCode === item.ProductCode
+              );
+              listOfPG = groupTaxCodes;
+              let totaltax1 = 0;
+              let totaltax2 = 0;
+              let myArray = [];
+              let colloctivePrice = 0,
+                inclusiveTax = 0;
+
+              await listOfPG.forEach(async (element, index) => {
+                let percentageDiscountAmount = 0;
+                let taxGroupID = "";
+                let itemQty = 0,
+                  itemAmount = 0,
+                  itemProposedSalesAmount = 0,
+                  itemDiscountAmount = 0,
+                  netQty = 0;
+                if (item.DiscountAmount > item.Quantity * item.PriceOriginal) {
+                  item.DiscountAmount = 0;
+                }
+                if (item.DiscountRate > 0) {
+                  percentageDiscountAmount =
+                    (item.PriceOriginal * item.Quantity * item.DiscountRate) /
+                    100;
+                } else {
+                  percentageDiscountAmount = item.DiscountAmount;
+                }
+                let amountBeforeDiscount = item.PriceOriginal * item.Quantity;
+                taxGroupID = element.SaleTaxFamilyCode;
+                itemQty = element.Quantity;
+                itemAmount = element.Price;
+                netQty = item.Quantity * itemQty;
+                itemProposedSalesAmount =
+                  (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+                if (amountBeforeDiscount > 0)
+                  itemDiscountAmount =
+                    (itemProposedSalesAmount * percentageDiscountAmount) /
+                    amountBeforeDiscount;
+                let taxAmt = await calculateTaxeGroups(
+                  netQty,
+                  itemProposedSalesAmount,
+                  itemDiscountAmount,
+                  taxGroupID,
+                  1,
+                  null,
+                  0,
+                  TerminalConfiguration,
+                  item.PriceOriginal,
+                  item.DiscountRate
+                );
+                let productGroupTaxInfoObj = {
+                  ProductBarCode: element?.ProductBarCode,
+                  newTaxAmount: taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0 + taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0,
+                  isFixedTax:
+                    taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
+                      ? true
+                      : false,
+                  unitPrice: taxAmt.IsTax1IncludedInPrice
+                    ? taxAmt.Price
+                    : element.Price,
+                  proposedPrice: element.Price,
+                  taxRate: taxAmt?.Tax1Percentage ? taxAmt.Tax1Percentage : 0,
+                  isInclusiveTax:
+                    taxAmt?.IsTax1IncludedInPrice === true ||
+                    taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
+                      ? true
+                      : false,
+                };
+                colloctivePrice += element?.Price;
+                myArray.push(productGroupTaxInfoObj);
+                if (taxAmt.IsTax1IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+                }
+                if (taxAmt.IsTax2IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                }
+
+                if (!item?.IsParentAddOn) {
+                  addonFinalQuantity = item.Quantity * item.OrignalQuantity;
+                }
+                if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
+                  taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount * item?.OrignalQuantity
+                    : 0;
+                  taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount * item?.OrignalQuantity
+                    : 0;
+                }
+                (item.Tax1Fragment = taxAmt?.Tax1Fragment
+                  ? taxAmt.Tax1Fragment
+                  : ""),
+                  (item.Tax2Fragment = taxAmt?.Tax2Fragment
+                    ? taxAmt.Tax2Fragment
+                    : "");
+                item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
+                  ? taxAmt.IsTax1IncludedInPrice
+                  : 0;
+                item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
+                  ? taxAmt.IsTax2IncludedInPrice
+                  : 0;
+                item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+                item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+                item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
+
+                item.Price = item.Price;
+                if (!taxAmt.IsTax1IncludedInPrice)
+                  tax1ActualAmountTotal += taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0;
+                else
+                  taxAmountIncludedInPrice += taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0;
+                if (!taxAmt.IsTax2IncludedInPrice)
+                  tax2ActualAmountTotal += taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0;
+                else
+                  taxAmountIncludedInPrice += taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0;
+
+                tax1AmountTotal += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+                tax2AmountTotal += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                if (
+                  taxAmountIncludedInPrice > 0 ||
+                  taxAmt.Tax1Amount > 0 ||
+                  taxAmt.Tax2Amount > 0
+                ) {
+                  let amountAfterTax =
+                    amountBeforeDiscount - taxAmountIncludedInPrice;
+
+                  if (amountAfterTax > 0)
+                    taxAmt.Price = amountAfterTax / (item.Quantity * 1);
+                  else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+                } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
+                  //It means All the group items dont have tax group id
+                  if (amountBeforeDiscount > 0)
+                    taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
+                  else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+                }
+                item.Price = taxAmt.Price;
+                item.Tax1Amount = tax1AmountTotal ? tax1AmountTotal : 0;
+                item.Tax2Amount = tax2AmountTotal ? tax2AmountTotal : 0;
+                tax1AmountTotal = Number(tax1AmountTotal);
+                tax2AmountTotal = Number(tax2AmountTotal);
+                //
+                totaltax1 = taxAmt.Tax1Amount
+                  ? totaltax1 + taxAmt.Tax1Amount
+                  : totaltax1 + 0;
+                totaltax2 = taxAmt.Tax2Amount
+                  ? totaltax2 + taxAmt.Tax2Amount
+                  : totaltax2 + 0;
+                //
+                let tax = totaltax1 + totaltax2;
+                item.Tax1Code = taxAmt.Tax1Code;
+                (item.Tax1Rate = taxAmt.Tax1Percentage
+                  ? taxAmt.Tax1Percentage
+                  : 0),
+                  (item.Tax1Amount = totaltax1),
+                  (item.Tax2Rate = taxAmt.Tax2Percentage
+                    ? taxAmt.Tax2Percentage
+                    : 0),
+                  (item.Tax2Amount = totaltax2);
+                item.Price = Number(item.PriceOriginal);
+
+                item.PriceWithOutTax = Number(
+                  item.Price - inclusiveTax / item?.Quantity
+                );
+                item.PriceUnitlesstax = Number(item.PriceWithOutTax);
+                item.IngredientsArray = [];
+                item.IngredientNames = "";
+                item.tax = Number(tax);
+                if (index == 0) {
+                  var amount = amountBeforeDiscount - percentageDiscountAmount;
+                } else {
+                  amount = item?.GrandAmount;
+                }
+                // var amount = amountBeforeDiscount - percentageDiscountAmount;
+                if (
+                  taxAmt.IsTax1IncludedInPrice == false ||
+                  taxAmt.IsTax2IncludedInPrice == false
+                ) {
+                  amount = amount + taxAmt?.Tax1Amount; // txAmts.Tax1Amount;
+                }
+
+                item.GrandAmount = Number(amount);
+                item.webperamount = Number(item?.PriceWithOutTax);
+                sPrice = Number(item?.GrandAmount);
+                tPrice = Number(item?.GrandAmount);
+                item.SalesInvoiceDetailsID = uuid.v4();
+                item.productGroupTaxInfoObj = myArray;
+                item.colloctivePrice = colloctivePrice;
+              });
+
+              if (item.IsParentAddOn) {
+                selectedProduct.push(item);
+              } else {
+                selectedProduct[item.parentIndex - 1].haveAddon = true;
+                selectedProduct.splice(item.parentIndex, 0, item);
+              }
+              item.groupTaxCodes = groupTaxCodes;
+            });
+          } else {
+            let taxAmountIncludedInPrice = 0;
+
+            let tax1AmountTotal = 0,
+              tax1ActualAmountTotal = 0,
+              tax2AmountTotal = 0,
+              tax2ActualAmountTotal = 0;
+            let listOfPG;
+            item.Pricefortax = item.PriceOriginal;
+
+            let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
+              let groupTaxCodes = cb.filter(
+                (x) => x.SalesFamilyCode === item.ProductCode
+              );
+              listOfPG = groupTaxCodes;
+              let totaltax1 = 0;
+              let totaltax2 = 0;
+              let myArray = [],
+                innerProductsArray = [];
+              let colloctivePrice = 0,
+                inclusiveTax = 0;
+
+              await listOfPG.forEach(async (element, index) => {
+                let percentageDiscountAmount = 0;
+                let taxGroupID = "";
+                let itemQty = 0,
+                  itemAmount = 0,
+                  itemProposedSalesAmount = 0,
+                  itemDiscountAmount = 0,
+                  netQty = 0;
+                if (item.DiscountAmount > item.Quantity * item.PriceOriginal) {
+                  item.DiscountAmount = 0;
+                }
+                if (item.DiscountRate > 0) {
+                  percentageDiscountAmount =
+                    (item.PriceOriginal * item.Quantity * item.DiscountRate) /
+                    100;
+                } else {
+                  percentageDiscountAmount = item.DiscountAmount;
+                }
+                let amountBeforeDiscount = item.PriceOriginal * item.Quantity;
+                taxGroupID = element.SaleTaxFamilyCode;
+                itemQty = element.Quantity;
+                itemAmount = element.Price;
+                netQty = item.Quantity * itemQty;
+                itemProposedSalesAmount =
+                  (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+                if (amountBeforeDiscount > 0)
+                  itemDiscountAmount =
+                    (itemProposedSalesAmount * percentageDiscountAmount) /
+                    amountBeforeDiscount;
+                let taxAmt = await calculateTaxeGroups(
+                  netQty,
+                  itemProposedSalesAmount,
+                  itemDiscountAmount,
+                  taxGroupID,
+                  1,
+                  null,
+                  0,
+                  TerminalConfiguration,
+                  item.PriceOriginal,
+                  item.DiscountRate
+                );
+                let productGroupTaxInfoObj = {
+                  ProductBarCode: element?.ProductBarCode,
+                  newTaxAmount: taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0 + taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0,
+                  isFixedTax:
+                    taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
+                      ? true
+                      : false,
+                  unitPrice: taxAmt.IsTax1IncludedInPrice
+                    ? taxAmt.Price
+                    : element.Price,
+                  proposedPrice: element.Price,
+                  taxRate: taxAmt?.Tax1Percentage ? taxAmt.Tax1Percentage : 0,
+                  isInclusiveTax:
+                    taxAmt?.IsTax1IncludedInPrice === true ||
+                    taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
+                      ? true
+                      : false,
+                };
+                if (productGroupTaxInfoObj) {
+                  colloctivePrice += element?.Price;
+                  myArray.push(productGroupTaxInfoObj);
+                }
+                if (index === listOfPG.length - 1) {
+                  for (let i = 0; i < listOfPG.length; i++) {
+                    const element = listOfPG[i];
+                    await getData(
+                      UpdateProductDetailListTable,
+                      (productsDetail) => {
+                        let findProduct = productsDetail.find(
+                          (e) => e.ProductBarCode === element.ProductBarCode
+                        );
+
+                        if (findProduct) {
+                          let isMatch = listOfPG.find(
+                            (e) =>
+                              e.ProductBarCode === findProduct.ProductBarCode
+                          );
+                          let netQuantity =
+                            isMatch?.Quantity * element?.Quantity;
+                          findProduct.Quantity = netQuantity;
+                          findProduct.Price = element?.Price;
+                          findProduct.SalesInvoiceDetailsID = uuid.v4();
+                          innerProductsArray.push(findProduct);
+                        }
+                      }
+                    );
+                  }
+                  if (innerProductsArray) {
+                    item.innerProductsArray = innerProductsArray;
+                  }
+                }
+                if (taxAmt.IsTax1IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+                }
+                if (taxAmt.IsTax2IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                }
+
+                if (!item?.IsParentAddOn) {
+                  addonFinalQuantity = item.Quantity * item.OrignalQuantity;
+                }
+                if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
+                  taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount * item?.Quantity
+                    : 0;
+                  taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount * item?.Quantity
+                    : 0;
+                }
+                (item.Tax1Fragment = taxAmt?.Tax1Fragment
+                  ? taxAmt.Tax1Fragment
+                  : ""),
+                  (item.Tax2Fragment = taxAmt?.Tax2Fragment
+                    ? taxAmt.Tax2Fragment
+                    : "");
+                item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
+                  ? taxAmt.IsTax1IncludedInPrice
+                  : 0;
+                item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
+                  ? taxAmt.IsTax2IncludedInPrice
+                  : 0;
+                item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+                item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+                item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
+                item.Price = item.Price;
+                if (!taxAmt.IsTax1IncludedInPrice)
+                  tax1ActualAmountTotal += taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0;
+                else
+                  taxAmountIncludedInPrice += taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0;
+                if (!taxAmt.IsTax2IncludedInPrice)
+                  tax2ActualAmountTotal += taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0;
+                else
+                  taxAmountIncludedInPrice += taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0;
+
+                tax1AmountTotal += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+                tax2AmountTotal += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                if (
+                  taxAmountIncludedInPrice > 0 ||
+                  taxAmt.Tax1Amount > 0 ||
+                  taxAmt.Tax2Amount > 0
+                ) {
+                  let amountAfterTax =
+                    amountBeforeDiscount - taxAmountIncludedInPrice;
+
+                  if (amountAfterTax > 0)
+                    taxAmt.Price = amountAfterTax / (item.Quantity * 1);
+                  else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+                } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
+                  //It means All the group items dont have tax group id
+                  if (amountBeforeDiscount > 0)
+                    taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
+                  else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+                }
+                item.Price = taxAmt.Price;
+                item.Tax1Amount = tax1AmountTotal ? tax1AmountTotal : 0;
+                item.Tax2Amount = tax2AmountTotal ? tax2AmountTotal : 0;
+                tax1AmountTotal = Number(tax1AmountTotal);
+                tax2AmountTotal = Number(tax2AmountTotal);
+                //
+                totaltax1 = taxAmt.Tax1Amount
+                  ? totaltax1 + taxAmt.Tax1Amount
+                  : totaltax1 + 0;
+                totaltax2 = taxAmt.Tax2Amount
+                  ? totaltax2 + taxAmt.Tax2Amount
+                  : totaltax2 + 0;
+                //
+                let tax = totaltax1 + totaltax2;
+                item.Tax1Code = taxAmt.Tax1Code;
+                (item.Tax1Rate = taxAmt.Tax1Percentage
+                  ? taxAmt.Tax1Percentage
+                  : 0),
+                  (item.Tax1Amount = totaltax1),
+                  (item.Tax2Rate = taxAmt.Tax2Percentage
+                    ? taxAmt.Tax2Percentage
+                    : 0),
+                  (item.Tax2Amount = totaltax2);
+                //
+                item.Price = Number(item.PriceOriginal);
+
+                item.PriceWithOutTax = Number(
+                  item.Price - inclusiveTax / item?.Quantity
+                );
+                item.PriceUnitlesstax = Number(item.PriceWithOutTax);
+                item.IngredientsArray = [];
+                item.IngredientNames = "";
+                item.tax = Number(tax);
+                var amount =
+                  item.GrandAmount !== 0
+                    ? item.GrandAmount
+                    : amountBeforeDiscount - percentageDiscountAmount;
+                if (
+                  taxAmt.IsTax1IncludedInPrice == false ||
+                  taxAmt.IsTax2IncludedInPrice == false
+                ) {
+                  amount = amount + taxAmt?.Tax1Amount; // txAmts.Tax1Amount;
+                  // item.webperamount = item.PriceOriginal;
+                }
+                // if (taxAmt.IsTax2IncludedInPrice == false) {
+                //   amount = amount + item?.tax; //txAmts.Tax2Amount;
+                //   // item.webperamount = item.PriceOriginal;
+                // }
+                // if (taxAmt.IsTax2IncludedInPrice == true) {
+                //   // item.webperamount =
+                //   //   item.PriceOriginal - totaltax2 / item.Quantity;
+                // }
+                // if (
+                //   taxAmt.IsTax1IncludedInPrice == true &&
+                //   item.PriceOriginal !== 0
+                // ) {
+                //   item.webperamount =
+                //     item.PriceOriginal - tax1AmountTotal / item.Quantity;
+                // }
+
+                item.GrandAmount = Number(amount);
+                item.webperamount = Number(item?.PriceWithOutTax);
+
+                sPrice = Number(item?.GrandAmount);
+                tPrice = Number(item?.GrandAmount);
+
+                item.SalesInvoiceDetailsID = uuid.v4();
+                item.productGroupTaxInfoObj = myArray;
+                item.colloctivePrice = colloctivePrice;
+              });
+
+              if (item.IsParentAddOn) {
+                selectedProduct.push(item);
+              } else {
+                selectedProduct[item.parentIndex - 1].haveAddon = true;
+                selectedProduct.splice(item.parentIndex, 0, item);
+              }
+              item.groupTaxCodes = groupTaxCodes;
+            });
+          }
+        } else {
+          let taxAmt = await calculateTaxeGroups(
+            item.Quantity,
+            Amount,
+            item.DiscountAmount,
+            item.TaxGroupID,
+            1,
+            null,
+            0,
+            TerminalConfiguration,
+            item.PriceOriginal,
+            item.DiscountRate
+          );
+          console.log("calculateTaxeGroups...", taxAmt, item);
+          //  Tax 1 details
+          item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+          (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+            (item.Tax1Rate = taxAmt.Tax1Percentage ? taxAmt.Tax1Percentage : 0),
+            (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
+            (item.Tax1Fragment = taxAmt.Tax1Fragment
+              ? taxAmt.Tax1Fragment
+              : "");
+          (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+            //  Tax 2 details
+            (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
+            (item.Tax2Rate = taxAmt?.Tax2Percentage
+              ? taxAmt?.Tax2Percentage
+              : 0),
+            (item.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
+          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : "";
+
+          if (
+            (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
+            item?.Tax2Fragment === 2
+          ) {
+            addonFinalQuantity = item.Quantity * item.OrignalQuantity;
+          }
+          if (
+            (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
+            item?.Tax2Fragment === 2
+          ) {
+            item.Tax1Amount = item.Tax1Amount * addonFinalQuantity;
+            item.Tax2Amount = item.Tax2Amount * addonFinalQuantity;
+          }
+          let tax = item.Tax1Amount + item.Tax2Amount;
+          item.Price = Number(taxAmt.Price + tax);
+          item.PriceWithOutTax = Number(taxAmt.Price);
+          item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice
+            ? true
+            : false;
+          item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice
+            ? true
+            : false;
+          item.IngredientsArray = [];
+          item.IngredientNames = "";
+          item.tax = Number(tax);
+          item.GrandAmount =
+            Number(taxAmt.Price * item.Quantity) + tax - item.DiscountAmount;
+          item.SalesInvoiceDetailsID = uuid.v4();
+          sPrice = Number(subPrice + taxAmt.Price * item.Quantity + tax);
+          tPrice = Number(totalPrice + taxAmt.Price * item.Quantity + tax);
+          if (item.IsParentAddOn) {
+            selectedProduct.push(item);
+          } else {
+            selectedProduct[item.parentIndex - 1].haveAddon = true;
+            selectedProduct.splice(item.parentIndex, 0, item);
+          }
+        }
+      } else {
+        if (type === "addnos") {
+          sPrice = Number(subPrice + SP);
+          tPrice = Number(totalPrice + TP);
+          selectedProduct = selectedProduct.concat(proArray);
+        } else {
+          sPrice = Number(subPrice + item.GrandAmount - item.DiscountAmount);
+          tPrice = Number(totalPrice + item.GrandAmount - item.DiscountAmount);
+
+          if (item.IsParentAddOn) {
+            selectedProduct.push(item);
+          } else {
+            if (!isReturnInvoice) {
+              selectedProduct[item.parentIndex - 1].haveAddon = true;
+              selectedProduct.splice(item.parentIndex, 0, item);
+            } else {
+              selectedProduct.push(item);
+            }
+          }
+        }
+      }
+    }
+    if (executeCalculation) {
+      localIndex = undefined;
+      setTimeout(() => {
+        setStateUpdate(true);
+        let p = [...selectedProduct];
+        // list.products = p;
+        finalCalculation(p);
+        let srNo = 1;
+        selectedProduct.forEach((e) => {
+          if (e.IsParentAddOn) {
+            e.srNo = srNo++;
+          } else {
+            e.srNo = 0;
+          }
+        });
+        setSelectedProducts(selectedProduct);
+        console.log("selected products", selectedProduct);
+      }, 200);
     }
   };
 
-  const updateReturnTerminalConfiguration = () => {
-    console.log("updateReturnTerminalConfiguration");
-    let columnName = ["LastReturnBillNumber"];
-    let columnValue = [Number(TerminalConfiguration.LastReturnBillNumber) + 1];
-    updateColunm(
-      TerminalConfigurationTable,
-      columnName,
-      "UserCode",
-      TerminalConfiguration.UserCode,
-      columnValue
-    );
-
-    let estimatedAmountinDrawer =
-      Number(drawerSetupArr.estimatedAmountinDrawer) - Number(totalPrice);
-    //if (estimatedAmountinDrawer > 0) {
-    let salePrice = Number(drawerSetupArr.CashRefund) + Number(totalPrice);
-    let columnNameDrawer = ["CashRefund", "estimatedAmountinDrawer"];
-    let columnValueDrawer = [salePrice, estimatedAmountinDrawer];
-    updateColunm(
-      DrawerSetupTable,
-      columnNameDrawer,
-      "id",
-      "D12345678",
-      columnValueDrawer
-    );
-  };
-
-  const getAllCategories = async (type) => {
-    getData(CategoriesListTable, async (categories) => {
-      setAllCategories(categories);
-      if (categories.length > 0) {
-        getSelectedCategoryProducts(categories[0]);
-      } else {
-        setNoFamilyFound(true);
-        await getData(UpdateProductDetailListTable, async (productsDetail) => {
-          // console.log('UpdateProductDetailListTable', productsDetail);
-          let proDetails = [...productsDetail];
-          if (type !== "isRestState") {
-            onSelectProduct(null, proDetails);
-          } else {
-            setCategoryProducts(proDetails);
-          }
-          setLoading(false);
-        });
-      }
-    });
-    // getData(UpdateProductDetailListTable, async products => {
-    //   console.log("UpdateProductDetailListTable", products)
-    //   // setAllCategories(categories);
-    //   // getSelectedCategoryProducts(categories[0]);
-    // });
-  };
-
-  const getAddOnProducts = async (item, index) => {
-    let selectedProduct = [...selectedProducts];
+  const updateProductToList = async (itm, type, index, proArray, SP, TP) => {
     setLoading(true);
+    setPrintType(null);
+    setoptionsOpen(false);
+    setPaymentsOpen(false);
+    let executeCalculation = true;
+    let addonFinalQuantity = 0;
+    let localIndex;
+    let groupType = "";
+    let item = { ...itm },
+      selectedProduct = [...selectedProducts],
+      sPrice = subPrice,
+      tPrice = totalPrice;
+    item.ProductNote = itm?.ProductNote;
+    if (terminalSetup?.BeepSound === "true") {
+      SoundPlay();
+    }
+    if (retunProducts.length > 0 && !itm.IsParentAddOn) {
+      let retp = [...retunProducts];
+      retp.splice(index, 1);
+      setReturnProducts(retp);
+    }
+    let isAlredySelected = false;
+    localIndex = index;
+    if (selectedProducts.length > 0) {
+      let newQuantity;
 
-    await getDataJoinById(
-      ProductCardAddOnGroupListTable,
-      UpdateProductDetailListTable,
-      "AddOnGroupCode",
-      item.AddOnGroupCode,
-      async (addonProducts) => {
-        console.log("Product Card Add On Group List Table...", addonProducts);
-        let products = [];
+      let isProductExist = selectedProducts.find(
+        (x) =>
+          x?.ProductBarCode === item?.ProductBarCode &&
+          x?.PriceOriginal === item?.PriceOriginal &&
+          x.haveAddon == true
+      );
 
-        for (let i = 0; i < addonProducts.length; i++) {
-          let isFind = selectedProduct.find(
-            (x) =>
-              (x.ProductBarCode === addonProducts[i].ProductBarCode ||
-                x.EquiProductCode === addonProducts[i].ProductCode) &&
-              x.AddOnParentSalesInvoiceDetailsID === item.SalesBillDetailsID
-          );
-          await getDataJoinById(
-            ProductCardAddOnEquivalentProductsListTable,
-            UpdateProductDetailListTable,
-            "EquiProductCode",
-            addonProducts[i].ProductCode,
-            (EquivalentProduct) => {
-              console.log("addon equivaletnt Products", EquivalentProduct);
-              let EqP = [];
-              for (let j = 0; j < EquivalentProduct.length; j++) {
-                let pro = {
-                  SalesBillDetailsID: uuid.v4,
-                  SalesBillID: null,
-                  BillNumber: null,
-                  FiscalSpanID: 0,
-                  BillType: addonProducts[i].BillType,
-                  SerialNumber: 1,
-                  ProductCode: EquivalentProduct[j].ProductCode,
-                  ProductName: EquivalentProduct[j].Name,
-                  ProductName2: EquivalentProduct[j].Name2,
-                  ProductType: EquivalentProduct[j].ProductType,
-                  Quantity: addonProducts[i].Quantity,
-                  UOMType: EquivalentProduct[j].UOMType,
-                  UOMCode: EquivalentProduct[j].UOMCode,
-                  UOMFragment: EquivalentProduct[j].UOMFragment,
-                  UOMCode: EquivalentProduct[j].UOMCode,
-                  UOMName: EquivalentProduct[j].UOMName,
-                  Price: 0,
-                  PriceOriginal: addonProducts[i].Price,
-                  PriceType: item.PriceType,
-                  DiscountRate: addonProducts[i].DiscountRate
-                    ? addonProducts[i].DiscountRate
-                    : 0,
-                  DiscountAmount: 0,
-                  TaxGroupID: EquivalentProduct[0].SaleTaxGroupCode,
-                  IsTax1IncludedInPrice: false,
-                  IsTax2IncludedInPrice: false,
-                  Tax1Code: "",
-                  Tax1Name: "",
-                  Tax1Rate: 0,
-                  Tax1Amount: 0,
-                  Tax2Code: "",
-                  Tax2Name: "",
-                  Tax2Rate: 0,
-                  Tax2Amount: 0,
-                  GrandAmount: addonProducts[i].Price,
-                  GroupDataID: "",
-                  ProductBarCode: EquivalentProduct[j].ProductBarCode,
-                  ReturnSalesBillDetailID: "",
-                  DeliveryStatus: "",
-                  DeliveryDate: "",
-                  DeliveryTime: "",
-                  DeliveryNote: "",
-                  DeliveredDate: "",
-                  DeliveredTime: "",
-                  Remarks: "",
-                  SalesAgentCode: null,
-                  IsParentAddOn: false,
-                  AddOnGroupCode: addonProducts[i].AddOnGroupCode,
-                  ParentInvoiceDetailsID: item.SalesBillDetailsID,
-                  OrignalQuantity: addonProducts[i].Quantity,
-                  AddonProductDetailcode: addonProducts[i].AddOnGroupDetailCode,
-                  Ingredients: 0,
-                  EarnedPoints: 0,
-                  RedeemPoints: 0,
-                  Status: 0,
-                  ProductCategoryCode: addonProducts[i].ProductCategoryCode,
-                  MediaContentType: addonProducts[i].MediaContentType,
-                  MediaContents: addonProducts[i].MediaContents,
-                  HoldFromSale: EquivalentProduct[j].HoldFromSale,
-                  parentIndex: index + 1,
-                  parentQuantity: item.Quantity,
-                  AddOnParentSalesInvoiceDetailsID: item.SalesBillDetailsID,
-                  EquiProductCode: EquivalentProduct[j].EquiProductCode,
-                };
-                EqP.push(pro);
+      if (isProductExist && !isToggle) {
+        let sameProductWithoutAddon = selectedProducts.findIndex(
+          (x) =>
+            x?.ProductBarCode === item?.ProductBarCode &&
+            x?.PriceOriginal === item?.PriceOriginal &&
+            x.haveAddon == undefined
+        );
+        if (sameProductWithoutAddon) {
+          item.addAsNew = false;
+          localIndex = sameProductWithoutAddon;
+        } else {
+          item.addAsNew = true;
+        }
+      } else {
+        item.addAsNew = false;
+      }
+      if (
+        item.addAsNew === false &&
+        selectedProduct?.Price &&
+        item?.PriceOriginal
+      ) {
+        for (let i = 0; i < selectedProduct.length; i++) {
+          let product = selectedProduct[i];
+
+          let ind;
+          if (localIndex == undefined) {
+            ind = i;
+          } else {
+            ind = localIndex;
+          }
+
+          if (
+            i === ind ||
+            (product?.AddOnParentSalesInvoiceDetailsID ===
+              item.SalesInvoiceDetailsID &&
+              type !== "returnInvoice")
+          ) {
+            if (
+              product?.ProductBarCode === item?.ProductBarCode &&
+              product?.PriceOriginal === item?.PriceOriginal
+            ) {
+              newQuantity =
+                type !== "increment"
+                  ? product.Quantity - 1
+                  : product.Quantity + 1;
+            }
+
+            if (
+              ((product?.ProductBarCode === item?.ProductBarCode &&
+                product?.PriceOriginal === item?.PriceOriginal) ||
+                product?.AddOnParentSalesInvoiceDetailsID ===
+                  item.SalesInvoiceDetailsID ||
+                item.OrderDetailCode ===
+                  product.AddOnParentSalesInvoiceDetailsID) &&
+              type !== "returnInvoice"
+            ) {
+              if (
+                product?.AddOnParentSalesInvoiceDetailsID ===
+                item.SalesInvoiceDetailsID
+              ) {
+                groupType = "addon";
+              }
+              let discount = 0;
+              isAlredySelected = true;
+              let Amount = Number(product.PriceOriginal * newQuantity),
+                pd = product.DiscountAmount ? product.DiscountAmount : 0,
+                dr = product.DiscountRate ? product.DiscountRate : 0;
+              if (pd >= Amount && printType === null) {
+                pd = 0;
               }
 
-              if (!isFind) {
-                let pro = {
-                  SalesBillDetailsID: uuid.v4,
-                  SalesBillID: null,
-                  BillNumber: null,
-                  FiscalSpanID: 0,
-                  BillType: addonProducts[i].BillType,
-                  SerialNumber: 1,
-                  ProductCode: addonProducts[i].ProductCode,
-                  ProductName: addonProducts[i].Name,
-                  ProductName2: addonProducts[i].Name2,
-                  ProductType: addonProducts[i].ProductType,
-                  Quantity: addonProducts[i].Quantity,
-                  UOMType: addonProducts[i].UOMType,
-                  UOMCode: addonProducts[i].UOMCode,
-                  UOMFragment: addonProducts[i].UOMFragment,
-                  UOMCode: addonProducts[i].UOMCode,
-                  UOMName: addonProducts[i].UOMName,
-                  Price: 0,
-                  PriceOriginal: addonProducts[i].Price,
-                  PriceType: item.PriceType,
-                  DiscountRate: addonProducts[i].DiscountRate
-                    ? addonProducts[i].DiscountRate
-                    : 0,
-                  DiscountAmount: 0,
-                  TaxGroupID: addonProducts[i].SaleTaxGroupCode,
-                  IsTax1IncludedInPrice: false,
-                  IsTax2IncludedInPrice: false,
-                  Tax1Code: "",
-                  Tax1Name: "",
-                  Tax1Rate: 0,
-                  Tax1Amount: 0,
-                  Tax2Code: "",
-                  Tax2Name: "",
-                  Tax2Rate: 0,
-                  Tax2Amount: 0,
-                  GrandAmount: addonProducts[i].Price,
-                  GroupDataID: "",
-                  ProductBarCode: addonProducts[i].ProductBarCode,
-                  ReturnSalesBillDetailID: "",
-                  DeliveryStatus: "",
-                  DeliveryDate: "",
-                  DeliveryTime: "",
-                  DeliveryNote: "",
-                  DeliveredDate: "",
-                  DeliveredTime: "",
-                  Remarks: "",
-                  SalesAgentCode: null,
-                  IsParentAddOn: false,
-                  AddOnGroupCode: addonProducts[i].AddOnGroupCode,
-                  ParentInvoiceDetailsID: item.SalesBillDetailsID,
-                  OrignalQuantity: addonProducts[i].Quantity,
-                  AddonProductDetailcode: addonProducts[i].AddOnGroupDetailCode,
-                  Ingredients: 0,
-                  EarnedPoints: 0,
-                  RedeemPoints: 0,
-                  Status: 0,
-                  ProductCategoryCode: addonProducts[i].ProductCategoryCode,
-                  MediaContentType: addonProducts[i].MediaContentType,
-                  MediaContents: addonProducts[i].MediaContents,
-                  HoldFromSale: addonProducts[i].HoldFromSale,
-                  parentIndex: index + 1,
-                  parentQuantity: item.Quantity,
-                  AddOnParentSalesInvoiceDetailsID: item.SalesBillDetailsID,
-                  EquivalentProducts: EqP,
-                };
-                products.push(pro);
+              product.DiscountAmount = pd;
+              // console.log("Amount.....", newQuantity, Amount, product.DiscountAmount, product.TaxGroupID, 1, null, 0, product.PriceOriginal, product.DiscountRate, product.ProductName)
+              let taxAmt;
+
+              if (product.ProductType === 3) {
+                if (printType === "returnInvoice") {
+                  let totalQuantity =
+                    product?.Quantity + product?.ReturnedQuantity;
+                  let discountAfterDivision = Number(
+                    (item.DiscountAmount / totalQuantity) * newQuantity
+                  );
+                  if (product.DiscountRate > 0) {
+                    pd = product.DiscountAmount;
+                  } else {
+                    pd = discountAfterDivision;
+                  }
+                }
+                executeCalculation = false;
+                if (groupType === "addon") {
+                  if (!product?.IsParentAddOn) {
+                    addonFinalQuantity = newQuantity * product.OrignalQuantity;
+                    pd = 0;
+                  }
+                  changeProductGroupAddon(
+                    itm,
+                    product,
+                    type,
+                    addonFinalQuantity,
+                    Number(dr),
+                    Number(pd),
+                    printType
+                  );
+                } else {
+                  changeProductGroupItem(itm, type, newQuantity, dr, pd);
+                }
+              } else {
+                if (printType === "returnInvoice") {
+                  let totalQuantity =
+                    product?.Quantity + product?.ReturnedQuantity;
+                  let discountAfterDivision = Number(
+                    (item.DiscountAmount / totalQuantity) * newQuantity
+                  );
+                  if (product.DiscountRate > 0) {
+                    pd = product.DiscountAmount;
+                  } else {
+                    pd = discountAfterDivision;
+                  }
+                }
+                if (!product?.IsParentAddOn) {
+                  addonFinalQuantity = newQuantity * product.OrignalQuantity;
+                  pd = 0;
+                }
+
+                taxAmt = await calculateTaxeGroups(
+                  product.IsParentAddOn ? newQuantity : addonFinalQuantity,
+                  Amount,
+                  pd,
+                  product.TaxGroupID,
+                  1,
+                  null,
+                  0,
+                  TerminalConfiguration,
+                  product.PriceOriginal,
+                  dr
+                );
+
+                console.log("Amount.....taxAmt", taxAmt);
+                product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+                  (product.Tax1Rate = taxAmt.Tax1Percentage
+                    ? taxAmt.Tax1Percentage
+                    : 0);
+
+                if (product.Tax1Fragment == 2 || product.Tax2Fragment == 2) {
+                  taxAmt.Tax1Amount = product.IsParentAddOn
+                    ? taxAmt.Tax1Amount * newQuantity
+                    : taxAmt.Tax1Amount * addonFinalQuantity;
+                  taxAmt.DiscountAmount = product.DiscountRate
+                    ? (product.PriceOriginal *
+                        newQuantity *
+                        product.DiscountRate) /
+                      100
+                    : pd;
+                } else {
+                  taxAmt.DiscountAmount = product.DiscountRate
+                    ? (product.PriceOriginal *
+                        newQuantity *
+                        product.DiscountRate) /
+                      100
+                    : pd;
+                }
+                product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+
+                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+                  (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
+                  (product.Tax2Rate = taxAmt?.Tax2Percentage
+                    ? taxAmt?.Tax2Percentage
+                    : 0);
+
+                product.Tax2Amount = taxAmt?.Tax2Amount
+                  ? taxAmt?.Tax2Amount
+                  : 0;
+
+                if (type === "increment") {
+                  if (taxAmt) {
+                    let proQ;
+
+                    if (!product.IsParentAddOn) {
+                      proQ =
+                        type === "increment"
+                          ? (newQuantity - 1) * product.OrignalQuantity
+                          : newQuantity * product.OrignalQuantity;
+                    } else {
+                      proQ =
+                        type === "increment" ? newQuantity - 1 : newQuantity;
+                    }
+                    // console.log("proQ !== product.maxQuantity...", proQ, newQuantity, product)
+                    if (
+                      proQ === product.maxQuantity &&
+                      printType === "returnInvoice"
+                    ) {
+                      product.Tax1Amount = product.tax;
+                    }
+                    if (proQ !== product.maxQuantity) {
+                      let totalQuantity =
+                        product?.Quantity + product?.ReturnedQuantity;
+                      product.Quantity = newQuantity;
+                      let discountAfterDivision = Number(
+                        (item.DiscountAmount / totalQuantity) * newQuantity
+                      );
+                      if (
+                        printType === "returnInvoice" &&
+                        product.IsParentAddOn &&
+                        product.DiscountRate === 0
+                      ) {
+                        discount = discountAfterDivision;
+                      } else if (dr > 0) {
+                        discount = taxAmt.DiscountAmount
+                          ? taxAmt.DiscountAmount
+                          : parseFloat(
+                              (dr *
+                                (product.PriceWithOutTax * newQuantity +
+                                  taxAmt.Tax1Amount)) /
+                                100
+                            );
+                      } else {
+                        discount = product.DiscountAmount;
+                      }
+                      let GAmount = 0;
+                      if (
+                        taxAmt.calculationId === 9 ||
+                        taxAmt.calculationId === 1
+                      ) {
+                        GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
+                      } else {
+                        GAmount = !product.IsTax1IncludedInPrice
+                          ? Number(
+                              product.PriceOriginal * product.Quantity -
+                                discount +
+                                taxAmt.Tax1Amount
+                            )
+                          : Number(
+                              product.PriceOriginal * product.Quantity -
+                                discount
+                            );
+                      }
+                      product.GrandAmount = Number(GAmount);
+                      discount = Number(discount);
+                      product.DiscountAmount = discount.toFixed(2);
+                      product.tax = product.Tax1Amount + product.Tax2Amount;
+                      executeCalculation = true;
+                    } else {
+                      setMessage(props.StringsList._230);
+                      setDisplayAlert(true);
+                      setLoading(false);
+                    }
+                  }
+                } else if (type === "decrement") {
+                  let totalQuantity =
+                    product?.Quantity + product?.ReturnedQuantity;
+                  product.Quantity = newQuantity;
+                  let discountAfterDivision = Number(
+                    (item.DiscountAmount / totalQuantity) * newQuantity
+                  );
+                  if (
+                    printType === "returnInvoice" &&
+                    product.IsParentAddOn &&
+                    product.DiscountRate === 0
+                  ) {
+                    discount = discountAfterDivision;
+                  } else {
+                    discount = taxAmt.DiscountAmount
+                      ? taxAmt.DiscountAmount
+                      : parseFloat(
+                          (dr *
+                            (product.PriceWithOutTax * newQuantity +
+                              taxAmt.Tax1Amount)) /
+                            100
+                        );
+                  }
+                  let GAmount = 0;
+                  if (
+                    taxAmt.calculationId === 9 ||
+                    taxAmt.calculationId === 1
+                  ) {
+                    GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
+                  } else {
+                    GAmount = !product.IsTax1IncludedInPrice
+                      ? Number(
+                          product.PriceOriginal * product.Quantity -
+                            discount +
+                            taxAmt.Tax1Amount
+                        )
+                      : Number(
+                          product.PriceOriginal * product.Quantity - discount
+                        );
+                  }
+                  product.GrandAmount = Number(GAmount);
+                  if (printType === "returnInvoice" && !product.IsParentAddOn) {
+                    discount = Number(0);
+                  } else {
+                    discount = Number(discount);
+                  }
+
+                  product.DiscountAmount = discount.toFixed(2);
+                  product.tax = product.Tax1Amount + product.Tax2Amount;
+                  executeCalculation = true;
+                }
               }
             }
-          );
-        }
-        // console.log('update addon products......', products);
-        setisAddon(true), setReturnProducts(products);
-        setLoading(false);
-      }
-    );
-  };
-
-  const getProductsIngredients = async (item) => {
-    setLoading(true);
-    let selectedProduct = [...selectedProducts];
-    await getDataById(
-      ProductCardIngredientsListTable,
-      "ProductBarCode",
-      item.ProductBarCode,
-      (ingredients) => {
-        console.log("ingredients.....", ingredients, item);
-        for (let i = 0; i < ingredients.length; i++) {
-          let isFind = item?.IngredientsArray.find(
-            (x) => x.Id === ingredients[i].Id
-          );
-          if (isFind) {
-            ingredients[i].isSelected = true;
-          } else {
-            ingredients[i].isSelected = false;
           }
         }
-
-        setIsIngredient(true);
-        setIngredientsData(ingredients);
-        setIngredientProductCode(item.ProductBarCode);
-        setLoading(false);
       }
-    );
+    } else {
+      let time = moment().format("HH:mm:ss");
+      setStartTime(time);
+    }
+    if (!isAlredySelected) {
+      if (!isReturnInvoice) {
+        if (item.parentQuantity > 0) {
+          item.Quantity = item.parentQuantity;
+        } else {
+          item.Quantity = item.Quantity;
+        }
+
+        if (item.ProductType === 3) {
+          if (!item?.IsParentAddOn) {
+            let listOfPG;
+            item.Pricefortax = item.PriceOriginal;
+
+            let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
+              let groupTaxCodes = cb.filter(
+                (x) => x.SalesFamilyCode === item.ProductCode
+              );
+              listOfPG = groupTaxCodes;
+
+              let totaltax1 = 0;
+              let totaltax2 = 0;
+              let myArray = [];
+              let colloctivePrice = 0,
+                inclusiveTax = 0;
+
+              await listOfPG.forEach(async (element, index) => {
+                let isUpdatedGroup = false;
+                let percentageDiscountAmount = 0;
+                let taxGroupID = "";
+                let itemQty = 0,
+                  itemAmount = 0,
+                  itemProposedSalesAmount = 0,
+                  itemDiscountAmount = 0,
+                  netQty = 0,
+                  tamount = 0,
+                  totalTax = 0,
+                  totalPrice = 0,
+                  totalInclusiveTax = 0,
+                  totalDiscount = 0;
+
+                if (item.DiscountRate > 0) {
+                  item.DiscountRate = item.DiscountRate;
+                  percentageDiscountAmount = item.DiscountAmount;
+                  item.DiscountAmount = percentageDiscountAmount;
+                } else {
+                  percentageDiscountAmount = item.DiscountAmount;
+                  item.DiscountAmount = percentageDiscountAmount;
+                }
+
+                let amountBeforeDiscount = item.PriceOriginal * item.Quantity;
+                taxGroupID = element.SaleTaxFamilyCode;
+                itemQty = element.Quantity;
+                itemAmount = element.Price;
+                netQty = item.Quantity * itemQty;
+                itemProposedSalesAmount =
+                  (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+                if (amountBeforeDiscount > 0) {
+                  itemDiscountAmount =
+                    (itemProposedSalesAmount * percentageDiscountAmount) /
+                    amountBeforeDiscount;
+                }
+
+                let taxAmt = await calculateTaxeGroups(
+                  netQty,
+                  itemProposedSalesAmount,
+                  itemDiscountAmount,
+                  taxGroupID,
+                  1,
+                  null,
+                  0,
+                  TerminalConfiguration,
+                  item.PriceOriginal,
+                  item.DiscountRate
+                );
+                let productGroupTaxInfoObj = {
+                  ProductBarCode: element?.ProductBarCode,
+                  newTaxAmount: taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0 + taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0,
+                  isFixedTax:
+                    taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
+                      ? true
+                      : false,
+                  unitPrice: taxAmt.IsTax1IncludedInPrice
+                    ? taxAmt.Price
+                    : element.Price,
+                  proposedPrice: element.Price,
+                  taxRate: taxAmt?.Tax1Percentage ? taxAmt.Tax1Percentage : 0,
+                  isInclusiveTax:
+                    taxAmt?.IsTax1IncludedInPrice === true ||
+                    taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
+                      ? true
+                      : false,
+                };
+                if (productGroupTaxInfoObj) {
+                  colloctivePrice += element?.Price;
+                  myArray.push(productGroupTaxInfoObj);
+                  item.productGroupTaxInfoObj = myArray;
+                  item.colloctivePrice = colloctivePrice;
+                }
+
+                if (taxAmt.IsTax1IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+                }
+                if (taxAmt.IsTax2IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                }
+
+                if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
+                  taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount * item?.Quantity
+                    : 0;
+                  taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount * item?.Quantity
+                    : 0;
+                }
+
+                // tax 1 details
+                item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+                item.Tax1Amount = totalTax;
+                item.Tax1Rate = taxAmt.Tax1Percentage
+                  ? taxAmt.Tax1Percentage
+                  : 0;
+                item.IsTax1IncludedInPrice =
+                  taxAmt.IsTax1IncludedInPrice === true ||
+                  taxAmt.IsTax1IncludedInPrice === 1
+                    ? true
+                    : false;
+                item.Tax1Fragment = taxAmt?.Tax1Fragment
+                  ? taxAmt.Tax1Fragment
+                  : "";
+                // tax 2 details
+                item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+                item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
+
+                item.Tax2Fragment = taxAmt?.Tax2Fragment
+                  ? taxAmt.Tax2Fragment
+                  : "";
+
+                item.IsTax12ncludedInPrice =
+                  taxAmt.IsTax2IncludedInPrice === true ||
+                  taxAmt.IsTax2IncludedInPrice === 1
+                    ? true
+                    : false;
+                item.Tax2Rate = taxAmt.Tax2Percentage
+                  ? taxAmt.Tax2Percentage
+                  : 0;
+                item.Tax2Amount = totaltax2;
+
+                totaltax1 = taxAmt.Tax1Amount
+                  ? totaltax1 + taxAmt.Tax1Amount
+                  : totaltax1 + 0;
+                totaltax2 = taxAmt.Tax2Amount
+                  ? totaltax2 + taxAmt.Tax2Amount
+                  : totaltax2 + 0;
+                //
+                let tax = totaltax1 + totaltax2;
+                console.log(tax);
+                //
+                item.Price = Number(item.PriceOriginal);
+
+                item.IngredientsArray = [];
+                item.IngredientNames = "";
+
+                if (item.productGroupTaxInfoObj.length === listOfPG.length) {
+                  isUpdatedGroup = true;
+                }
+
+                if (isUpdatedGroup) {
+                  item.productGroupTaxInfoObj.forEach((element) => {
+                    let itemProposedAmount =
+                      ((element.proposedPrice * item.Quantity) /
+                        (item.Pricefortax * item.Quantity)) *
+                      (item.PriceOriginal * item.Quantity);
+                    //  let itemDiscountAmount = (element.proposedPrice / itemDetails.SellingPrice) * psalesInvoiceDetail.DiscountAmount;
+                    let itemDiscountWeight =
+                      (itemProposedAmount /
+                        (item.PriceOriginal * item.Quantity)) *
+                      percentageDiscountAmount;
+                    totalDiscount += Number(itemDiscountWeight);
+                    let afterDiscountAmount = 0;
+                    if (element.isInclusiveTax) {
+                      let inclTax =
+                        (itemProposedAmount / (100 + element.taxRate)) *
+                        element.taxRate;
+                      totalInclusiveTax += Number(
+                        inclTax /
+                          item?.Quantity.toFixed(
+                            TerminalConfiguration.DecimalsInAmount
+                          )
+                      );
+                      let pureAmount = itemProposedAmount - inclTax;
+                      afterDiscountAmount = pureAmount - itemDiscountWeight;
+                    } else {
+                      afterDiscountAmount =
+                        itemProposedAmount - itemDiscountWeight;
+                    }
+                    if (!element.isFixedTax) {
+                      let taxPrice =
+                        (element.taxRate / 100) * afterDiscountAmount;
+                      totalPrice += afterDiscountAmount + taxPrice;
+                      totalTax += taxPrice;
+                    }
+                    if (element.isFixedTax) {
+                      let fixtax = element.newTaxAmount * item.Quantity;
+                      totalPrice += fixtax + afterDiscountAmount;
+                      totalTax = totalTax + fixtax;
+                    }
+                    item.Tax1Amount = totalTax;
+                    tamount += element?.unitPrice;
+                    item.tax = Number(totalTax);
+                  });
+                  // }
+                  if (item?.IsTax1IncludedInPrice) {
+                    item.PriceWithOutTax = Number(
+                      item?.PriceOriginal - totalInclusiveTax
+                    );
+                  } else {
+                    item.PriceWithOutTax = Number(
+                      item?.PriceOriginal - totalInclusiveTax
+                    );
+                    // item.PriceWithOutTax = Number(tamount);
+                  }
+
+                  item.PriceUnitlesstax = Number(item.PriceWithOutTax);
+                  item.webperamount = Number(item?.PriceWithOutTax);
+                  item.GrandAmount = Number(totalPrice);
+                  sPrice = Number(item?.GrandAmount);
+                  tPrice = Number(item?.GrandAmount);
+                }
+              });
+
+              if (item.IsParentAddOn) {
+                selectedProduct.push(item);
+              } else {
+                selectedProduct[item.parentIndex - 1].haveAddon = true;
+                selectedProduct.splice(item.parentIndex, 0, item);
+              }
+              item.groupTaxCodes = groupTaxCodes;
+            });
+          } else {
+            let listOfPG;
+            let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
+              let groupTaxCodes = cb.filter(
+                (x) => x.SalesFamilyCode === item.ProductCode
+              );
+              await getData(UpdateProductDetailListTable, (productsDetail) => {
+                let findProduct = productsDetail.find(
+                  (e) => e.ProductBarCode === item.ProductBarCode
+                );
+                if (findProduct) {
+                  item.Pricefortax = findProduct.PriceOriginal;
+                }
+              });
+              listOfPG = groupTaxCodes;
+
+              let totaltax1 = 0;
+              let totaltax2 = 0;
+              let myArray = [],
+                innerProductsArray = [];
+              let colloctivePrice = 0,
+                inclusiveTax = 0;
+
+              await listOfPG.forEach(async (element, index) => {
+                let isUpdatedGroup = false;
+                let percentageDiscountAmount = 0;
+                let taxGroupID = "";
+                let itemQty = 0,
+                  itemAmount = 0,
+                  itemProposedSalesAmount = 0,
+                  itemDiscountAmount = 0,
+                  netQty = 0,
+                  tamount = 0,
+                  totalTax = 0,
+                  totalPrice = 0,
+                  totalInclusiveTax = 0,
+                  totalDiscount = 0;
+
+                if (item.DiscountRate > 0) {
+                  item.DiscountRate = item.DiscountRate;
+                  percentageDiscountAmount = item.DiscountAmount;
+                  item.DiscountAmount = percentageDiscountAmount;
+                } else {
+                  percentageDiscountAmount = item.DiscountAmount;
+                  item.DiscountAmount = percentageDiscountAmount;
+                }
+
+                let amountBeforeDiscount = item.PriceOriginal * item.Quantity;
+                taxGroupID = element.SaleTaxFamilyCode;
+                itemQty = element.Quantity;
+                itemAmount = element.Price;
+                netQty = item.Quantity * itemQty;
+                itemProposedSalesAmount =
+                  (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+                if (amountBeforeDiscount > 0) {
+                  itemDiscountAmount =
+                    (itemProposedSalesAmount * percentageDiscountAmount) /
+                    amountBeforeDiscount;
+                }
+
+                let taxAmt = await calculateTaxeGroups(
+                  netQty,
+                  itemProposedSalesAmount,
+                  itemDiscountAmount,
+                  taxGroupID,
+                  1,
+                  null,
+                  0,
+                  TerminalConfiguration,
+                  item.PriceOriginal,
+                  item.DiscountRate
+                );
+                let productGroupTaxInfoObj = {
+                  ProductBarCode: element?.ProductBarCode,
+                  newTaxAmount: taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0 + taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0,
+                  isFixedTax:
+                    taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
+                      ? true
+                      : false,
+                  unitPrice: taxAmt.IsTax1IncludedInPrice
+                    ? taxAmt.Price
+                    : element.Price,
+                  proposedPrice: element.Price,
+                  taxRate: taxAmt?.Tax1Percentage ? taxAmt.Tax1Percentage : 0,
+                  isInclusiveTax:
+                    taxAmt?.IsTax1IncludedInPrice === true ||
+                    taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
+                      ? true
+                      : false,
+                };
+
+                if (productGroupTaxInfoObj) {
+                  colloctivePrice += element?.Price;
+                  myArray.push(productGroupTaxInfoObj);
+                  item.productGroupTaxInfoObj = myArray;
+                  item.colloctivePrice = colloctivePrice;
+                }
+                if (index === listOfPG.length - 1) {
+                  for (let i = 0; i < listOfPG.length; i++) {
+                    const element = listOfPG[i];
+                    await getData(
+                      UpdateProductDetailListTable,
+                      (productsDetail) => {
+                        let findProduct = productsDetail.find(
+                          (e) => e.ProductBarCode === element.ProductBarCode
+                        );
+
+                        if (findProduct) {
+                          let isMatch = listOfPG.find(
+                            (e) =>
+                              e.ProductBarCode === findProduct.ProductBarCode
+                          );
+                          let netQuantity =
+                            isMatch?.Quantity * element?.Quantity;
+                          findProduct.Quantity = netQuantity;
+                          findProduct.Price = element?.Price;
+                          findProduct.SalesInvoiceDetailsID = uuid.v4();
+                          innerProductsArray.push(findProduct);
+                        }
+                      }
+                    );
+                  }
+                  if (innerProductsArray) {
+                    item.innerProductsArray = innerProductsArray;
+                  }
+                }
+                if (taxAmt.IsTax1IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+                }
+                if (taxAmt.IsTax2IncludedInPrice === true) {
+                  inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+                }
+
+                if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
+                  taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount * item?.Quantity
+                    : 0;
+                  taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount * item?.Quantity
+                    : 0;
+                }
+
+                // tax 1 details
+                item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+                item.Tax1Amount = totalTax;
+                item.Tax1Rate = taxAmt.Tax1Percentage
+                  ? taxAmt.Tax1Percentage
+                  : 0;
+                item.IsTax1IncludedInPrice =
+                  taxAmt.IsTax1IncludedInPrice === true ||
+                  taxAmt.IsTax1IncludedInPrice === 1
+                    ? true
+                    : false;
+                item.Tax1Fragment = taxAmt?.Tax1Fragment
+                  ? taxAmt.Tax1Fragment
+                  : "";
+                // tax 2 details
+                item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+                item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
+
+                item.Tax2Fragment = taxAmt?.Tax2Fragment
+                  ? taxAmt.Tax2Fragment
+                  : "";
+
+                item.IsTax12ncludedInPrice =
+                  taxAmt.IsTax2IncludedInPrice === true ||
+                  taxAmt.IsTax2IncludedInPrice === 1
+                    ? true
+                    : false;
+                item.Tax2Rate = taxAmt.Tax2Percentage
+                  ? taxAmt.Tax2Percentage
+                  : 0;
+                item.Tax2Amount = totaltax2;
+
+                totaltax1 = taxAmt.Tax1Amount
+                  ? totaltax1 + taxAmt.Tax1Amount
+                  : totaltax1 + 0;
+                totaltax2 = taxAmt.Tax2Amount
+                  ? totaltax2 + taxAmt.Tax2Amount
+                  : totaltax2 + 0;
+                //
+                let tax = totaltax1 + totaltax2;
+                console.log(tax);
+                //
+                item.Price = Number(item.PriceOriginal);
+
+                item.IngredientsArray = [];
+                item.IngredientNames = "";
+
+                if (item.productGroupTaxInfoObj.length === listOfPG.length) {
+                  isUpdatedGroup = true;
+                }
+
+                if (isUpdatedGroup) {
+                  item.productGroupTaxInfoObj.forEach((element) => {
+                    let itemProposedAmount =
+                      ((element.proposedPrice * item.Quantity) /
+                        (item.Pricefortax * item.Quantity)) *
+                      (item.PriceOriginal * item.Quantity);
+                    let itemDiscountWeight =
+                      (itemProposedAmount /
+                        (item.PriceOriginal * item.Quantity)) *
+                      item?.DiscountAmount;
+                    totalDiscount += Number(itemDiscountWeight);
+                    let afterDiscountAmount = 0;
+                    if (element.isInclusiveTax) {
+                      let inclTax =
+                        (itemProposedAmount / (100 + element.taxRate)) *
+                        element.taxRate;
+                      totalInclusiveTax += Number(
+                        inclTax /
+                          item?.Quantity.toFixed(
+                            TerminalConfiguration.DecimalsInAmount
+                          )
+                      );
+                      let pureAmount = itemProposedAmount - inclTax;
+                      afterDiscountAmount = pureAmount - itemDiscountWeight;
+                    } else {
+                      afterDiscountAmount =
+                        itemProposedAmount - itemDiscountWeight;
+                    }
+                    if (!element.isFixedTax) {
+                      let taxPrice =
+                        (element.taxRate / 100) * afterDiscountAmount;
+                      totalPrice += afterDiscountAmount + taxPrice;
+                      totalTax += taxPrice;
+                    }
+                    if (element.isFixedTax) {
+                      let fixtax = element.newTaxAmount * item.Quantity;
+                      totalPrice += fixtax + afterDiscountAmount;
+                      totalTax = totalTax + fixtax;
+                    }
+                    item.Tax1Amount = totalTax;
+                    tamount += element?.unitPrice;
+                    item.tax = Number(totalTax);
+                  });
+                  // }
+                  if (item?.IsTax1IncludedInPrice) {
+                    item.PriceWithOutTax = Number(
+                      item?.PriceOriginal - totalInclusiveTax
+                    );
+                  } else {
+                    item.PriceWithOutTax = Number(
+                      item?.PriceOriginal - totalInclusiveTax
+                    );
+                  }
+
+                  item.PriceUnitlesstax = Number(item.PriceWithOutTax);
+                  item.webperamount = Number(item?.PriceWithOutTax);
+                  item.GrandAmount = Number(totalPrice);
+                  sPrice = Number(item?.GrandAmount);
+                  tPrice = Number(item?.GrandAmount);
+                }
+              });
+
+              if (item.IsParentAddOn) {
+                selectedProduct.push(item);
+              } else {
+                selectedProduct[item.parentIndex - 1].haveAddon = true;
+                selectedProduct.splice(item.parentIndex, 0, item);
+              }
+              item.groupTaxCodes = groupTaxCodes;
+            });
+          }
+        } else {
+          let Amount = Number(item.PriceOriginal) * item.Quantity;
+          item.TaxGroupID = !item?.IsParentAddOn
+            ? item.SaleTaxGroupCode
+            : item.TaxGroupID;
+          let taxAmt = await calculateTaxeGroups(
+            item.Quantity,
+            Amount,
+            item.DiscountAmount,
+            item.TaxGroupID,
+            1,
+            null,
+            0,
+            TerminalConfiguration,
+            item.PriceOriginal,
+            item.DiscountRate
+          );
+
+          console.log("calculateTaxeGroups...", taxAmt);
+
+          //  Tax 1 details
+          item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+          (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+            (item.Tax1Rate = taxAmt.Tax1Percentage ? taxAmt.Tax1Percentage : 0),
+            (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
+            (item.Tax1Fragment = taxAmt.Tax1Fragment
+              ? taxAmt.Tax1Fragment
+              : "");
+          (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+            //  Tax 2 details
+            (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
+            (item.Tax2Rate = taxAmt?.Tax2Percentage
+              ? taxAmt?.Tax2Percentage
+              : 0),
+            (item.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
+          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : "";
+
+          if (
+            (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
+            item?.Tax2Fragment === 2
+          ) {
+            addonFinalQuantity = item.Quantity * item.OrignalQuantity;
+          }
+          if (
+            (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
+            item?.Tax2Fragment === 2
+          ) {
+            item.Tax1Amount = item.Tax1Amount * addonFinalQuantity;
+            item.Tax2Amount = item.Tax2Amount * addonFinalQuantity;
+          } else if (
+            (item?.IsParentAddOn && item?.Tax1Fragment == 2) ||
+            item?.Tax2Fragment === 2
+          ) {
+            item.Tax1Amount = item.Tax1Amount * item?.Quantity;
+            item.Tax2Amount = item.Tax2Amount * item?.Quantity;
+          }
+          let tax = item.Tax1Amount + item.Tax2Amount;
+          item.Price = Number(taxAmt.Price + tax);
+          item.PriceWithOutTax = Number(taxAmt.Price);
+          item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice
+            ? true
+            : false;
+          item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice
+            ? true
+            : false;
+          item.IngredientsArray = [];
+          item.IngredientNames = "";
+          item.tax = Number(tax);
+          item.GrandAmount =
+            Number(taxAmt.Price * item.Quantity) + tax - item.DiscountAmount;
+
+          sPrice = Number(subPrice + taxAmt.Price * item.Quantity + tax);
+          tPrice = Number(totalPrice + taxAmt.Price * item.Quantity + tax);
+          if (item.IsParentAddOn) {
+            selectedProduct.push(item);
+          } else {
+            selectedProduct[item.parentIndex - 1].haveAddon = true;
+            selectedProduct.splice(item.parentIndex, 0, item);
+          }
+        }
+      } else {
+        if (type === "addnos") {
+          sPrice = Number(subPrice + SP);
+          tPrice = Number(totalPrice + TP);
+          selectedProduct = selectedProduct.concat(proArray);
+        } else {
+          sPrice = Number(subPrice + item.GrandAmount - item.DiscountAmount);
+          tPrice = Number(totalPrice + item.GrandAmount - item.DiscountAmount);
+
+          if (item.IsParentAddOn) {
+            selectedProduct.push(item);
+          } else {
+            if (!isReturnInvoice) {
+              selectedProduct[item.parentIndex - 1].haveAddon = true;
+              selectedProduct.splice(item?.parentIndex, 0, item);
+            } else {
+              selectedProduct.push(item);
+            }
+          }
+        }
+      }
+    }
+    if (executeCalculation) {
+      setTimeout(() => {
+        setStateUpdate(true);
+        let p = [...selectedProduct];
+        finalUpdatedCalculation(p);
+        setSelectedProducts(selectedProduct);
+        setTimeout(() => {
+          setProductIndex(productIndex + 1);
+        }, 1000);
+        console.log("Fetch order products", selectedProduct);
+      }, 2000);
+    }
   };
+  const onManuallyAddDiscount = async (item, type) => {
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
 
-  const searchIngredientFun = (text) => {
-    setLoading(true);
+    item.IsUpdated = IsUpdated;
+    setoptionsOpen(false);
+    setPaymentsOpen(false);
+    let selectedProduct = [...selectedProducts];
+    let pDiscount;
+    item.DiscountAmount = Number(item.DiscountAmount);
+    let dP = 0; //item.DiscountRate
+    let dA = 0; //item.DiscountAmount
+    let amtDisP = 0,
+      pAmtP = 0;
+    let percentageDiscountAmount = 0,
+      amount = 0;
+    pGL = item.groupTaxCodes;
+    amount = Number(item?.PriceWithOutTax * item?.Quantity);
 
-    let filteredName = [];
-
-    if (text || text !== "") {
-      ingredientsData.filter((item) => {
-        if (
-          item?.IngredientName?.toLowerCase().match(text?.toLowerCase()) ||
-          item?.IngredientName1?.toLowerCase().match(text?.toLowerCase())
-        ) {
-          filteredName.push(item);
+    if (type === "DiscountRate") {
+      dA = manuallyCount === 0 ? manuallyCount : item.DiscountAmount;
+      dP = manuallyCount;
+      percentageDiscountAmount =
+        (item.webperamount * item.Quantity * manuallyCount) / 100;
+    } else {
+      dA = manuallyCount > amount ? 0 : manuallyCount;
+      dP = 0;
+      percentageDiscountAmount = dA;
+    }
+    if (item.ProductType === 3) {
+      let totalTax = 0,
+        totalPrice = 0;
+      item.productGroupTaxInfoObj.forEach((element) => {
+        let itemProposedAmount =
+          ((element.proposedPrice * item.Quantity) /
+            (item.Pricefortax * item.Quantity)) *
+          (item.PriceOriginal * item.Quantity);
+        let itemDiscountWeight =
+          (itemProposedAmount / (item.PriceOriginal * item.Quantity)) *
+          percentageDiscountAmount;
+        let afterDiscountAmount = 0;
+        if (element.isInclusiveTax) {
+          let inclTax =
+            (itemProposedAmount / (100 + element.taxRate)) * element.taxRate;
+          let pureAmount = itemProposedAmount - inclTax;
+          afterDiscountAmount = pureAmount - itemDiscountWeight;
+        } else {
+          afterDiscountAmount = itemProposedAmount - itemDiscountWeight;
+        }
+        if (!element.isFixedTax) {
+          let taxPrice = (element.taxRate / 100) * afterDiscountAmount;
+          totalPrice += afterDiscountAmount + taxPrice;
+          totalTax += taxPrice;
+        }
+        if (element.isFixedTax) {
+          let fixtax = element.newTaxAmount * item.Quantity;
+          totalPrice += fixtax + afterDiscountAmount;
+          totalTax = totalTax + fixtax;
         }
       });
-      // console.log('text...', text, filteredName, searchIngredient);
-      setSearchIngredient(filteredName);
-      setIsIngredientSearch(true);
-      setLoading(false);
-    } else {
-      setSearchIngredient([]);
-      setIsIngredientSearch(false);
-      setLoading(false);
-    }
-  };
+      let taxAmt = {
+        IsTax2InclusiveInPrice: item.IsTax2InclusiveInPrice
+          ? item.IsTax2InclusiveInPrice
+          : 0,
+        Tax2Value: item.Tax2Amount == 0 ? item.Tax2Amount : totalTax,
+        Tax2Fragment: item.Tax2Fragment ? item.Tax2Fragment : "",
+        Tax2Name: item.Tax2Name ? item.Tax2Name : "",
+        Tax2Code: item.Tax2Code ? item.Tax2Code : "",
+        IsTax1InclusiveInPrice: item.IsTax1InclusiveInPrice
+          ? item.IsTax1InclusiveInPrice
+          : 0,
+        Tax1Value: item.Tax1Amount == 0 ? item.Tax1Amount : totalTax,
+        Tax1Fragment: item.Tax1Fragment ? item.Tax1Fragment : "",
+        Tax1Name: item.Tax1Name ? item.Tax1Name : "",
+        Tax1Code: item.Tax1Code ? item.Tax1Code : "",
+      };
+      let tax = totalTax;
 
-  const onSelectIngredintes = (item, ingredintItem, index) => {
-    let ingredient = [...ingredientsData];
-    let selectpro = [...selectedProducts];
-    ingredient[index].isSelected = !item.isSelected;
-    // console.log("onSelectIngredintes", item, index)
-    selectpro.forEach((pro) => {
-      if (pro.ProductBarCode === item.ProductBarCode) {
-        console.log("select item run", item);
-        if (ingredient[index].isSelected) {
-          pro.IngredientsArray.push(item);
-          pro.Ingredients =
-            String(pro.Ingredients) + String(item.CategoryIngredientCode) + ",";
-          pro.IngredientNames =
-            String(pro.IngredientNames) + String(item.IngredientName) + ",";
+      if (tax >= 0) {
+        if (type === "DiscountRate") {
+          pDiscount =
+            manuallyCount === 0
+              ? 0
+              : taxAmt?.DiscountAmount
+              ? taxAmt.DiscountAmount
+              : parseFloat(
+                  (manuallyCount *
+                    (item.PriceWithOutTax * item.Quantity + tax)) /
+                    100
+                );
         } else {
-          const index = pro.IngredientsArray.findIndex(
-            (res) => res.Id === item.Id
-          );
-          console.log("onSelectIngredintes ", index, pro.IngredientsArray);
-          if (index > -1) {
-            pro.IngredientsArray.splice(index, 1);
-            pro.Ingredients = String(pro.Ingredients).replace(
-              `${item.CategoryIngredientCode},`,
-              ""
-            );
-            pro.IngredientNames = String(pro.IngredientNames).replace(
-              `${item.IngredientName},`,
-              ""
-            );
-            console.log(
-              "pro.Ingredients.replace",
-              pro.Ingredients,
-              `${item.CategoryIngredientCode},`
-            );
+          amtDisP =
+            manuallyCount === 0
+              ? 0
+              : (manuallyCount / (item.GrandAmount + item.DiscountAmount)) *
+                100;
+          pAmtP =
+            manuallyCount === 0
+              ? 0
+              : (item.DiscountAmount /
+                  (item.GrandAmount + item.DiscountAmount)) *
+                100;
+
+          if (manuallyCount >= item.GrandAmount + item.DiscountAmount) {
+            setMessage(props.StringsList._440);
+            setDisplayAlert(true);
+            setLoading(false);
+            return;
           }
         }
-      }
-    });
-
-    setSelectedProducts(selectpro);
-    setIngredientsData(ingredient);
-  };
-
-  const addIngredientFun = async () => {
-    let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
-    let ingredientName = ingredientText,
-      cultureCode = I18nManager.isRTL ? "ar-SA" : "en-US",
-      productBarCode = ingredientProductCode;
-
-    const response1 = await props.dispatch(
-      ServerCall(
-        UserLogin,
-        `Products/CreateProductIngredient?ingredientName=${ingredientName}&cultureCode=${cultureCode}&productBarCode=${productBarCode}`,
-        "GET"
-      )
-    );
-
-    console.log("add new integredient", response1);
-    let ing = [];
-    ing.push(response1);
-    InsertProductCardIngredientsList(ing);
-  };
-
-  const onPressAddIntgredient = () => {
-    setMessage(props.StringsList._407);
-    setAlertType("ingredient");
-    setDisplayAlert(true);
-    setisPromptAlert(true);
-  };
-
-  const getDetailofProduct = async (items) => {
-    setoptionsOpen(false);
-    setPaymentsOpen(false);
-    let filterCategoryProducts = [];
-
-    for (let i = 0; i < items.length; i++) {
-      var product = items[i];
-
-      await getDataById(
-        UpdateProductDetailListTable,
-        "ProductBarCode",
-        product?.ProductCode,
-        async (productDeltail) => {
-          if (productDeltail.length > 0) {
-            filterCategoryProducts.push(productDeltail[0]);
+        if (
+          (dP <= userDiscountLimit && type === "DiscountRate" && dP < 100) ||
+          (amtDisP <= userDiscountLimit &&
+            type !== "DiscountRate" &&
+            manuallyCount < amount)
+        ) {
+          if (manuallyCount === 0 && type === "DiscountRate") {
+          } else {
+            let p = 0;
+            if (item.DiscountAmount > 0) {
+              p =
+                (item.DiscountAmount /
+                  (item.GrandAmount + item.DiscountAmount)) *
+                100;
+            }
           }
+          if (selectedProduct.length > 0 && manuallyCount !== 0) {
+            selectedProduct.forEach(async (product) => {
+              if (
+                product.SalesInvoiceDetailsID === item?.SalesInvoiceDetailsID
+              ) {
+                if (type === "DiscountRate") {
+                  product.DiscountRate =
+                    manuallyCount === 0 ? 0 : manuallyCount;
+
+                  product.DiscountAmount =
+                    manuallyCount === 0
+                      ? 0
+                      : percentageDiscountAmount.toFixed(
+                          TerminalConfiguration.DecimalsInAmount
+                        );
+
+                  item.GrandAmount = totalPrice;
+                  product.tax = tax;
+                  product.Tax1Amount = tax;
+                } else if (type === "DiscountAmount") {
+                  item.GrandAmount = totalPrice;
+                  product.DiscountAmount = Number(manuallyCount);
+
+                  product.tax = tax;
+                  product.Tax1Amount = tax;
+
+                  product.DiscountAmountP = 0;
+                }
+              }
+            });
+          } else {
+            item.GrandAmount = totalPrice;
+            item.DiscountRate = 0;
+            item.DiscountAmount = 0;
+            item.tax = totalTax;
+          }
+          let p = [...selectedProduct];
+          finalCalculation(p);
+          setSelectedProducts(selectedProduct);
+        } else {
+          setMessage(props.StringsList._267);
+          setDisplayAlert(true);
+          setLoading(false);
         }
-      );
-    }
-    // console.log('Filter Category Products', filterCategoryProducts);
-    return filterCategoryProducts;
-  };
-
-  const getSelectedCategoryProducts = async (item, index) => {
-    setLoading(true);
-    let itemId = item
-      ? item.ProductFamilyCode
-      : allCategoreis[0].ProductFamilyCode;
-    let selectCat = item ? item : allCategoreis[0];
-
-    setSelectedcat(selectCat);
-    setSelectedCatIndex(index);
-    setToggle(false);
-
-    setfocus(index ? index : 0);
-
-    let catProducts = [];
-    let filterCategoryProducts;
-
-    await getDataById(
-      ProductListTable,
-      "ProductFamilyCode",
-      itemId,
-      (products) => {
-        catProducts = products;
-      }
-    );
-    // console.log('catProducts', catProducts);
-
-    filterCategoryProducts = await getDetailofProduct(catProducts);
-    setLoading(false);
-    setCategoryProducts(filterCategoryProducts);
-    if (item) {
-      //alert("df")
-      onSelectProduct(null, filterCategoryProducts);
-    }
-    setLoading(false);
-  };
-
-  const toggleFun = () => {
-    setToggle(!isToggle);
-    // getSelectedCategoryProducts(allCategoreis[0])
-  };
-
-  const onPressBackCat = () => {
-    console.log("onPressBackCat....");
-    if (noFamilyFound) {
-      getAllCategories();
-      setToggle(false);
-    } else {
-      getSelectedCategoryProducts(selectedcat, selectedCatIndex);
-      setToggle(false);
-    }
-  };
-
-  // const numberToEngArbWords = (val, isEnglish) => {
-  //   let value = Number(val);
-  //   let words = '';
-  //   if (isEnglish) {
-  //     words = numberToWord.toWords(value);
-  //   } else {
-  //     words = new numberToArb(value, 'SAR').parse();
-  //   }
-  //   return words;
-  // };
-
-  const numberToEngArbWords = (val, isEnglish) => {
-    let value = Number(val);
-    let words = "";
-    if (isEnglish) {
-      let fractword = String(val).split(".");
-      console.log("word of english ", fractword);
-      let firstWords = Number(fractword[0]);
-      words = numberToWord.toWords(firstWords);
-      if (Number(fractword[1] > 0)) {
-        let num = Number(fractword[1]);
-        let secondWords = numberToWord.toWords(num);
-        words = words + " and " + secondWords;
-      }
-      words = words + " halala only.";
-    } else {
-      words = new numberToArb(value, "SAR").parse();
-    }
-    return words;
-  };
-
-  const onInvoiceClick = () => {
-    let srNo = 1;
-    let array = [...selectedProducts];
-    array.forEach((e) => {
-      if (e.IsParentAddOn) {
-        e.srNo = srNo++;
       } else {
-        e.srNo = 0;
+        setMessage(props.StringsList._267);
+        setDisplayAlert(true);
+        setLoading(false);
       }
-    });
-    setSelectedProducts(array);
-    setoptionsOpen(false);
-    setPaymentsOpen(false);
-    if (returnInvoiceNumber) {
-      setisReturnInvoice(true);
+    } else {
+      let taxAmt = await calculateTaxeGroups(
+        item.Quantity,
+        item.PriceOriginal * item.Quantity,
+        dA,
+        item.TaxGroupID,
+        1,
+        null,
+        0,
+        TerminalConfiguration,
+        item.PriceWithOutTax,
+        dP
+      );
+
+      if (item.Tax1Fragment == 2) {
+        taxAmt.Tax1Amount = taxAmt.Tax1Amount * item.Quantity;
+        taxAmt.DiscountAmount =
+          (manuallyCount * (item.PriceWithOutTax * item.Quantity)) / 100;
+      } else {
+        taxAmt.Tax1Amount = taxAmt.Tax1Amount;
+      }
+
+      let tax = taxAmt?.Tax1Amount ? taxAmt?.Tax1Amount : 0;
+      if (tax >= 0) {
+        if (type === "DiscountRate") {
+          pDiscount =
+            manuallyCount === 0
+              ? 0
+              : taxAmt?.DiscountAmount
+              ? taxAmt.DiscountAmount
+              : parseFloat(
+                  (manuallyCount *
+                    (item.PriceWithOutTax * item.Quantity + tax)) /
+                    100
+                );
+        } else {
+          amtDisP =
+            manuallyCount === 0
+              ? 0
+              : (manuallyCount / (item.GrandAmount + item.DiscountAmount)) *
+                100;
+          pAmtP =
+            manuallyCount === 0
+              ? 0
+              : (item.DiscountAmount /
+                  (item.GrandAmount + item.DiscountAmount)) *
+                100;
+
+          if (manuallyCount >= item.GrandAmount + item.DiscountAmount) {
+            setMessage(props.StringsList._440);
+            setDisplayAlert(true);
+            setLoading(false);
+            return;
+          }
+        }
+        if (
+          (dP <= userDiscountLimit && type === "DiscountRate" && dP < 100) ||
+          (amtDisP <= userDiscountLimit &&
+            type !== "DiscountRate" &&
+            manuallyCount < amount)
+        ) {
+          if (manuallyCount === 0 && type === "DiscountRate") {
+          } else {
+            let p = 0;
+            if (item.DiscountAmount > 0) {
+              p =
+                (item.DiscountAmount /
+                  (item.GrandAmount + item.DiscountAmount)) *
+                100;
+            }
+          }
+          if (selectedProduct.length > 0 && manuallyCount !== 0) {
+            selectedProduct.forEach(async (product) => {
+              if (
+                product.SalesInvoiceDetailsID === item?.SalesInvoiceDetailsID
+              ) {
+                if (type === "DiscountRate") {
+                  if (
+                    taxAmt.calculationId === 9 ||
+                    taxAmt.calculationId === 1
+                  ) {
+                    product.GrandAmount = Number(
+                      taxAmt.amount + taxAmt.Tax1Amount
+                    );
+                  } else {
+                    product.GrandAmount = Number(
+                      product.IsTax1IncludedInPrice == 0
+                        ? item.PriceOriginal * item.Quantity - pDiscount + tax
+                        : item.PriceOriginal * item.Quantity - pDiscount
+                    );
+                  }
+                  product.DiscountRate =
+                    manuallyCount === 0 ? 0 : manuallyCount;
+
+                  product.DiscountAmount =
+                    manuallyCount === 0
+                      ? 0
+                      : taxAmt.DiscountAmount
+                      ? taxAmt.DiscountAmount.toFixed(
+                          TerminalConfiguration.DecimalsInAmount
+                        )
+                      : pDiscount.toFixed(
+                          TerminalConfiguration.DecimalsInAmount
+                        );
+
+                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+                    (product.Tax1Rate = taxAmt.Tax1Percentage
+                      ? taxAmt.Tax1Percentage
+                      : 0),
+                    (product.Tax1Amount = taxAmt.Tax1Amount
+                      ? taxAmt.Tax1Amount
+                      : 0),
+                    (product.Tax2Code = taxAmt?.Tax2Code
+                      ? taxAmt.Tax2Code
+                      : ""),
+                    (product.Tax2Name = taxAmt?.Tax2Name
+                      ? taxAmt?.Tax2Name
+                      : ""),
+                    (product.Tax2Rate = taxAmt?.Tax2Percentage
+                      ? taxAmt?.Tax2Percentage
+                      : 0),
+                    (product.Tax2Amount = taxAmt?.Tax2Amount
+                      ? taxAmt?.Tax2Amount
+                      : 0);
+                  product.tax = product.Tax1Amount + product.Tax2Amount;
+                } else {
+                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+                    (product.Tax1Rate = taxAmt.Tax1Percentage
+                      ? taxAmt.Tax1Percentage
+                      : 0),
+                    (product.Tax1Amount = taxAmt.Tax1Amount
+                      ? taxAmt.Tax1Amount
+                      : 0),
+                    (product.Tax2Code = taxAmt?.Tax2Code
+                      ? taxAmt.Tax2Code
+                      : ""),
+                    (product.Tax2Name = taxAmt?.Tax2Name
+                      ? taxAmt?.Tax2Name
+                      : ""),
+                    (product.Tax2Rate = taxAmt?.Tax2Percentage
+                      ? taxAmt?.Tax2Percentage
+                      : 0),
+                    (product.Tax2Amount = taxAmt?.Tax2Amount
+                      ? taxAmt?.Tax2Amount
+                      : 0);
+
+                  let GA = item.PriceOriginal * item.Quantity;
+                  let tax = product.Tax1Amount + product.Tax2Amount;
+                  let GAmount = 0;
+                  if (
+                    taxAmt.calculationId === 9 ||
+                    taxAmt.calculationId === 1
+                  ) {
+                    GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
+                  } else {
+                    GAmount = !product.IsTax1IncludedInPrice
+                      ? Number(GA + tax) - Number(manuallyCount)
+                      : Number(GA) - Number(manuallyCount);
+                  }
+
+                  product.DiscountAmount = Number(manuallyCount);
+                  product.GrandAmount = GAmount;
+                  product.tax = tax;
+                  product.DiscountAmountP = 0;
+                }
+                setmanuallyCount(0);
+              }
+            });
+          } else {
+            item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+            (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+              (item.Tax1Rate = taxAmt.Tax1Percentage
+                ? taxAmt.Tax1Percentage
+                : 0),
+              (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
+              (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+              (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
+              (item.Tax2Rate = taxAmt?.Tax2Percentage
+                ? taxAmt?.Tax2Percentage
+                : 0),
+              (item.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
+            let GA = item.PriceOriginal * item.Quantity;
+            let tax = item.Tax1Amount + item.Tax2Amount;
+
+            if (taxAmt.IsTax1IncludedInPrice) {
+              item.GrandAmount = Number(GA);
+            } else {
+              item.GrandAmount = Number(GA + tax);
+            }
+            item.DiscountRate = 0;
+            item.DiscountAmount = 0;
+            item.tax = tax;
+          }
+          let p = [...selectedProduct];
+          finalCalculation(p);
+          setSelectedProducts(selectedProduct);
+        } else {
+          setMessage(props.StringsList._267);
+          setDisplayAlert(true);
+          setLoading(false);
+        }
+      } else {
+        setMessage(props.StringsList._267);
+        setDisplayAlert(true);
+        setLoading(false);
+      }
     }
-    setToggle(!isToggle);
   };
 
   const onManuallyAddCount = async (item) => {
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
+    item.IsUpdated = IsUpdated;
     setoptionsOpen(false);
     setPaymentsOpen(false);
+
     let selectedProduct = [...selectedProducts];
     let addonFinalQuantity, newQuantity;
+
     if (selectedProduct.length > 0 && manuallyCount >= 1) {
       for (let i = 0; i < selectedProduct.length; i++) {
         let product = selectedProduct[i];
         newQuantity = manuallyCount;
         if (product.ProductType === 3) {
+          product.IsParentAddOn =
+            product.IsParentAddOn === 1 || product.IsParentAddOn == true
+              ? true
+              : false;
           let Amount = Number(product.PriceOriginal * newQuantity);
           if (!product?.IsParentAddOn) {
             addonFinalQuantity = newQuantity * product.OrignalQuantity;
@@ -1868,31 +5193,44 @@ const HomeScreen = (props) => {
             let type =
               newQuantity > product.Quantity ? "increment" : "decrement";
             if (product.IsParentAddOn) {
-              changeProductGroupItem(
-                product,
-                type,
-                newQuantity,
-                product.DiscountRate,
-                Number(product.DiscountAmount)
-              );
-            } else {
-              changeProductGroupAddon(
-                product,
-                type,
-                addonFinalQuantity,
-                product.DiscountRate,
-                Number(product.DiscountAmount)
-              );
+              let isProductFind =
+                product?.SalesInvoiceDetailsID ===
+                  item?.SalesInvoiceDetailsID &&
+                product?.PriceOriginal === item?.PriceOriginal &&
+                product?.ProductBarCode === item?.ProductBarCode;
+              if (isProductFind) {
+                changeProductGroupItem(
+                  product,
+                  type,
+                  newQuantity,
+                  Number(product.DiscountRate),
+                  Number(product.DiscountAmount)
+                );
+              }
+            } else if (!product.IsParentAddOn) {
+              let isAddonFind =
+                product?.AddOnParentSalesInvoiceDetailsID ===
+                  item?.SalesInvoiceDetailsID &&
+                product?.ParentInvoiceDetailsID === item?.SalesInvoiceDetailsID;
+              if (isAddonFind) {
+                changeProductGroupAddon(
+                  item,
+                  product,
+                  type,
+                  addonFinalQuantity,
+                  Number(product.DiscountRate),
+                  Number(product.DiscountAmount),
+                  printType
+                );
+              }
             }
           }
         } else {
           newQuantity = manuallyCount;
 
-          // for (let i = 0; i < selectedProduct.length; i++) {
-          //   let product = selectedProduct[i];
           if (
-            product.SalesBillDetailsID === item?.SalesBillDetailsID ||
-            product?.ParentInvoiceDetailsID === item.SalesBillDetailsID
+            product.SalesInvoiceDetailsID === item?.SalesInvoiceDetailsID ||
+            product?.ParentInvoiceDetailsID === item.SalesInvoiceDetailsID
           ) {
             setLoading(true);
             if (!product?.IsParentAddOn) {
@@ -2005,144 +5343,19 @@ const HomeScreen = (props) => {
     }
   };
 
-  const onChangePrice = async (item, newprice) => {
-    setoptionsOpen(false);
-    setPaymentsOpen(false);
-    let selectedProduct = [...selectedProducts];
-    let sPrice = subPrice,
-      tPrice = totalPrice,
-      pd;
-
-    if (selectedProduct.length > 0) {
-      let newQuantity = item.Quantity;
-      for (let i = 0; i < selectedProduct.length; i++) {
-        let product = selectedProduct[i];
-        if (
-          product.SalesBillDetailsID === item?.SalesBillDetailsID &&
-          newprice !== item.PriceWithOutTax
-        ) {
-          let Amount =
-            newprice === item.PriceWithOutTax
-              ? Number(item.PriceOriginal * item.Quantity)
-              : Number(newprice * item.Quantity);
-
-          pd = product.DiscountAmount ? product.DiscountAmount : 0;
-
-          if (pd >= Amount) {
-            pd = 0;
-          }
-          product.DiscountAmount = pd;
-          console.log("change price type", Amount, newprice);
-          let taxAmt = await calculateTaxeGroups(
-            newQuantity,
-            Amount,
-            product.DiscountAmount,
-            product.TaxGroupID,
-            1,
-            null,
-            0,
-            TerminalConfiguration,
-            newprice,
-            product.DiscountRate
-          );
-          console.log("calculateTaxeGroups onChangePrice", taxAmt);
-          let proQ,
-            discount = 0;
-          product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-          (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
-            (product.Tax1Rate = taxAmt.Tax1Percentage
-              ? taxAmt.Tax1Percentage
-              : 0),
-            (product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
-            (product.Tax1Fragment = taxAmt.Tax1Fragment
-              ? taxAmt.Tax1Fragment
-              : ""),
-            (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
-            (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
-            (product.Tax2Rate = taxAmt?.Tax2Percentage
-              ? taxAmt?.Tax2Percentage
-              : 0),
-            (product.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
-          (product.Tax2Fragment = taxAmt.Tax2Fragment
-            ? taxAmt.Tax2Fragment
-            : ""),
-            (product.PriceWithOutTax = taxAmt.Price);
-          product.PriceOriginal = newprice;
-          if (!product.IsParentAddOn) {
-            proQ =
-              (product.maxQuantity > 0 ? newQuantity - 1 : newQuantity) *
-              product.OrignalQuantity;
-          } else {
-            proQ = product.maxQuantity > 0 ? newQuantity - 1 : newQuantity;
-          }
-          if (proQ !== product.maxQuantity) {
-            product.Quantity = newQuantity;
-            taxAmt.DiscountAmount = product.DiscountRate
-              ? (product.PriceOriginal * newQuantity * product.DiscountRate) /
-                100
-              : product.DiscountAmount;
-            if (product.DiscountRate > 0) {
-              discount = taxAmt.DiscountAmount
-                ? taxAmt.DiscountAmount
-                : parseFloat(
-                    (product.DiscountRate *
-                      (product.PriceOriginal * newQuantity +
-                        taxAmt.Tax1Amount)) /
-                      100
-                  );
-            } else {
-              discount = product.DiscountAmount;
-            }
-
-            let GAmount = 0;
-
-            if (taxAmt.calculationId === 9 || taxAmt.calculationId === 1) {
-              GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
-            } else {
-              GAmount = product.IsTax1IncludedInPrice
-                ? Number(product.PriceOriginal * newQuantity - discount)
-                : Number(
-                    product.PriceOriginal * newQuantity -
-                      discount +
-                      taxAmt.Tax1Amount
-                  );
-            }
-            product.GrandAmount = Number(GAmount);
-
-            //;
-            discount = Number(discount);
-            product.DiscountAmount = discount.toFixed(
-              TerminalConfiguration.DecimalsInAmount
-            );
-            product.tax = product.Tax1Amount + product.Tax2Amount;
-          } else {
-            setMessage(props.StringsList._230);
-            setDisplayAlert(true);
-            setLoading(false);
-          }
-
-          let p = [...selectedProduct];
-          finalCalculation(p);
-          setmanuallyCount(1);
-          setSelectedProducts(selectedProduct);
-        } else {
-          setmanuallyCount(1);
-          setSelectedProducts(selectedProduct);
-          setsubPrice(sPrice);
-          setTotalPrice(tPrice);
-          setLoading(false);
-        }
-      }
-    }
-  };
-
   const onManuallyChangePrice = async (item) => {
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
+
+    item.IsUpdated = IsUpdated;
     setoptionsOpen(false);
     setPaymentsOpen(false);
     let selectedProduct = [...selectedProducts];
     let includedTax = 0,
       manualCount = 0;
-    pGL = item.groupTaxCodes;
+    // pGL = item.groupTaxCodes;
     manualCount = manuallyCount.toFixed(TerminalConfiguration.DecimalsInAmount);
     setmanuallyCount(manualCount);
     if (selectedProduct.length > 0) {
@@ -2152,7 +5365,7 @@ const HomeScreen = (props) => {
         for (let i = 0; i < selectedProduct.length; i++) {
           let product = selectedProduct[i];
           if (
-            product.SalesBillDetailsID === item?.SalesBillDetailsID &&
+            product.SalesInvoiceDetailsID === item?.SalesInvoiceDetailsID &&
             manuallyCount !== item.PriceWithOutTax
           ) {
             let Amount =
@@ -2162,17 +5375,14 @@ const HomeScreen = (props) => {
             Amount = Number(
               Amount.toFixed(TerminalConfiguration.DecimalsInAmount)
             );
-            if (product.DiscountAmount >= Amount) {
+            if (
+              product.DiscountAmount >= Amount &&
+              product.DiscountRate === 0
+            ) {
               product.DiscountAmount = 0;
             } else {
               product.DiscountAmount = product.DiscountAmount;
             }
-            console.log(
-              "Amount change for product type 3",
-              Amount,
-              manuallyCount,
-              product.DiscountAmount
-            );
 
             if (product.groupTaxCodes) {
               let totaltax1 = 0,
@@ -2181,6 +5391,7 @@ const HomeScreen = (props) => {
                 percentageDiscountAmount = 0,
                 totalTax = 0,
                 totalPrice = 0;
+
               if (item.DiscountAmount > 0) {
                 if (item.DiscountRate > 0) {
                   let AmountWithOutTax = 0;
@@ -2208,13 +5419,30 @@ const HomeScreen = (props) => {
                     }
                   });
                 } else {
-                  percentageDiscountAmount = item.DiscountAmount;
-                  item.PriceOriginal = manuallyCount.toFixed(
-                    TerminalConfiguration.DecimalsInAmount
-                  );
-                  item.PriceOriginal = Number(item.PriceOriginal);
-                  executeCal = false;
-                  handleDiscount(item, undefined);
+                  let AmountWithOutTax = 0;
+                  item.productGroupTaxInfoObj.forEach((element, position) => {
+                    let itemProposedAmount =
+                      (element.proposedPrice / item.Pricefortax) *
+                      manuallyCount;
+
+                    if (element.isInclusiveTax) {
+                      let inclTax =
+                        (itemProposedAmount / (100 + element.taxRate)) *
+                        element.taxRate;
+                      AmountWithOutTax += itemProposedAmount - inclTax;
+                    } else {
+                      AmountWithOutTax += itemProposedAmount;
+                    }
+                    if (position === item.productGroupTaxInfoObj.length - 1) {
+                      item.PriceOriginal = manuallyCount.toFixed(
+                        TerminalConfiguration.DecimalsInAmount
+                      );
+                      item.PriceOriginal = Number(item.PriceOriginal);
+                      executeCal = false;
+                      item.PriceWithOutTax = AmountWithOutTax;
+                      handleDiscount(item, undefined);
+                    }
+                  });
                 }
               }
 
@@ -2276,27 +5504,30 @@ const HomeScreen = (props) => {
 
                   let tax = totaltax1 + totaltax2;
 
-                  product.Tax1Fragment = product.Tax1Fragment;
-                  product.Tax2Fragment = product.Tax2Fragment;
-
                   console.log(
                     "calculateTaxeGroups for Product type 3...",
                     taxAmt
                   );
                   let proQ,
                     discount = 0;
+                  // Tax 1 details
+                  product.Tax1Fragment = taxAmt?.Tax1Fragment
+                    ? taxAmt.Tax1Fragment
+                    : "";
                   product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
                   (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
                     (product.Tax1Rate = taxAmt.Tax1Percentage
                       ? taxAmt.Tax1Percentage
                       : 0),
                     (product.Tax1Amount = totaltax1),
+                    // Tax 1 details
                     (product.Tax2Code = taxAmt?.Tax2Code
                       ? taxAmt.Tax2Code
                       : ""),
-                    (product.Tax2Name = taxAmt?.Tax2Name
-                      ? taxAmt?.Tax2Name
-                      : ""),
+                    (product.Tax2Fragment = taxAmt?.Tax2Fragment
+                      ? taxAmt.Tax2Fragment
+                      : "");
+                  (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
                     (product.Tax2Rate = taxAmt?.Tax2Percentage
                       ? taxAmt?.Tax2Percentage
                       : 0),
@@ -2354,13 +5585,15 @@ const HomeScreen = (props) => {
                     );
 
                     product.tax = totaltax1 + totaltax2;
-                    if (index === pGL.length - 1) {
-                      let p = [...selectedProduct];
-                      finalCalculation(p);
-                      setmanuallyCount(1);
+                    if (index === product.groupTaxCodes.length - 1) {
+                      setTimeout(() => {
+                        let p = [...selectedProduct];
+                        finalCalculation(p);
+                        setmanuallyCount(1);
 
-                      setSelectedProducts(selectedProduct);
-                      manualCount = 0;
+                        setSelectedProducts(selectedProduct);
+                        manualCount = 0;
+                      }, 1000);
                     }
                   } else {
                     setMessage(props.StringsList._230);
@@ -2381,7 +5614,6 @@ const HomeScreen = (props) => {
                 manuallyCount,
                 product.DiscountRate
               );
-              console.log("calculateTaxeGroups for Product type 3...", taxAmt);
               let proQ,
                 discount = 0;
               product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
@@ -2404,7 +5636,6 @@ const HomeScreen = (props) => {
                 TerminalConfiguration.DecimalsInAmount
               );
               item.PriceWithOutTax = Number(item.PriceWithOutTax);
-              // product.PriceWithOutTax = taxAmt.Price;
               item.PriceOriginal = manuallyCount.toFixed(
                 TerminalConfiguration.DecimalsInAmount
               );
@@ -2468,11 +5699,11 @@ const HomeScreen = (props) => {
         }
       } else {
         let newQuantity = item.Quantity;
-
+        let inclusiveProductPrice = 0;
         for (let i = 0; i < selectedProduct.length; i++) {
           let product = selectedProduct[i];
           if (
-            product.SalesBillDetailsID === item?.SalesBillDetailsID &&
+            product.SalesInvoiceDetailsID === item?.SalesInvoiceDetailsID &&
             manuallyCount !== item.PriceWithOutTax
           ) {
             let Amount =
@@ -2483,11 +5714,14 @@ const HomeScreen = (props) => {
             Amount = Number(
               Amount.toFixed(TerminalConfiguration.DecimalsInAmount)
             );
-            console.log(
-              "Amount change for product type 3",
-              Amount,
-              manuallyCount
-            );
+            let inclTax = (Amount / (100 + item.Tax1Rate)) * item.Tax1Rate;
+            if (
+              product.IsTax1IncludedInPrice ||
+              product.IsTax2IncludedInPrice
+            ) {
+              inclusiveProductPrice = manuallyCount - inclTax;
+            }
+
             product.DiscountAmount =
               product.DiscountAmount >= Amount ? 0 : product.DiscountAmount;
             let taxAmt = await calculateTaxeGroups(
@@ -2499,12 +5733,17 @@ const HomeScreen = (props) => {
               null,
               0,
               TerminalConfiguration,
-              manuallyCount,
+              product.IsTax1IncludedInPrice
+                ? inclusiveProductPrice
+                : manuallyCount,
               product.DiscountRate
             );
             console.log("calculateTaxeGroups...", taxAmt);
             let proQ,
               discount = 0;
+            product.Tax1Fragment = taxAmt?.Tax1Fragment
+              ? taxAmt.Tax1Fragment
+              : "";
             product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
             (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
               (product.Tax1Rate = taxAmt.Tax1Percentage
@@ -2515,7 +5754,9 @@ const HomeScreen = (props) => {
             } else {
               product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
             }
-
+            product.Tax2Fragment = taxAmt?.Tax2Fragment
+              ? taxAmt.Tax2Fragment
+              : "";
             (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
               (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
               (product.Tax2Rate = taxAmt?.Tax2Percentage
@@ -2524,13 +5765,10 @@ const HomeScreen = (props) => {
               (product.Tax2Amount = taxAmt?.Tax2Amount
                 ? taxAmt?.Tax2Amount
                 : 0);
-            product.Tax1Fragment = product.Tax1Fragment;
-            product.Tax2Fragment = product.Tax2Fragment;
             item.PriceWithOutTax = taxAmt?.Price.toFixed(
               TerminalConfiguration.DecimalsInAmount
             );
             item.PriceWithOutTax = Number(item.PriceWithOutTax);
-            // product.PriceWithOutTax = taxAmt.Price;
             item.PriceOriginal = manuallyCount.toFixed(
               TerminalConfiguration.DecimalsInAmount
             );
@@ -2544,14 +5782,16 @@ const HomeScreen = (props) => {
             }
             if (proQ !== product.maxQuantity) {
               product.Quantity = newQuantity;
-
               if (product.DiscountRate > 0) {
                 discount =
-                  (manuallyCount * product.Quantity * product.DiscountRate) /
+                  (product.PriceWithOutTax *
+                    product.Quantity *
+                    product.DiscountRate) /
                   100;
               } else {
                 discount = product.DiscountAmount;
               }
+
               let GAmount = 0;
 
               if (taxAmt.calculationId === 9 || taxAmt.calculationId === 1) {
@@ -2580,7 +5820,7 @@ const HomeScreen = (props) => {
             }
             let p = [...selectedProduct];
             finalCalculation(p);
-            setmanuallyCount(1);
+            // setmanuallyCount(1);
             manualCount = 0;
             setSelectedProducts(selectedProduct);
           } else {
@@ -2591,6 +5831,12 @@ const HomeScreen = (props) => {
   };
 
   const handleDiscount = async (item, type) => {
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
+
+    item.IsUpdated = IsUpdated;
     setoptionsOpen(false);
     setPaymentsOpen(false);
     let selectedProduct = [...selectedProducts];
@@ -2608,6 +5854,7 @@ const HomeScreen = (props) => {
       dA = percentageDiscountAmount;
     } else {
       dA = item.DiscountAmount;
+
       dP = 0;
       percentageDiscountAmount = dA;
     }
@@ -2643,638 +5890,62 @@ const HomeScreen = (props) => {
     });
     let tax = totalTax;
     if (tax >= 0) {
-      if (selectedProduct.length > 0 && manuallyCount !== 0) {
-        tax1AmountTotal = totalTax;
-        item.GrandAmount = totalPrice;
+      if (selectedProduct.length > 0 && (dP !== 0 || dA !== 0)) {
         selectedProduct.forEach(async (product) => {
-          if (product.SalesBillDetailsID === item?.SalesBillDetailsID) {
+          if (product.SalesInvoiceDetailsID === item?.SalesInvoiceDetailsID) {
             if (type === "DiscountRate") {
               product.DiscountRate = product.DiscountRate;
-              product.DiscountAmount =
-                product.DiscountRate === 0
-                  ? 0
-                  : percentageDiscountAmount
-                  ? percentageDiscountAmount.toFixed(2)
-                  : pDiscount.toFixed(2);
+              product.DiscountAmount = percentageDiscountAmount;
 
-              product.webperamount =
-                (totalPrice - totalTax + Number(product.DiscountAmount)) /
-                item.Quantity;
-              product.PriceWithOutTax = product.webperamount;
+              product.GrandAmount = Number(totalPrice);
+              // product.webperamount =
+              //   (totalPrice - totalTax + Number(product.DiscountAmount)) /
+              //   item.Quantity;
+              product.webperamount = Number(product.PriceWithOutTax);
+              product.PriceWithOutTax = Number(item.webperamount);
               product.tax = tax;
               product.Tax1Amount = tax;
+              product.DiscountAmount = Number(
+                product.DiscountAmount.toFixed(
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              );
             } else {
-              product.DiscountAmount = Number(product.DiscountAmount);
+              product.DiscountAmount = Number(
+                percentageDiscountAmount.toFixed(
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              );
+              product.GrandAmount = Number(totalPrice);
               product.tax = tax;
               product.Tax1Amount = tax;
-              product.DiscountAmountP = 0;
-              item.webperamount =
-                (totalPrice - totalTax + Number(product.DiscountAmount)) /
-                item.Quantity;
-              item.PriceWithOutTax = item.webperamount;
+              // product.DiscountAmountP = 0;
+              // product.webperamount =
+              //   (totalPrice - totalTax + Number(product.DiscountAmount)) /
+              //   item.Quantity;
+              product.webperamount = Number(product.PriceWithOutTax);
+              product.PriceWithOutTax = Number(product.webperamount);
             }
           }
         });
       } else {
-        tax1AmountTotal = totalTax;
-        item.GrandAmount = totalPrice;
-
-        item.DiscountRate = 0;
-
-        item.DiscountAmount = 0;
-        item.tax = totalTax;
-        item.DiscountAmountP = 0;
+        product.GrandAmount = Number(totalPrice);
+        product.DiscountRate = 0;
+        product.DiscountAmount = 0;
+        product.tax = Number(
+          totalTax.toFixed(TerminalConfiguration.DecimalsInAmount)
+        );
       }
-      let p = [...selectedProduct];
-      finalCalculation(p);
-      setSelectedProducts(selectedProduct);
+      setTimeout(() => {
+        let p = [...selectedProduct];
+        finalCalculation(p);
+        setSelectedProducts(selectedProduct);
+      }, 1000);
     } else {
       setMessage(props.StringsList._267);
       setDisplayAlert(true);
       setLoading(false);
     }
-  };
-
-  const onManuallyAddDiscount = async (item, type) => {
-    setoptionsOpen(false);
-    setPaymentsOpen(false);
-    let selectedProduct = [...selectedProducts];
-    let pDiscount;
-    item.DiscountAmount = Number(item.DiscountAmount);
-    let dP = 0; //item.DiscountRate
-    let dA = 0; //item.DiscountAmount
-    let amtDisP = 0,
-      pAmtP = 0;
-    let percentageDiscountAmount = 0,
-      amount = 0;
-    pGL = item.groupTaxCodes;
-    amount = Number(item?.PriceWithOutTax * item?.Quantity);
-
-    if (type === "DiscountRate") {
-      dA = manuallyCount === 0 ? manuallyCount : item.DiscountAmount;
-      dP = manuallyCount;
-      percentageDiscountAmount =
-        (item.webperamount * item.Quantity * manuallyCount) / 100;
-    } else {
-      dA = manuallyCount > amount ? 0 : manuallyCount;
-      dP = 0;
-      percentageDiscountAmount = manuallyCount;
-    }
-    if (item.ProductType === 3) {
-      let totalTax = 0,
-        totalPrice = 0;
-      item.productGroupTaxInfoObj.forEach((element) => {
-        let itemProposedAmount =
-          ((element.proposedPrice * item.Quantity) /
-            (item.Pricefortax * item.Quantity)) *
-          (item.PriceOriginal * item.Quantity);
-        let itemDiscountWeight =
-          (itemProposedAmount / (item.PriceOriginal * item.Quantity)) *
-          percentageDiscountAmount;
-        let afterDiscountAmount = 0;
-        if (element.isInclusiveTax) {
-          let inclTax =
-            (itemProposedAmount / (100 + element.taxRate)) * element.taxRate;
-          let pureAmount = itemProposedAmount - inclTax;
-          afterDiscountAmount = pureAmount - itemDiscountWeight;
-        } else {
-          afterDiscountAmount = itemProposedAmount - itemDiscountWeight;
-        }
-        if (!element.isFixedTax) {
-          let taxPrice = (element.taxRate / 100) * afterDiscountAmount;
-          totalPrice += afterDiscountAmount + taxPrice;
-          totalTax += taxPrice;
-        }
-        if (element.isFixedTax) {
-          let fixtax = element.newTaxAmount * item.Quantity;
-          totalPrice += fixtax + afterDiscountAmount;
-          totalTax = totalTax + fixtax;
-        }
-      });
-
-      let taxAmt = {
-        IsTax2InclusiveInPrice: item.IsTax2InclusiveInPrice
-          ? item.IsTax2InclusiveInPrice
-          : 0,
-        Tax2Value: item.Tax2Amount == 0 ? item.Tax2Amount : totalTax,
-        Tax2Fragment: item.Tax2Fragment ? item.Tax2Fragment : "",
-        Tax2Name: item.Tax2Name ? item.Tax2Name : "",
-        Tax2Code: item.Tax2Code ? item.Tax2Code : "",
-        IsTax1InclusiveInPrice: item.IsTax1InclusiveInPrice
-          ? item.IsTax1InclusiveInPrice
-          : 0,
-        Tax1Value: item.Tax1Amount == 0 ? item.Tax1Amount : totalTax,
-        Tax1Fragment: item.Tax1Fragment ? item.Tax1Fragment : "",
-        Tax1Name: item.Tax1Name ? item.Tax1Name : "",
-        Tax1Code: item.Tax1Code ? item.Tax1Code : "",
-      };
-      let tax = totalTax;
-      console.log(
-        "calculateTaxeGroups...onManuallyAddDiscount",
-        taxAmt,
-        manuallyCount,
-        userDiscountLimit,
-        item.DiscountAmount,
-        type
-      );
-      if (tax >= 0) {
-        if (type === "DiscountRate") {
-          pDiscount =
-            manuallyCount === 0
-              ? 0
-              : taxAmt?.DiscountAmount
-              ? taxAmt.DiscountAmount
-              : parseFloat(
-                  (manuallyCount *
-                    (item.PriceWithOutTax * item.Quantity + tax)) /
-                    100
-                );
-        } else {
-          amtDisP =
-            manuallyCount === 0
-              ? 0
-              : (manuallyCount / (item.GrandAmount + item.DiscountAmount)) *
-                100;
-          pAmtP =
-            manuallyCount === 0
-              ? 0
-              : (item.DiscountAmount /
-                  (item.GrandAmount + item.DiscountAmount)) *
-                100;
-
-          if (manuallyCount >= item.GrandAmount + item.DiscountAmount) {
-            setMessage(props.StringsList._440);
-            setDisplayAlert(true);
-            setLoading(false);
-            return;
-          }
-        }
-        if (
-          (dP <= userDiscountLimit && type === "DiscountRate" && dP < 100) ||
-          (amtDisP <= userDiscountLimit &&
-            type !== "DiscountRate" &&
-            manuallyCount < amount)
-        ) {
-          if (manuallyCount === 0 && type === "DiscountRate") {
-            let disLimt =
-              userDiscountLimit - Number(manuallyCount) + item.DiscountRate;
-            // setUserDiscountLimit(disLimt);
-          } else {
-            let p = 0;
-            if (item.DiscountAmount > 0) {
-              console.log("");
-              p =
-                (item.DiscountAmount /
-                  (item.GrandAmount + item.DiscountAmount)) *
-                100;
-            }
-
-            let disLimt = userDiscountLimit - amtDisP + p;
-          }
-          if (selectedProduct.length > 0 && manuallyCount !== 0) {
-            selectedProduct.forEach(async (product) => {
-              if (product.SalesBillDetailsID === item?.SalesBillDetailsID) {
-                if (type === "DiscountRate") {
-                  let disLimt =
-                    userDiscountLimit - manuallyCount + item.DiscountRate;
-                  // setUserDiscountLimit(disLimt);
-
-                  product.DiscountRate =
-                    manuallyCount === 0 ? 0 : manuallyCount;
-
-                  product.DiscountAmount =
-                    manuallyCount === 0
-                      ? 0
-                      : percentageDiscountAmount
-                      ? percentageDiscountAmount.toFixed(2)
-                      : pDiscount.toFixed(2);
-                  let tax1AmountTotal = totalTax;
-                  item.GrandAmount = totalPrice;
-                  product.tax = tax;
-                  product.Tax1Amount = tax;
-                } else {
-                  let tax1AmountTotal = totalTax;
-                  item.GrandAmount = totalPrice;
-                  product.DiscountAmount = Number(manuallyCount);
-
-                  product.tax = tax;
-                  product.Tax1Amount = tax;
-
-                  product.DiscountAmountP = 0;
-                }
-              }
-            });
-          } else {
-            let tax1AmountTotal = totalTax;
-            item.GrandAmount = totalPrice;
-
-            item.DiscountRate = 0;
-
-            item.DiscountAmount = 0;
-            item.tax = totalTax;
-            item.DiscountAmountP = 0;
-          }
-
-          let p = [...selectedProduct];
-          finalCalculation(p);
-          setSelectedProducts(selectedProduct);
-        } else {
-          setMessage(props.StringsList._267);
-          setDisplayAlert(true);
-          setLoading(false);
-        }
-      } else {
-        setMessage(props.StringsList._267);
-        setDisplayAlert(true);
-        setLoading(false);
-      }
-    } else {
-      let taxAmt = await calculateTaxeGroups(
-        item.Quantity,
-        item.PriceOriginal * item.Quantity,
-        dA,
-        item.TaxGroupID,
-        1,
-        null,
-        0,
-        TerminalConfiguration,
-        item.PriceWithOutTax,
-        dP
-      );
-
-      if (item.Tax1Fragment == 2) {
-        taxAmt.Tax1Amount = taxAmt.Tax1Amount * item.Quantity;
-        taxAmt.DiscountAmount =
-          (manuallyCount * (item.PriceWithOutTax * item.Quantity)) / 100;
-      } else {
-        taxAmt.Tax1Amount = taxAmt.Tax1Amount;
-      }
-
-      let tax = taxAmt?.Tax1Amount ? taxAmt?.Tax1Amount : 0;
-      if (tax >= 0) {
-        if (type === "DiscountRate") {
-          pDiscount =
-            manuallyCount === 0
-              ? 0
-              : taxAmt?.DiscountAmount
-              ? taxAmt.DiscountAmount
-              : parseFloat(
-                  (manuallyCount *
-                    (item.PriceWithOutTax * item.Quantity + tax)) /
-                    100
-                );
-        } else {
-          amtDisP =
-            manuallyCount === 0
-              ? 0
-              : (manuallyCount / (item.GrandAmount + item.DiscountAmount)) *
-                100;
-          pAmtP =
-            manuallyCount === 0
-              ? 0
-              : (item.DiscountAmount /
-                  (item.GrandAmount + item.DiscountAmount)) *
-                100;
-
-          if (manuallyCount >= item.GrandAmount + item.DiscountAmount) {
-            setMessage(props.StringsList._440);
-            setDisplayAlert(true);
-            setLoading(false);
-            return;
-          }
-        }
-        if (
-          (dP <= userDiscountLimit && type === "DiscountRate" && dP < 100) ||
-          (amtDisP <= userDiscountLimit &&
-            type !== "DiscountRate" &&
-            manuallyCount < amount)
-        ) {
-          if (manuallyCount === 0 && type === "DiscountRate") {
-            let disLimt =
-              userDiscountLimit - Number(manuallyCount) + item.DiscountRate;
-            // setUserDiscountLimit(disLimt);
-          } else {
-            let p = 0;
-            if (item.DiscountAmount > 0) {
-              p =
-                (item.DiscountAmount /
-                  (item.GrandAmount + item.DiscountAmount)) *
-                100;
-            }
-
-            let disLimt = userDiscountLimit - amtDisP + p;
-            console.log(
-              "manuallyCount....disLimt",
-              disLimt,
-              amtDisP,
-              p,
-              userDiscountLimit
-            );
-            // setUserDiscountLimit(disLimt);
-          }
-          if (selectedProduct.length > 0 && manuallyCount !== 0) {
-            selectedProduct.forEach(async (product) => {
-              if (product.SalesBillDetailsID === item?.SalesBillDetailsID) {
-                if (type === "DiscountRate") {
-                  let disLimt =
-                    userDiscountLimit - manuallyCount + item.DiscountRate;
-                  // setUserDiscountLimit(disLimt);
-                  if (
-                    taxAmt.calculationId === 9 ||
-                    taxAmt.calculationId === 1
-                  ) {
-                    product.GrandAmount = Number(
-                      taxAmt.amount + taxAmt.Tax1Amount
-                    );
-                  } else {
-                    product.GrandAmount = Number(
-                      product.IsTax1IncludedInPrice == 0
-                        ? item.PriceOriginal * item.Quantity - pDiscount + tax
-                        : item.PriceOriginal * item.Quantity - pDiscount
-                    );
-                  }
-                  product.DiscountRate =
-                    manuallyCount === 0 ? 0 : manuallyCount;
-                  // console.log("DiscountAmount........", taxAmt.DiscountAmount, pDiscount)
-                  product.DiscountAmount =
-                    manuallyCount === 0
-                      ? 0
-                      : taxAmt.DiscountAmount
-                      ? taxAmt.DiscountAmount.toFixed(2)
-                      : pDiscount.toFixed(
-                          TerminalConfiguration.DecimalsInAmount
-                        );
-
-                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
-                    (product.Tax1Rate = taxAmt.Tax1Percentage
-                      ? taxAmt.Tax1Percentage
-                      : 0),
-                    (product.Tax1Amount = taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0),
-                    (product.Tax2Code = taxAmt?.Tax2Code
-                      ? taxAmt.Tax2Code
-                      : ""),
-                    (product.Tax2Name = taxAmt?.Tax2Name
-                      ? taxAmt?.Tax2Name
-                      : ""),
-                    (product.Tax2Rate = taxAmt?.Tax2Percentage
-                      ? taxAmt?.Tax2Percentage
-                      : 0),
-                    (product.Tax2Amount = taxAmt?.Tax2Amount
-                      ? taxAmt?.Tax2Amount
-                      : 0);
-                  product.tax = product.Tax1Amount + product.Tax2Amount;
-                } else {
-                  product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-                  (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
-                    (product.Tax1Rate = taxAmt.Tax1Percentage
-                      ? taxAmt.Tax1Percentage
-                      : 0),
-                    (product.Tax1Amount = taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0),
-                    (product.Tax2Code = taxAmt?.Tax2Code
-                      ? taxAmt.Tax2Code
-                      : ""),
-                    (product.Tax2Name = taxAmt?.Tax2Name
-                      ? taxAmt?.Tax2Name
-                      : ""),
-                    (product.Tax2Rate = taxAmt?.Tax2Percentage
-                      ? taxAmt?.Tax2Percentage
-                      : 0),
-                    (product.Tax2Amount = taxAmt?.Tax2Amount
-                      ? taxAmt?.Tax2Amount
-                      : 0);
-
-                  let GA = item.PriceOriginal * item.Quantity;
-                  let tax = product.Tax1Amount + product.Tax2Amount;
-                  let GAmount = 0;
-                  if (
-                    taxAmt.calculationId === 9 ||
-                    taxAmt.calculationId === 1
-                  ) {
-                    GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
-                  } else {
-                    GAmount = !product.IsTax1IncludedInPrice
-                      ? Number(GA + tax) - Number(manuallyCount)
-                      : Number(GA) - Number(manuallyCount);
-                  }
-
-                  product.DiscountAmount = Number(manuallyCount);
-                  product.GrandAmount = GAmount;
-                  product.tax = tax;
-                  product.DiscountAmountP = 0;
-                }
-                setmanuallyCount(0);
-              }
-            });
-          } else {
-            item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-            (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
-              (item.Tax1Rate = taxAmt.Tax1Percentage
-                ? taxAmt.Tax1Percentage
-                : 0),
-              (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
-              (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
-              (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
-              (item.Tax2Rate = taxAmt?.Tax2Percentage
-                ? taxAmt?.Tax2Percentage
-                : 0),
-              (item.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
-            let GA = item.PriceOriginal * item.Quantity;
-            let tax = item.Tax1Amount + item.Tax2Amount;
-
-            if (taxAmt.IsTax1IncludedInPrice) {
-              item.GrandAmount = Number(GA);
-            } else {
-              item.GrandAmount = Number(GA + tax);
-            }
-            item.DiscountRate = 0;
-            item.DiscountAmount = 0;
-            item.tax = tax;
-          }
-          let p = [...selectedProduct];
-          finalCalculation(p);
-          setSelectedProducts(selectedProduct);
-        } else {
-          setMessage(props.StringsList._267);
-          setDisplayAlert(true);
-          setLoading(false);
-        }
-      } else {
-        setMessage(props.StringsList._267);
-        setDisplayAlert(true);
-        setLoading(false);
-      }
-    }
-  };
-
-  // const SetItemTaxAmountForSalesGroup = async psalesInvoiceDetail => {
-  //   let itemCode = psalesInvoiceDetail.ProductCode;
-  //   let amountBeforeDiscount = (psalesInvoiceDetail.PriceOriginal * psalesInvoiceDetail.Quantity);
-  //   let quantity = psalesInvoiceDetail.Quantity;
-  //   let discountAmount = manuallyCount;
-  //   psalesInvoiceDetail.Tax1Code = "";
-  //   psalesInvoiceDetail.Tax1Name = "";
-  //   psalesInvoiceDetail.Tax2Code = "";
-  //   psalesInvoiceDetail.Tax2Name = "";
-  //   let salesGroupCode = itemCode;
-  //   let isTaxExempted = false;
-  //   let additionalChargesAmount = 0;
-  //   let currencyRate = 1;
-  //   let txAmts = psalesInvoiceDetail.groupTaxCodes
-
-  //   // TaxValues txAmts = new TaxValues();
-
-  //   if (quantity == 0)
-  //     quantity = 1;
-
-  //   // txAmts.Quantity = quantity;
-  //   txAmts.Price = 0;
-
-  //   let taxAmountIncludedInPrice = 0;
-  //   let itemDetails = psalesInvoiceDetail
-  //   let tax1AmountTotal = 0, tax1ActualAmountTotal = 0, tax2AmountTotal = 0, tax2ActualAmountTotal = 0, tax3AmountTotal = 0, tax3ActualAmountTotal = 0, tax4AmountTotal = 0, tax4ActualAmountTotal = 0;
-
-  //   // ProductCardSummary itemDetails = manager.ProductCardDetailManager.ProductCardDetail_SelectByProductCode(salesGroupCode, 3); // salesGroupCode is equavilent to ItemCode
-
-  //   // DataTable dt = manager.SalesGroupDetailManager.SalesGroupDetail_SelectBySalesGroupCodeDt(salesGroupCode);
-
-  //   // if (dt != null && dt.Rows.Count > 0)
-  //   // {
-  //   // foreach (DataRow salesGroupDetailRow in dt.Rows)
-  //   psalesInvoiceDetail.groupTaxCodes.forEach(async element => {
-
-  //     // {
-  //     let taxGroupID = '';
-  //     let itemQty = 0, itemAmount = 0, itemProposedSalesAmount = 0, itemDiscountAmount = 0, netQty = 0;
-
-  //     taxGroupID = element.SaleTaxFamilyCode;
-  //     itemQty = element.Quantity;
-  //     itemAmount = element.Price;
-
-  //     netQty = quantity * itemQty;
-  //     if (TerminalConfiguration.IsTaxOnSalesProduct) {
-  //       if (taxGroupID !== "") {
-  //         if (isTaxExempted)
-  //           taxGroupID = "0";
-
-  //         // TaxValues taxValues = new TaxValues();
-  //         if (itemDetails.GrandAmount > 0) {
-  //           itemProposedSalesAmount = (itemAmount * amountBeforeDiscount) / itemDetails.GrandAmount;
-  //         }
-  //         if (amountBeforeDiscount > 0)
-  //           itemDiscountAmount = ((itemProposedSalesAmount) * discountAmount) / (amountBeforeDiscount);
-
-  //         // additionalChargesAmount is required for Global Tax calculation only.
-
-  //         taxValues = await calculateTaxeGroups(netQty, itemProposedSalesAmount, itemDiscountAmount, taxGroupID, currencyRate, null, additionalChargesAmount, TerminalConfiguration, psalesInvoiceDetail.PriceOriginal, 0);
-
-  //         psalesInvoiceDetail.IsTax1IncludedInPrice = taxValues.IsTax1IncludedInPrice;
-  //         psalesInvoiceDetail.IsTax2IncludedInPrice = taxValues.IsTax2IncludedInPrice;
-  //         psalesInvoiceDetail.Tax1Code = taxValues.Tax1Code;
-  //         psalesInvoiceDetail.Tax1Name = taxValues.Tax1Name;
-  //         psalesInvoiceDetail.Tax2Code = taxValues.Tax2Code;
-  //         psalesInvoiceDetail.Tax2Name = taxValues.Tax2Name;
-
-  //         psalesInvoiceDetail.Price = psalesInvoiceDetail.Price;
-
-  //         if (!taxValues.IsTax1IncludedInPrice)
-  //           tax1ActualAmountTotal += taxValues.Tax1Amount ? taxValues.Tax1Amount : 0;
-  //         else
-  //           taxAmountIncludedInPrice += taxValues.Tax1Amount ? taxValues.Tax1Amount : 0;
-  //         if (!taxValues.IsTax2IncludedInPrice)
-  //           tax2ActualAmountTotal += taxValues.Tax2Amount ? taxValues.Tax2Amount : 0;
-  //         else
-  //           taxAmountIncludedInPrice += taxValues.Tax2Amount ? taxValues.Tax2Amount : 0;
-
-  //         tax1AmountTotal += taxValues.Tax1Amount ? taxValues.Tax1Amount : 0;
-  //         tax2AmountTotal += taxValues.Tax2Amount ? taxValues.Tax2Amount : 0;
-
-  //       }
-  //     }
-
-  //     // }
-
-  //     txAmts.Tax1Amount = tax1AmountTotal;
-  //     txAmts.Tax1Percentage = tax1ActualAmountTotal;
-
-  //     txAmts.Tax2Amount = tax2AmountTotal;
-  //     txAmts.Tax2Percentage = tax2ActualAmountTotal;
-
-  //     if (taxAmountIncludedInPrice > 0 || isTaxExempted || (txAmts.Tax1Amount > 0 || txAmts.Tax2Amount > 0)) {
-  //       let amountAfterTax = amountBeforeDiscount - taxAmountIncludedInPrice;
-
-  //       if (amountAfterTax > 0)
-  //         txAmts.Price = (amountAfterTax / (quantity * currencyRate));
-  //       else
-  //         txAmts.Price = 0; //we will not allow to proceed if price is zero
-  //     }
-  //     else if ((txAmts.Tax1Amount == 0) && (txAmts.Tax2Amount == 0)) //It means All the group items dont have tax group id
-  //     {
-  //       if (amountBeforeDiscount > 0)
-  //         txAmts.Price = (amountBeforeDiscount / (quantity * currencyRate));
-  //       else
-  //         txAmts.Price = 0; //we will not allow to proceed if price is zero
-  //     }
-
-  //     psalesInvoiceDetail.IsTax1IncludedInPrice = txAmts.IsTax1IncludedInPrice;
-  //     psalesInvoiceDetail.IsTax2IncludedInPrice = txAmts.IsTax2IncludedInPrice;
-
-  //     psalesInvoiceDetail.Price = txAmts.Price;
-  //     psalesInvoiceDetail.Tax1Rate = 0;
-  //     psalesInvoiceDetail.Tax2Rate = 0;
-
-  //     psalesInvoiceDetail.Tax1Amount = txAmts.Tax1Amount
-  //     psalesInvoiceDetail.Tax2Amount = txAmts.Tax2Amount
-
-  //     var amount = amountBeforeDiscount - discountAmount;
-
-  //     if (txAmts.IsTax1IncludedInPrice == false) {
-  //       amount = amount + txAmts.Tax1Percentage; // txAmts.Tax1Amount;
-  //     }
-  //     if (txAmts.IsTax2IncludedInPrice == false) {
-  //       amount = amount + txAmts.Tax2Percentage; //txAmts.Tax2Amount;
-  //     }
-
-  //     psalesInvoiceDetail.GrandAmount = amount;
-  //     psalesInvoiceDetail.GrandAmount = psalesInvoiceDetail.GrandAmount
-
-  //   });
-
-  // }
-
-  const finalCalculation = (selectedProduct, type) => {
-    let products =
-      selectedProduct.length > 0
-        ? selectedProduct
-        : type === "delete"
-        ? []
-        : selectedProducts;
-    let subTotal = 0,
-      total = 0;
-    products.forEach((p) => {
-      subTotal = subTotal + p.GrandAmount;
-    });
-    total = subTotal;
-
-    if (selectedGlobalTaxObj || globalDiscountRate > 0) {
-      if (globalDiscountRate > 0) {
-        globalDiscountAmountFun("", subTotal, total, "recalling");
-      } else if (globalDiscountAmount > 0) {
-        globalDiscountAmountFun("globalDiscount", subTotal, total, "recalling");
-      } else if (selectedGlobalTaxObj) {
-        globalTaxFun(selectedGlobalTaxObj, subTotal, "", total);
-      }
-    } else {
-      setLoading(false);
-      setTotalPrice(total);
-    }
-    console.log("finalCalculation.....,subTotal", subTotal);
-    setsubPrice(subTotal);
-    setLoading(false);
   };
 
   const changeProductGroupItem = async (
@@ -3284,12 +5955,18 @@ const HomeScreen = (props) => {
     dr,
     discount
   ) => {
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
+    item.IsUpdated = IsUpdated;
     let pq = type === "increment" ? item.Quantity + 1 : item.Quantity - 1;
     item.maxQuantity =
       returnInvoiceNumber !== null
         ? item.maxQuantity
         : 100000000000 + item.Quantity;
     item.DiscountAmount = discount;
+    item.DiscountRate = dr;
     // console.log('return product quanttoty check', item.maxQuantity >= pq)
     if (item.maxQuantity >= pq) {
       let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
@@ -3311,7 +5988,10 @@ const HomeScreen = (props) => {
           tax2ActualAmountTotal = 0;
         let percentageDiscountAmount = 0;
 
-        if (item.DiscountAmount > newQuantity * item.PriceOriginal) {
+        if (
+          item.DiscountAmount > newQuantity * item.PriceWithOutTax &&
+          item.DiscountRate === 0
+        ) {
           item.DiscountAmount = 0;
         }
         let executeCal = true;
@@ -3333,10 +6013,315 @@ const HomeScreen = (props) => {
               // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
               item.Quantity = newQuantity;
               executeCal = false;
-              handleDiscount(item, undefined);
+              handleDiscount(item, "DiscountAmount");
             }
           }
         }
+        if (executeCal == true) {
+          await productGroupList.forEach(async (element, index) => {
+            let amountBeforeDiscount = item.PriceOriginal * newQuantity;
+            let taxGroupID = "";
+            let itemQty = 0,
+              itemAmount = 0,
+              itemProposedSalesAmount = 0,
+              itemDiscountAmount = 0,
+              netQty = 0;
+
+            taxGroupID = element.SaleTaxFamilyCode;
+            itemQty = element.Quantity;
+            itemAmount = element.Price;
+
+            netQty = newQuantity * itemQty;
+
+            itemProposedSalesAmount =
+              (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+
+            if (amountBeforeDiscount > 0)
+              itemDiscountAmount =
+                (itemProposedSalesAmount * percentageDiscountAmount) /
+                amountBeforeDiscount;
+
+            let taxAmt = await calculateTaxeGroups(
+              netQty,
+              itemProposedSalesAmount,
+              itemDiscountAmount,
+              taxGroupID,
+              1,
+              null,
+              0,
+              TerminalConfiguration,
+              item.PriceOriginal,
+              dr
+            );
+
+            console.log("taxamount is", taxAmt);
+            // let tax = item.Tax1Amount + item.Tax2Amount;
+
+            if (taxAmt.Tax1Fragment == 2) {
+              let taxtPerGroup = taxAmt.Tax1Amount * newQuantity;
+              let taxPerItem = taxtPerGroup;
+              totaltax1 += taxPerItem;
+            } else {
+              totaltax1 = taxAmt.Tax1Amount
+                ? totaltax1 + taxAmt.Tax1Amount
+                : totaltax1 + 0;
+            }
+            if (taxAmt.Tax2Fragment == 2) {
+              let taxtPrGroup = taxAmt.Tax2Amount * newQuantity;
+              let taxPrItem = taxtPrGroup;
+              totaltax2 += taxPrItem;
+            } else {
+              totaltax2 = taxAmt.Tax2Amount
+                ? totaltax2 + taxAmt.Tax2Amount
+                : totaltax2 + 0;
+            }
+
+            tamout += taxAmt.amount;
+            finaltaxObj = taxAmt;
+
+            if (!taxAmt.IsTax1IncludedInPrice)
+              tax1ActualAmountTotal += taxAmt.Tax1Amount
+                ? taxAmt.Tax1Amount
+                : 0;
+            else
+              taxAmountIncludedInPrice += taxAmt.Tax1Amount
+                ? taxAmt.Tax1Amount
+                : 0;
+            if (!taxAmt.IsTax2IncludedInPrice)
+              tax2ActualAmountTotal += taxAmt.Tax2Amount
+                ? taxAmt.Tax2Amount
+                : 0;
+            else
+              taxAmountIncludedInPrice += taxAmt.Tax2Amount
+                ? taxAmt.Tax2Amount
+                : 0;
+
+            tax1AmountTotal += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
+            tax2AmountTotal += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
+
+            if (
+              taxAmountIncludedInPrice > 0 ||
+              taxAmt.Tax1Amount > 0 ||
+              taxAmt.Tax2Amount > 0
+            ) {
+              let amountAfterTax =
+                amountBeforeDiscount - taxAmountIncludedInPrice;
+
+              if (amountAfterTax > 0) {
+                taxAmt.Price = amountAfterTax / (item.Quantity * 1);
+              } else {
+                taxAmt.Price = 0;
+              } //we will not allow to proceed if price is zero
+            } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
+              //It means All the group items dont have tax group id
+              if (amountBeforeDiscount > 0) {
+                taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
+              } else {
+                taxAmt.Price = 0;
+              } //we will not allow to proceed if price is zero
+            }
+            item.Tax1Amount = tax1AmountTotal ? tax1AmountTotal : 0;
+            item.Tax2Amount = tax2AmountTotal ? tax2AmountTotal : 0;
+            item.Price = Number(item.PriceOriginal);
+            item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice ? 1 : 0;
+            item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice ? 1 : 0;
+            item.IngredientsArray = [];
+            item.IngredientNames = "";
+
+            item.Tax1Code = taxAmt.Tax1Code;
+            (item.Tax1Name = ""),
+              (item.Tax1Rate = taxAmt.Tax1Percentage),
+              (item.Tax1Amount = totaltax1),
+              (item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : ""),
+              (item.Tax2Name = ""),
+              (item.Tax2Rate = taxAmt.Tax2Percentage
+                ? taxAmt.Tax2Percentage
+                : 0),
+              (item.Tax2Amount = totaltax2);
+            let tax = totaltax1 + totaltax2;
+
+            let product = item;
+            if (type === "increment") {
+              if (taxAmt) {
+                let proQ;
+
+                if (!product.IsParentAddOn) {
+                  proQ =
+                    type === "increment"
+                      ? (newQuantity - 1) * product.OrignalQuantity
+                      : newQuantity * product.OrignalQuantity;
+                } else {
+                  proQ = type === "increment" ? newQuantity - 1 : newQuantity;
+                }
+                if (proQ !== product.maxQuantity) {
+                  product.Quantity = newQuantity;
+                  if (dr > 0) {
+                    discount = product.DiscountAmount
+                      ? percentageDiscountAmount
+                      : parseFloat(
+                          (dr * product.webperamount * newQuantity) / 100
+                        );
+                    discount = Number(discount);
+                  } else {
+                    discount = product.DiscountAmount
+                      ? product.DiscountAmount
+                      : 0;
+                    discount = Number(discount);
+                  }
+
+                  var amount = 0;
+                  if (index == 0) {
+                    amount = amountBeforeDiscount - percentageDiscountAmount;
+                  } else {
+                    amount = product.GrandAmount;
+                  }
+                  if (taxAmt.IsTax1IncludedInPrice == false) {
+                    if (taxAmt.Tax1Fragment == 2) {
+                      amount =
+                        amount + taxAmt.Tax1Amount * item.Quantity - discount;
+                    } else {
+                      amount = amount + taxAmt.Tax1Amount - discount; // txAmts.Tax1Amount;
+                    }
+                  }
+                  if (taxAmt.IsTax2IncludedInPrice == false) {
+                    amount = amount + taxAmt.Tax2Amount - discount; //txAmts.Tax2Amount;
+                  }
+                  product.GrandAmount = amount;
+                  if (discount > item.PriceOriginal * newQuantity) {
+                    discount = Number(discount);
+                    discount = 0;
+                  }
+                  item.PriceWithOutTax = Number(item.PriceUnitlesstax);
+                  discount = Number(discount);
+
+                  product.DiscountAmount = Number(
+                    discount.toFixed(TerminalConfiguration.DecimalsInAmount)
+                  );
+                  product.tax = tax;
+                  // console.log("Tax is ", tax)
+
+                  product.tax = product.Tax1Amount + product.Tax2Amount;
+                  // console.log("Tax is ", product.tax)
+                } else {
+                  setMessage(props.StringsList._230);
+                  setDisplayAlert(true);
+                  setLoading(false);
+                }
+              }
+            } else if (type === "decrement") {
+              product.Quantity = newQuantity;
+              if (dr > 0) {
+                discount = product.DiscountAmount
+                  ? percentageDiscountAmount
+                  : parseFloat((dr * product.webperamount * newQuantity) / 100);
+              } else {
+                discount = product.DiscountAmount ? product.DiscountAmount : 0;
+              }
+              if (discount > product.PriceOriginal * newQuantity) {
+                discount = 0;
+              }
+              item.PriceWithOutTax = Number(item.PriceUnitlesstax);
+              var amount = 0;
+              if (index == 0) {
+                amount = amountBeforeDiscount - percentageDiscountAmount;
+              } else {
+                amount = product.GrandAmount;
+              }
+              if (taxAmt.IsTax1IncludedInPrice == false) {
+                if (taxAmt.Tax1Fragment == 2) {
+                  amount =
+                    amount + taxAmt.Tax1Amount * item.Quantity - discount;
+                } else {
+                  amount = amount + taxAmt.Tax1Amount - discount; // txAmts.Tax1Amount;
+                }
+              }
+              if (taxAmt.IsTax2IncludedInPrice == false) {
+                amount = amount + taxAmt.Tax2Amount - discount; //txAmts.Tax2Amount;
+              }
+              product.GrandAmount = amount;
+              product.DiscountAmount = Number(
+                discount.toFixed(TerminalConfiguration.DecimalsInAmount)
+              );
+              product.tax = tax;
+              product.tax = product.Tax1Amount + product.Tax2Amount;
+            }
+
+            if (index === productGroupList.length - 1) {
+              let p = [...selectedProducts];
+              for (let i = 0; i < p.length; i++) {
+                let prod = p[i];
+
+                if (
+                  ((prod?.ProductBarCode === item?.ProductBarCode &&
+                    prod?.PriceOriginal === item?.PriceOriginal) ||
+                    prod?.AddOnParentSalesInvoiceDetailsID ===
+                      item.SalesInvoiceDetailsID) &&
+                  type !== "returnInvoice"
+                ) {
+                  prod = item;
+                }
+              }
+              setTimeout(() => {
+                finalCalculation(p);
+                setSelectedProducts(p);
+              }, 1000);
+            }
+          });
+        }
+      });
+    } else {
+      setMessage(props.StringsList._230);
+      setDisplayAlert(true);
+      setLoading(false);
+    }
+  };
+  const changeProductGroupAddon = async (
+    parentItem,
+    item,
+    type,
+    newQuantity,
+    dr,
+    discount,
+    printType
+  ) => {
+    let IsUpdated = false;
+    if (showButton === true && orderCode === false && printType === null) {
+      IsUpdated = true;
+    }
+    item.IsUpdated = IsUpdated;
+    let pq = type === "increment" ? item.Quantity + 1 : item.Quantity - 1;
+    item.maxQuantity =
+      returnInvoiceNumber !== null
+        ? item.maxQuantity
+        : 100000000000 + item.Quantity;
+    item.DiscountAmount = discount;
+    if (newQuantity) {
+      newQuantity = newQuantity / item.OrignalQuantity;
+    }
+    newQuantity = Number(newQuantity);
+    if (item.maxQuantity >= pq) {
+      let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
+        let groupTaxCodes = cb.filter(
+          (x) => x.SalesFamilyCode === item.ProductCode
+        );
+        productGroupList = groupTaxCodes;
+        let totaltax1 = 0;
+        let totaltax2 = 0;
+        let finaltaxObj;
+        let tamout = 0;
+
+        let taxAmountIncludedInPrice = 0;
+        let tax1AmountTotal = 0,
+          tax1ActualAmountTotal = 0,
+          tax2AmountTotal = 0,
+          tax2ActualAmountTotal = 0;
+        let percentageDiscountAmount = 0;
+
+        if (item.DiscountAmount > newQuantity * item.PriceOriginal) {
+          item.DiscountAmount = 0;
+        }
+        let executeCal = true;
+
         if (executeCal == true) {
           await productGroupList.forEach(async (element, index) => {
             console.log("Element", element);
@@ -3428,22 +6413,21 @@ const HomeScreen = (props) => {
               let amountAfterTax =
                 amountBeforeDiscount - taxAmountIncludedInPrice;
 
-              if (amountAfterTax > 0)
+              if (amountAfterTax > 0) {
                 taxAmt.Price = amountAfterTax / (item.Quantity * 1);
-              else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+              } else {
+                taxAmt.Price = 0;
+              } //we will not allow to proceed if price is zero
             } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
               //It means All the group items dont have tax group id
-              if (amountBeforeDiscount > 0)
+              if (amountBeforeDiscount > 0) {
                 taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
-              else taxAmt.Price = 0; //we will not allow to proceed if price is zero
+              } else {
+                taxAmt.Price = 0;
+              } //we will not allow to proceed if price is zero
             }
-
             item.Tax1Amount = tax1AmountTotal ? tax1AmountTotal : 0;
             item.Tax2Amount = tax2AmountTotal ? tax2AmountTotal : 0;
-
-            // console.log('total tax is', totaltax1, ' ND 2', totaltax2, finaltaxObj)
-
-            // let tax = totaltax1 + totaltax2;
             item.Price = Number(item.PriceOriginal);
             item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice ? 1 : 0;
             item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice ? 1 : 0;
@@ -3461,11 +6445,9 @@ const HomeScreen = (props) => {
                 : 0),
               (item.Tax2Amount = totaltax2);
             let tax = totaltax1 + totaltax2;
-            // item.TaxGroupID = taxGroupID
 
             let product = item;
             if (type === "increment") {
-              // productIncrement(taxAmt, product)
               if (taxAmt) {
                 let proQ;
 
@@ -3477,10 +6459,8 @@ const HomeScreen = (props) => {
                 } else {
                   proQ = type === "increment" ? newQuantity - 1 : newQuantity;
                 }
-                // console.log("proQ !== product.maxQuantity...", proQ, newQuantity, product)
                 if (proQ !== product.maxQuantity) {
                   product.Quantity = newQuantity;
-
                   if (dr > 0) {
                     discount = product.DiscountAmount
                       ? percentageDiscountAmount
@@ -3496,9 +6476,11 @@ const HomeScreen = (props) => {
                   }
 
                   var amount = 0;
-                  if (index == 0)
+                  if (index == 0) {
                     amount = amountBeforeDiscount - percentageDiscountAmount;
-                  else amount = product.GrandAmount;
+                  } else {
+                    amount = product.GrandAmount;
+                  }
                   if (taxAmt.IsTax1IncludedInPrice == false) {
                     if (taxAmt.Tax1Fragment == 2) {
                       amount =
@@ -3507,17 +6489,10 @@ const HomeScreen = (props) => {
                       amount = amount + taxAmt.Tax1Amount - discount; // txAmts.Tax1Amount;
                     }
                   }
-
                   if (taxAmt.IsTax2IncludedInPrice == false) {
                     amount = amount + taxAmt.Tax2Amount - discount; //txAmts.Tax2Amount;
                   }
-
                   product.GrandAmount = amount;
-
-                  // let GAmount = 0;
-                  // if (taxAmt.calculationId === 9 || taxAmt.calculationId === 1) {
-                  //   GAmount = Number(tamout + totaltax1);
-                  // } else {
                   if (discount > item.PriceOriginal * newQuantity) {
                     discount = Number(discount);
                     discount = 0;
@@ -3527,19 +6502,17 @@ const HomeScreen = (props) => {
 
                   product.DiscountAmount = Number(discount).toFixed(2);
                   product.tax = tax;
-                  console.log("Tax is ", tax);
+                  // console.log("Tax is ", tax)
 
                   product.tax = product.Tax1Amount + product.Tax2Amount;
-                  console.log("Tax is ", product.tax);
+                  // console.log("Tax is ", product.tax)
                 } else {
-                  // console.log("asmdfjsagjdfjsadfgj")
                   setMessage(props.StringsList._230);
                   setDisplayAlert(true);
                   setLoading(false);
                 }
               }
             } else if (type === "decrement") {
-              // console.log("newQuantity", newQuantity)
               product.Quantity = newQuantity;
               if (dr > 0) {
                 discount = product.DiscountAmount
@@ -3552,15 +6525,12 @@ const HomeScreen = (props) => {
                 discount = 0;
               }
               item.PriceWithOutTax = Number(item.PriceUnitlesstax);
-
               var amount = 0;
-              if (index == 0)
+              if (index == 0) {
                 amount = amountBeforeDiscount - percentageDiscountAmount;
-              else amount = product.GrandAmount;
-              // if (taxAmt.IsTax1IncludedInPrice == false) {
-              //   amount = amount + taxAmt.Tax1Amount; // txAmts.Tax1Amount;
-              // }
-
+              } else {
+                amount = product.GrandAmount;
+              }
               if (taxAmt.IsTax1IncludedInPrice == false) {
                 if (taxAmt.Tax1Fragment == 2) {
                   amount =
@@ -3569,27 +6539,13 @@ const HomeScreen = (props) => {
                   amount = amount + taxAmt.Tax1Amount - discount; // txAmts.Tax1Amount;
                 }
               }
-
               if (taxAmt.IsTax2IncludedInPrice == false) {
                 amount = amount + taxAmt.Tax2Amount - discount; //txAmts.Tax2Amount;
               }
-
               product.GrandAmount = amount;
-              //;
               product.DiscountAmount = Number(discount).toFixed(2);
               product.tax = tax;
               product.tax = product.Tax1Amount + product.Tax2Amount;
-
-              // product.GrandAmount = Number(
-              //   ((product.Price) * product.Quantity) - discount,
-              // );
-              // sPrice = Number(sPrice - product.Price + product.DiscountAmount - discount);
-
-              // tPrice = Number(
-              //   tPrice -
-              //   product.Price + product.DiscountAmount - discount
-              // ); //;
-              // product.DiscountAmount = discount
             }
             // setLoading(false)
             if (index === productGroupList.length - 1) {
@@ -3601,7 +6557,7 @@ const HomeScreen = (props) => {
                   ((prod?.ProductBarCode === item?.ProductBarCode &&
                     prod?.PriceOriginal === item?.PriceOriginal) ||
                     prod?.AddOnParentSalesInvoiceDetailsID ===
-                      item.SalesBillDetailsID) &&
+                      item.SalesInvoiceDetailsID) &&
                   type !== "returnInvoice"
                 ) {
                   prod = item;
@@ -3621,1033 +6577,1008 @@ const HomeScreen = (props) => {
     }
   };
 
-  const changeProductGroupAddon = async (
-    parentItem,
-    item,
-    type,
-    newQuantity,
-    dr,
-    discount
-  ) => {
-    let pq = type === "increment" ? item.Quantity + 1 : item.Quantity - 1;
-    item.maxQuantity =
-      returnInvoiceNumber !== null
-        ? item.maxQuantity
-        : 100000000000 + item.Quantity;
-    item.DiscountAmount = discount;
-    console.log("return product quanttoty check", item.maxQuantity >= pq);
-    if (item.maxQuantity >= pq) {
-      let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
-        console.log(" SalesFamilySummaryListTable are", cb);
-        let groupTaxCodes = cb.filter(
-          (x) => x.SalesFamilyCode === item.ProductCode
-        );
-        productGroupList = groupTaxCodes;
-        console.log(" our group is", productGroupList);
-        let totaltax1 = 0;
-        let totaltax2 = 0;
-        let finaltaxObj;
-        let tamout = 0;
+  const finalCalculation = (selectedProduct) => {
+    // console.log('1 finalCalculation.....', selectedProduct);
+    let products =
+      selectedProduct.length > 0 ? selectedProduct : selectedProducts;
+    let subTotal = 0,
+      total = 0;
+    products.forEach((p) => {
+      subTotal = subTotal + p.GrandAmount;
+    });
+    total = subTotal;
 
-        let taxAmountIncludedInPrice = 0;
-        let tax1AmountTotal = 0,
-          tax1ActualAmountTotal = 0,
-          tax2AmountTotal = 0,
-          tax2ActualAmountTotal = 0;
-        let percentageDiscountAmount = 0;
+    if (selectedGlobalTaxObj || globalDiscountRate > 0) {
+      if (globalDiscountRate > 0) {
+        globalDiscountAmountFun("", subTotal, total, "recalling");
+      } else if (globalDiscountAmount > 0) {
+        globalDiscountAmountFun("globalDiscount", subTotal, total, "recalling");
+      } else if (selectedGlobalTaxObj) {
+        globalTaxFun(selectedGlobalTaxObj, subTotal, "", total);
+      }
+    } else {
+      setLoading(false);
+      setTotalPrice(total);
+      setsubPrice(subTotal);
+    }
+  };
+  const finalUpdatedCalculation = (selectedProduct) => {
+    // console.log("finalCalculation.....", selectedProduct)
+    let products =
+      selectedProduct.length > 0 ? selectedProduct : selectedProducts;
+    let subTotal = 0,
+      total = 0;
+    products.forEach((p) => {
+      subTotal = subTotal + p.GrandAmount;
+    });
+    total = subTotal;
 
-        if (item.DiscountAmount > newQuantity * item.PriceOriginal) {
-          item.DiscountAmount = 0;
+    if (selectedGlobalTaxObj || globalDiscountRate > 0) {
+      if (globalDiscountRate > 0) {
+        globalDiscountAmountFun("", subTotal, total, "recalling");
+      } else if (globalDiscountAmount > 0) {
+        globalDiscountAmountFun("globalDiscount", subTotal, total, "recalling");
+      } else if (selectedGlobalTaxObj) {
+        globalTaxFun(selectedGlobalTaxObj, subTotal, "", total);
+      }
+    } else {
+      setTotalPrice(total);
+    }
+    setsubPrice(subTotal);
+  };
+
+  const getLastOrderNumber = async () => {
+    let number = "";
+    await getData(TerminalConfigurationTable, (cb) => {
+      // console.log("CB ======>", cb);
+      let preZero = "0000000";
+      let silceNumber =
+        Number(cb[0]?.LastOrderNumber) >= 99999
+          ? preZero.length - 5
+          : Number(cb[0]?.LastOrderNumber) >= 9999
+          ? preZero.length - 4
+          : Number(cb[0]?.LastOrderNumber) >= 999
+          ? preZero.length - 3
+          : Number(cb[0]?.LastOrderNumber) >= 99
+          ? preZero.length - 2
+          : Number(cb[0]?.LastOrderNumber) >= 9
+          ? preZero.length - 1
+          : preZero.length;
+      let orderNumber =
+        Number(cb[0]?.LastOrderNumber) >= 999999
+          ? cb[0].OrderPrefix + "-" + Number(cb[0].LastOrderNumber)
+          : cb[0].OrderPrefix +
+            "-" +
+            preZero.slice(1 - silceNumber) +
+            Number(cb[0].LastOrderNumber);
+      number = orderNumber;
+
+      setLastOrderNumber(number);
+    });
+    return number;
+  };
+
+  const emptyAsyncTableObj = async () => {
+    try {
+      let table = await AsyncStorage.getItem("SELECTED_TABLE");
+      console.log(JSON.stringify(table));
+      await AsyncStorage.removeItem("SELECTED_TABLE");
+      console.log("Table Removed");
+      setEnableTbut(true);
+      setStorageItems(null);
+    } catch (e) {
+      console.log(e, "error");
+    }
+  };
+  const getStorageItem = async () => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    if (tableData) {
+      let result = JSON.parse(tableData);
+      console.log("tabledata=========>", result);
+      setStorageItems(result);
+      setOrderType({ id: 1, value: "Dine In" });
+      list.ordID = 1;
+      list.isOrderTypeSelected = true;
+      if (result && list?.products?.length > 0) {
+        setToggle(true);
+      }
+    } else {
+      setStorageItems(null);
+    }
+  };
+  const createNewInvoiceNumber = async () => {
+    let number = "";
+    await getData(TerminalConfigurationTable, (cb) => {
+      // console.log("cb======>", cb);
+      let preZero = "0000000";
+      let silceNumber =
+        Number(cb[0]?.LastBillNumber) >= 99999
+          ? preZero.length - 5
+          : Number(cb[0]?.LastBillNumber) >= 9999
+          ? preZero.length - 4
+          : Number(cb[0]?.LastBillNumber) >= 999
+          ? preZero.length - 3
+          : Number(cb[0]?.LastBillNumber) >= 99
+          ? preZero.length - 2
+          : Number(cb[0]?.LastBillNumber) >= 9
+          ? preZero.length - 1
+          : preZero.length;
+      let invoiceNumber =
+        Number(cb[0]?.LastBillNumber) >= 999999
+          ? cb[0].BillPrefix + "-" + (Number(cb[0].LastBillNumber) + 1)
+          : cb[0].BillPrefix +
+            "-" +
+            preZero.slice(1 - silceNumber) +
+            (Number(cb[0].LastBillNumber) + 1);
+      number = invoiceNumber;
+      setInvoiceNumber(number);
+      setTerminalConfiguration(cb[0]);
+    });
+    return number;
+  };
+  const initialglobalTaxFun = async (itm, type, n, totalAmount, disAmount) => {
+    // setLoading(true);
+    if (itm.TaxFamilyCode !== "None") {
+      let tPrice = totalAmount ? totalAmount : totalPrice;
+      let subPr = type === "returnInvoice" ? subPrice : type;
+      let disA =
+        disAmount || disAmount === 0 ? disAmount : globalDiscountAmount;
+      setSelectedGlobalTaxObj(itm);
+      let taxAmt = await calculateTaxeGroups(
+        0,
+        subPr,
+        disA,
+        itm.TaxFamilyCode,
+        1,
+        null,
+        0,
+        TerminalConfiguration,
+        0,
+        0,
+        true
+      );
+      taxAmt.globalTaxGroupID = itm.TaxFamilyCode;
+      taxAmt.globalTaxGroupName = itm.TaxFamilyName;
+
+      let tax = taxAmt.Tax2Amount
+        ? taxAmt.Tax1Amount + taxAmt.Tax2Amount
+        : taxAmt.Tax1Amount
+        ? taxAmt.Tax1Amount
+        : 0;
+      let diA = taxAmt.DiscountAmount ? taxAmt.DiscountAmount : 0;
+
+      if (tax > 0) {
+        tPrice = subPr + tax - diA;
+
+        setTotalPrice(tPrice);
+      } else {
+        tPrice = subPr - disA;
+
+        setTotalPrice(tPrice);
+      }
+      setGlobalTaxObj(taxAmt);
+      setGlobalTax(tax);
+      setLoading(false);
+    } else {
+      let tPrice = totalPrice - globalTax;
+      setTotalPrice(tPrice);
+      setSelectedGlobalTaxObj(null);
+      setGlobalTaxObj(null);
+      setGlobalTax(0);
+    }
+  };
+
+  const convertArabicNumbersToEnglish = (arabicText) => {
+    let arabic_numbers = "٠١٢٣٤٥٦٧٨٩".split("");
+    let n = "";
+    let englishNumber = false;
+
+    for (let i = 0; i < arabicText?.length; i++) {
+      var number = arabic_numbers.find((x) => x == arabicText[i]);
+      if (number) {
+        englishNumber = false;
+      } else {
+        englishNumber = true;
+        return arabicText;
+      }
+
+      if (!englishNumber) {
+        let state = arabic_numbers.indexOf(arabicText[i]);
+        n += state;
+      }
+    }
+    return n;
+  };
+  const QR = forwardRef(() => {
+    var tax = globalTax,
+      proTax = 0,
+      proDiscount = 0;
+    for (let i = 0; i < selectedProducts?.length; i++) {
+      let pro = selectedProducts[i];
+      tax = tax + pro.tax;
+      proTax = proTax + pro.tax;
+      proDiscount = pro?.DiscountAmount
+        ? proDiscount + Number(pro.DiscountAmount)
+        : proDiscount + 0;
+    }
+    setSumOfProductsTax(Number(proTax));
+    setSumOfProductsDiscount(Number(proDiscount));
+    let VAT = TerminalConfiguration?.ValueAddedTaxNumber
+      ? TerminalConfiguration?.ValueAddedTaxNumber
+      : "000000000000000";
+    const currentDateISO = new Date().toISOString();
+    let invoiceTotal = totalPrice.toFixed(
+      TerminalConfiguration.DecimalsInAmount
+    );
+    let invoiceVatTotal = tax.toFixed(TerminalConfiguration.DecimalsInAmount);
+
+    const invoice = new Invoice({
+      sellerName: TerminalConfiguration.CompanyName,
+      vatRegistrationNumber: convertArabicNumbersToEnglish(VAT),
+      invoiceTimestamp: currentDateISO,
+      invoiceTotal: invoiceTotal,
+      invoiceVatTotal: invoiceVatTotal,
+    });
+    let imageData = invoice.toBase64();
+    if (imageData !== null) {
+      qrRef.current = imageData;
+      return (
+        <QRCode ref={qrRef} size={sizeHelper.calWp(300)} value={imageData} />
+      );
+    }
+  });
+
+  const soundLoading = () => {
+    let sound = new Sound(
+      require("../../assets/sounds/beep01.mp3"),
+      (error) => {
+        if (error) {
+          console.log("failed to load the sound", error);
         }
-        let executeCal = true;
-        if (item.DiscountAmount > 0) {
-          if (item.DiscountRate > 0) {
-            percentageDiscountAmount =
-              (item.webperamount * newQuantity * item.DiscountRate) / 100;
-            if (type === "increment" || type === "decrement") {
-              // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
-              item.Quantity = newQuantity;
+      }
+    );
+    setBeepSound(sound);
+  };
 
-              executeCal = false;
-              handleDiscount(item, "DiscountRate");
-            }
+  const SoundPlay = () => {
+    beepSound.play((success) => {
+      if (success) {
+        console.log("successfully finished playing");
+      } else {
+        console.log("playback failed due to audio decoding errors");
+      }
+    });
+  };
+
+  const updateTerminalConfiguration = () => {
+    let columnName = ["LastBillNumber"];
+    let columnValue = [Number(TerminalConfiguration.LastBillNumber) + 1];
+    updateColunm(
+      TerminalConfigurationTable,
+      columnName,
+      "UserCode",
+      TerminalConfiguration.UserCode,
+      columnValue
+    );
+    let StartFromValue = [Number(terminalSetup.StartFrom) + 1];
+    updateColunm(
+      TerminalSetupTable,
+      ["StartFrom"],
+      "id",
+      "12345678",
+      StartFromValue
+    );
+
+    if (paymentsValue === "1") {
+      let estimatedAmountinDrawer =
+        Number(drawerSetupArr.estimatedAmountinDrawer) + Number(totalPrice);
+      if (estimatedAmountinDrawer > 0) {
+        let salePrice = Number(drawerSetupArr.CashSales) + Number(totalPrice);
+        let columnNameDrawer = ["CashSales", "estimatedAmountinDrawer"];
+
+        let columnValueDrawer = [salePrice, estimatedAmountinDrawer];
+        updateColunm(
+          DrawerSetupTable,
+          columnNameDrawer,
+          "id",
+          "D12345678",
+          columnValueDrawer
+        );
+      }
+    } else {
+      let estimatedAmountinDrawer =
+        Number(drawerSetupArr.estimatedAmountinDrawer) + Number(totalPrice);
+      if (estimatedAmountinDrawer > 0) {
+        let creditSales =
+          Number(drawerSetupArr.creditSales) + Number(totalPrice);
+        let columnNameDrawer = ["creditSales", "estimatedAmountinDrawer"];
+        let columnValueDrawer = [creditSales, estimatedAmountinDrawer];
+        updateColunm(
+          DrawerSetupTable,
+          columnNameDrawer,
+          "id",
+          "D12345678",
+          columnValueDrawer
+        );
+      }
+    }
+  };
+  const updateReturnTerminalConfiguration = () => {
+    let columnName = ["LastReturnBillNumber"];
+    let columnValue = [Number(TerminalConfiguration.LastReturnBillNumber) + 1];
+    updateColunm(
+      TerminalConfigurationTable,
+      columnName,
+      "UserCode",
+      TerminalConfiguration.UserCode,
+      columnValue
+    );
+
+    let estimatedAmountinDrawer =
+      Number(drawerSetupArr.estimatedAmountinDrawer) - Number(totalPrice);
+    if (estimatedAmountinDrawer > 0) {
+      let salePrice = Number(drawerSetupArr.CashRefund) + Number(totalPrice);
+      let columnNameDrawer = ["CashRefund", "estimatedAmountinDrawer"];
+      let columnValueDrawer = [salePrice, estimatedAmountinDrawer];
+      updateColunm(
+        DrawerSetupTable,
+        columnNameDrawer,
+        "id",
+        "D12345678",
+        columnValueDrawer
+      );
+    }
+  };
+
+  const getAllCategories = async (type) => {
+    getData(CategoriesListTable, async (categories) => {
+      setAllCategories(categories);
+      if (categories.length > 0) {
+        getSelectedCategoryProducts(categories[0]);
+      } else {
+        setNoFamilyFound(true);
+        getData(UpdateProductDetailListTable, (productsDetail) => {
+          console.log("getAllCategories logs", productsDetail);
+          if (type !== "isRestState") {
+            onSelectProduct(null, productsDetail);
           } else {
-            percentageDiscountAmount = item.DiscountAmount;
+            setCategoryProducts(productsDetail);
+          }
+          setLoading(false);
+        });
+      }
+    });
+  };
 
-            if (type === "increment" || type === "decrement") {
-              // item.Quantity = type === 'increment' ? item.Quantity + 1 : item.Quantity - 1
-              item.Quantity = newQuantity;
-              executeCal = false;
-              handleDiscount(item, undefined);
+  const getAddOnProducts = async (item, index) => {
+    let selectedProduct = [...selectedProducts];
+    setLoading(true);
+    await getDataJoinById(
+      ProductCardAddOnGroupListTable,
+      UpdateProductDetailListTable,
+      "AddOnGroupCode",
+      item.AddOnGroupCode,
+      async (addonProducts) => {
+        console.log("Product Card Add On Group List Table...", addonProducts);
+        if (addonProducts.length > 0) {
+          let products = [];
+
+          for (let i = 0; i < addonProducts.length; i++) {
+            let isFind;
+            if (addonProducts[i].ProductType === 3) {
+              if (
+                addonProducts[i].ProductType === 3 &&
+                orderCode === true &&
+                showButton === false
+              ) {
+                isFind = selectedProduct.find(
+                  (x) =>
+                    (x.AddOnGroupCode === addonProducts[i].AddOnGroupCode ||
+                      x.EquiProductCode === addonProducts[i].ProductCode) &&
+                    x.AddOnParentSalesInvoiceDetailsID ===
+                      item.SalesInvoiceDetailsID &&
+                    x.ProductCode === addonProducts[i].ProductCode
+                );
+              } else if (
+                addonProducts[i].ProductType === 3 &&
+                orderCode === false &&
+                showButton === true
+              ) {
+                if (item?.isSelected === true) {
+                  isFind = selectedProduct.find(
+                    (x) =>
+                      (x.AddOnGroupCode === addonProducts[i].AddOnGroupCode ||
+                        x.EquiProductCode === addonProducts[i].ProductCode) &&
+                      x.AddOnParentSalesInvoiceDetailsID ===
+                        item.SalesInvoiceDetailsID &&
+                      x.ProductCode === addonProducts[i].ProductCode
+                  );
+                } else if (item?.isSelected === undefined) {
+                  isFind = selectedProduct.find(
+                    (x) =>
+                      (x.AddOnGroupCode === addonProducts[i].AddOnGroupCode ||
+                        x.EquiProductCode === addonProducts[i].ProductCode) &&
+                      x.AddOnParentSalesInvoiceDetailsID ===
+                        item.SalesInvoiceDetailsID &&
+                      x.ProductCode === addonProducts[i].ProductCode
+                  );
+                }
+              }
+
+              await getDataJoinById(
+                ProductCardAddOnEquivalentProductsListTable,
+                UpdateProductDetailListTable,
+                "EquiProductCode",
+                addonProducts[i].ProductCode,
+                (EquivalentProduct) => {
+                  console.log("addon equivaletnt Products", EquivalentProduct);
+                  let EqP = [];
+                  for (let j = 0; j < EquivalentProduct.length; j++) {
+                    let pro = {
+                      SalesInvoiceDetailsID: uuid.v4(),
+                      SalesBillID: null,
+                      BillNumber: null,
+                      FiscalSpanID: 0,
+                      BillType: addonProducts[i].BillType,
+                      SerialNumber: 1,
+                      ProductCode: EquivalentProduct[j].ProductCode,
+                      ProductName: EquivalentProduct[j].Name,
+                      ProductName2: EquivalentProduct[j].Name2,
+                      ProductType: EquivalentProduct[j].ProductType,
+                      Quantity: addonProducts[i].Quantity,
+                      UOMType: EquivalentProduct[j].UOMType,
+                      UOMCode: EquivalentProduct[j].UOMCode,
+                      UOMFragment: EquivalentProduct[j].UOMFragment,
+                      UOMCode: EquivalentProduct[j].UOMCode,
+                      UOMName: EquivalentProduct[j].UOMName,
+                      Price: 0,
+                      PriceOriginal: addonProducts[i].Price,
+                      PriceType: item.PriceType,
+                      DiscountRate: addonProducts[i].DiscountRate
+                        ? addonProducts[i].DiscountRate
+                        : 0,
+                      DiscountAmount: 0,
+                      TaxGroupID: EquivalentProduct[0].SaleTaxGroupCode,
+                      IsTax1IncludedInPrice: false,
+                      IsTax2IncludedInPrice: false,
+                      Tax1Code: "",
+                      Tax1Name: "",
+                      Tax1Rate: 0,
+                      Tax1Amount: 0,
+                      Tax2Code: "",
+                      Tax2Name: "",
+                      Tax2Rate: 0,
+                      Tax2Amount: 0,
+                      GrandAmount: addonProducts[i].Price,
+                      GroupDataID: "",
+                      ProductBarCode: EquivalentProduct[j].ProductBarCode,
+                      ReturnSalesBillDetailID: "",
+                      DeliveryStatus: "",
+                      DeliveryDate: "",
+                      DeliveryTime: "",
+                      DeliveryNote: "",
+                      DeliveredDate: "",
+                      DeliveredTime: "",
+                      Remarks: "",
+                      SalesAgentCode: null,
+                      IsParentAddOn: false,
+                      AddOnGroupCode: addonProducts[i].AddOnGroupCode,
+                      ParentInvoiceDetailsID: item.SalesInvoiceDetailsID,
+                      OrignalQuantity: addonProducts[i].Quantity,
+                      AddonProductDetailcode:
+                        addonProducts[i].AddOnGroupDetailCode,
+                      Ingredients: 0,
+                      EarnedPoints: 0,
+                      RedeemPoints: Number(0),
+                      Status: 0,
+                      ProductCategoryCode: addonProducts[i].ProductCategoryCode,
+                      MediaContentType: addonProducts[i].MediaContentType,
+                      MediaContents: addonProducts[i].MediaContents,
+                      HoldFromSale: EquivalentProduct[j].HoldFromSale,
+                      parentIndex: index + 1,
+                      parentQuantity: item.Quantity,
+                      AddOnParentSalesInvoiceDetailsID:
+                        item.SalesInvoiceDetailsID,
+                      EquiProductCode: EquivalentProduct[j].EquiProductCode,
+                    };
+                    EqP.push(pro);
+                  }
+
+                  if (!isFind) {
+                    let pro = {
+                      SalesInvoiceDetailsID: uuid.v4(),
+                      SalesBillID: null,
+                      BillNumber: null,
+                      FiscalSpanID: 0,
+                      BillType: addonProducts[i].BillType,
+                      SerialNumber: 1,
+                      ProductCode: addonProducts[i].ProductCode,
+                      ProductName: addonProducts[i].Name,
+                      ProductName2: addonProducts[i].Name2,
+                      ProductType: addonProducts[i].ProductType,
+                      Quantity: addonProducts[i].Quantity,
+                      UOMType: addonProducts[i].UOMType,
+                      UOMCode: addonProducts[i].UOMCode,
+                      UOMFragment: addonProducts[i].UOMFragment,
+                      UOMCode: addonProducts[i].UOMCode,
+                      UOMName: addonProducts[i].UOMName,
+                      Price: 0,
+                      PriceOriginal: addonProducts[i].Price,
+
+                      PriceType: item.PriceType,
+                      DiscountRate: addonProducts[i].DiscountRate
+                        ? addonProducts[i].DiscountRate
+                        : 0,
+                      DiscountAmount: 0,
+                      TaxGroupID: addonProducts[i].SaleTaxGroupCode,
+                      IsTax1IncludedInPrice: false,
+                      IsTax2IncludedInPrice: false,
+                      Tax1Code: "",
+                      Tax1Name: "",
+                      Tax1Rate: 0,
+                      Tax1Amount: 0,
+                      Tax2Code: "",
+                      Tax2Name: "",
+                      Tax2Rate: 0,
+                      Tax2Amount: 0,
+                      GrandAmount: addonProducts[i].Price,
+                      GroupDataID: "",
+                      ProductBarCode: addonProducts[i].ProductBarCode,
+                      ReturnSalesBillDetailID: "",
+                      DeliveryStatus: "",
+                      DeliveryDate: "",
+                      DeliveryTime: "",
+                      DeliveryNote: "",
+                      DeliveredDate: "",
+                      DeliveredTime: "",
+                      Remarks: "",
+                      SalesAgentCode: null,
+                      IsParentAddOn: false,
+                      AddOnGroupCode: addonProducts[i].AddOnGroupCode,
+                      ParentInvoiceDetailsID: item.SalesInvoiceDetailsID,
+                      OrignalQuantity: addonProducts[i].Quantity,
+                      AddonProductDetailcode:
+                        addonProducts[i].AddOnGroupDetailCode,
+                      Ingredients: 0,
+                      EarnedPoints: 0,
+                      RedeemPoints: Number(0),
+                      Status: 0,
+                      ProductCategoryCode: addonProducts[i].ProductCategoryCode,
+                      MediaContentType: addonProducts[i].MediaContentType,
+                      MediaContents: addonProducts[i].MediaContents,
+                      HoldFromSale: addonProducts[i].HoldFromSale,
+                      parentIndex: index + 1,
+                      parentQuantity: item.Quantity,
+                      AddOnParentSalesInvoiceDetailsID:
+                        item.SalesInvoiceDetailsID,
+                      EquivalentProducts: EqP,
+                    };
+                    products.push(pro);
+                  }
+                }
+              );
+              if (Array.isArray(products) && products !== undefined) {
+                setReturnProducts(products);
+                setTimeout(() => {
+                  setisAddon(true);
+                  setLoading(false);
+                }, 500);
+              }
+            } else {
+              if (
+                addonProducts[i].ProductType === 1 &&
+                orderCode === true &&
+                showButton === false
+              ) {
+                isFind = selectedProduct.find(
+                  (x) =>
+                    (x.ProductBarCode === addonProducts[i].ProductBarCode ||
+                      x.EquiProductCode === addonProducts[i].ProductCode) &&
+                    x.AddOnParentSalesInvoiceDetailsID ===
+                      item.SalesInvoiceDetailsID
+                );
+              } else if (
+                addonProducts[i].ProductType === 1 &&
+                orderCode === false &&
+                showButton === true
+              ) {
+                if (item?.isSelected === true) {
+                  isFind = selectedProduct.find(
+                    (x) =>
+                      (x.ProductBarCode === addonProducts[i].ProductBarCode ||
+                        x.EquiProductCode === addonProducts[i].ProductCode) &&
+                      x.AddOnParentSalesInvoiceDetailsID ===
+                        item.SalesInvoiceDetailsID
+                  );
+                } else if (item?.isSelected === undefined) {
+                  isFind = selectedProduct.find(
+                    (x) =>
+                      (x.ProductBarCode === addonProducts[i].ProductBarCode ||
+                        x.EquiProductCode === addonProducts[i].ProductCode) &&
+                      x.AddOnParentSalesInvoiceDetailsID ===
+                        item.SalesInvoiceDetailsID
+                  );
+                }
+              }
+
+              await getDataJoinById(
+                ProductCardAddOnEquivalentProductsListTable,
+                UpdateProductDetailListTable,
+                "EquiProductCode",
+                addonProducts[i].ProductCode,
+                (EquivalentProduct) => {
+                  console.log("addon equivaletnt Products", EquivalentProduct);
+                  let EqP = [];
+                  for (let j = 0; j < EquivalentProduct.length; j++) {
+                    let pro = {
+                      SalesInvoiceDetailsID: uuid.v4(),
+                      SalesBillID: null,
+                      BillNumber: null,
+                      FiscalSpanID: 0,
+                      BillType: addonProducts[i].BillType
+                        ? addonProducts[i].BillType
+                        : "",
+                      SerialNumber: 1,
+                      ProductCode: EquivalentProduct[j].ProductCode,
+                      ProductName: EquivalentProduct[j].Name,
+                      ProductName2: EquivalentProduct[j].Name2,
+                      ProductType: EquivalentProduct[j].ProductType,
+                      Quantity: addonProducts[i].Quantity,
+                      UOMType: EquivalentProduct[j].UOMType,
+                      UOMCode: EquivalentProduct[j].UOMCode,
+                      UOMFragment: EquivalentProduct[j].UOMFragment,
+                      UOMCode: EquivalentProduct[j].UOMCode,
+                      UOMName: EquivalentProduct[j].UOMName,
+                      Price: 0,
+                      PriceOriginal: addonProducts[i].Price,
+                      PriceType: item.PriceType,
+                      DiscountRate: addonProducts[i].DiscountRate
+                        ? addonProducts[i].DiscountRate
+                        : 0,
+                      DiscountAmount: 0,
+                      TaxGroupID: EquivalentProduct[0].SaleTaxGroupCode,
+                      IsTax1IncludedInPrice: false,
+                      IsTax2IncludedInPrice: false,
+                      Tax1Code: "",
+                      Tax1Name: "",
+                      Tax1Rate: 0,
+                      Tax1Amount: 0,
+                      Tax2Code: "",
+                      Tax2Name: "",
+                      Tax2Rate: 0,
+                      Tax2Amount: 0,
+                      GrandAmount: addonProducts[i].Price,
+                      GroupDataID: "",
+                      ProductBarCode: EquivalentProduct[j].ProductBarCode,
+                      ReturnSalesBillDetailID: "",
+                      DeliveryStatus: "",
+                      DeliveryDate: "",
+                      DeliveryTime: "",
+                      DeliveryNote: "",
+                      DeliveredDate: "",
+                      DeliveredTime: "",
+                      Remarks: "",
+                      SalesAgentCode: null,
+                      IsParentAddOn: false,
+                      AddOnGroupCode: addonProducts[i].AddOnGroupCode,
+                      ParentInvoiceDetailsID: item.SalesInvoiceDetailsID,
+                      OrignalQuantity: addonProducts[i].Quantity,
+                      AddonProductDetailcode:
+                        addonProducts[i].AddOnGroupDetailCode,
+                      Ingredients: 0,
+                      EarnedPoints: 0,
+                      RedeemPoints: Number(0),
+                      Status: 0,
+                      ProductCategoryCode: addonProducts[i].ProductCategoryCode,
+                      MediaContentType: addonProducts[i].MediaContentType,
+                      MediaContents: addonProducts[i].MediaContents,
+                      HoldFromSale: EquivalentProduct[j].HoldFromSale,
+                      parentIndex: index + 1,
+                      parentQuantity: item.Quantity,
+                      AddOnParentSalesInvoiceDetailsID:
+                        item.SalesInvoiceDetailsID,
+                      EquiProductCode: EquivalentProduct[j].EquiProductCode,
+                    };
+                    EqP.push(pro);
+                  }
+
+                  if (!isFind && addonProducts[i].ProductType !== 3) {
+                    let pro = {
+                      SalesInvoiceDetailsID: uuid.v4(),
+                      SalesBillID: null,
+                      BillNumber: null,
+                      FiscalSpanID: 0,
+                      BillType: addonProducts[i].BillType,
+                      SerialNumber: 1,
+                      ProductCode: addonProducts[i].ProductCode,
+                      ProductName: addonProducts[i].Name,
+                      ProductName2: addonProducts[i].Name2,
+                      ProductType: addonProducts[i].ProductType,
+                      Quantity: addonProducts[i].Quantity,
+                      UOMType: addonProducts[i].UOMType,
+                      UOMCode: addonProducts[i].UOMCode,
+                      UOMFragment: addonProducts[i].UOMFragment,
+                      UOMCode: addonProducts[i].UOMCode,
+                      UOMName: addonProducts[i].UOMName,
+                      Price: 0,
+                      PriceOriginal: addonProducts[i].Price,
+
+                      PriceType: item.PriceType,
+                      DiscountRate: addonProducts[i].DiscountRate
+                        ? addonProducts[i].DiscountRate
+                        : 0,
+                      DiscountAmount: 0,
+                      TaxGroupID: addonProducts[i].SaleTaxGroupCode,
+                      IsTax1IncludedInPrice: false,
+                      IsTax2IncludedInPrice: false,
+                      Tax1Code: "",
+                      Tax1Name: "",
+                      Tax1Rate: 0,
+                      Tax1Amount: 0,
+                      Tax2Code: "",
+                      Tax2Name: "",
+                      Tax2Rate: 0,
+                      Tax2Amount: 0,
+                      GrandAmount: addonProducts[i].Price,
+                      GroupDataID: "",
+                      ProductBarCode: addonProducts[i].ProductBarCode,
+                      ReturnSalesBillDetailID: "",
+                      DeliveryStatus: "",
+                      DeliveryDate: "",
+                      DeliveryTime: "",
+                      DeliveryNote: "",
+                      DeliveredDate: "",
+                      DeliveredTime: "",
+                      Remarks: "",
+                      SalesAgentCode: null,
+                      IsParentAddOn: false,
+                      AddOnGroupCode: addonProducts[i].AddOnGroupCode,
+                      ParentInvoiceDetailsID: item.SalesInvoiceDetailsID,
+                      OrignalQuantity: addonProducts[i].Quantity,
+                      AddonProductDetailcode:
+                        addonProducts[i].AddOnGroupDetailCode,
+                      Ingredients: 0,
+                      EarnedPoints: 0,
+                      RedeemPoints: Number(0),
+                      Status: 0,
+                      ProductCategoryCode: addonProducts[i].ProductCategoryCode,
+                      MediaContentType: addonProducts[i].MediaContentType,
+                      MediaContents: addonProducts[i].MediaContents,
+                      HoldFromSale: addonProducts[i].HoldFromSale,
+                      parentIndex: index + 1,
+                      parentQuantity: item.Quantity,
+                      AddOnParentSalesInvoiceDetailsID:
+                        item.SalesInvoiceDetailsID,
+                      EquivalentProducts: EqP,
+                    };
+                    products.push(pro);
+                  }
+                }
+              );
+              if (Array.isArray(products) && products !== undefined) {
+                setReturnProducts(products);
+                setTimeout(() => {
+                  setisAddon(true);
+                  setLoading(false);
+                }, 500);
+              }
             }
           }
-        }
-        if (executeCal == true) {
-          await productGroupList.forEach(async (element, index) => {
-            console.log("Element", element);
-            let amountBeforeDiscount = item.PriceOriginal * newQuantity;
-            let taxGroupID = "";
-            let itemQty = 0,
-              itemAmount = 0,
-              itemProposedSalesAmount = 0,
-              itemDiscountAmount = 0,
-              netQty = 0;
-
-            taxGroupID = element.SaleTaxFamilyCode;
-            itemQty = element.Quantity;
-            itemAmount = element.Price;
-
-            netQty = newQuantity * itemQty;
-
-            itemProposedSalesAmount =
-              (itemAmount * amountBeforeDiscount) / item.Pricefortax;
-
-            if (amountBeforeDiscount > 0)
-              itemDiscountAmount =
-                (itemProposedSalesAmount * percentageDiscountAmount) /
-                amountBeforeDiscount;
-
-            let taxAmt = await calculateTaxeGroups(
-              netQty,
-              itemProposedSalesAmount,
-              itemDiscountAmount,
-              taxGroupID,
-              1,
-              null,
-              0,
-              TerminalConfiguration,
-              item.PriceOriginal,
-              dr
-            );
-
-            console.log("taxamount is", taxAmt);
-
-            if (taxAmt.Tax1Fragment == 2) {
-              let taxtPerGroup = taxAmt.Tax1Amount * newQuantity;
-              let taxPerItem = taxtPerGroup;
-              totaltax1 += taxPerItem;
-            } else {
-              totaltax1 = taxAmt.Tax1Amount
-                ? totaltax1 + taxAmt.Tax1Amount
-                : totaltax1 + 0;
-            }
-            if (taxAmt.Tax2Fragment == 2) {
-              let taxtPrGroup = taxAmt.Tax2Amount * newQuantity;
-              let taxPrItem = taxtPrGroup;
-              totaltax2 += taxPrItem;
-            } else {
-              totaltax2 = taxAmt.Tax2Amount
-                ? totaltax2 + taxAmt.Tax2Amount
-                : totaltax2 + 0;
-            }
-
-            tamout += taxAmt.amount;
-            finaltaxObj = taxAmt;
-
-            if (!taxAmt.IsTax1IncludedInPrice)
-              tax1ActualAmountTotal += taxAmt.Tax1Amount
-                ? taxAmt.Tax1Amount
-                : 0;
-            else
-              taxAmountIncludedInPrice += taxAmt.Tax1Amount
-                ? taxAmt.Tax1Amount
-                : 0;
-            if (!taxAmt.IsTax2IncludedInPrice)
-              tax2ActualAmountTotal += taxAmt.Tax2Amount
-                ? taxAmt.Tax2Amount
-                : 0;
-            else
-              taxAmountIncludedInPrice += taxAmt.Tax2Amount
-                ? taxAmt.Tax2Amount
-                : 0;
-
-            tax1AmountTotal += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-            tax2AmountTotal += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-
-            if (
-              taxAmountIncludedInPrice > 0 ||
-              taxAmt.Tax1Amount > 0 ||
-              taxAmt.Tax2Amount > 0
-            ) {
-              let amountAfterTax =
-                amountBeforeDiscount - taxAmountIncludedInPrice;
-
-              if (amountAfterTax > 0)
-                taxAmt.Price = amountAfterTax / (item.Quantity * 1);
-              else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-            } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
-              //It means All the group items dont have tax group id
-              if (amountBeforeDiscount > 0)
-                taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
-              else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-            }
-
-            item.Tax1Amount = tax1AmountTotal ? tax1AmountTotal : 0;
-            item.Tax2Amount = tax2AmountTotal ? tax2AmountTotal : 0;
-            item.Price = Number(item.PriceOriginal);
-            item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice ? 1 : 0;
-            item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice ? 1 : 0;
-            item.IngredientsArray = [];
-            item.IngredientNames = "";
-
-            item.Tax1Code = taxAmt.Tax1Code;
-            (item.Tax1Name = ""),
-              (item.Tax1Rate = taxAmt.Tax1Percentage),
-              (item.Tax1Amount = totaltax1),
-              (item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : ""),
-              (item.Tax2Name = ""),
-              (item.Tax2Rate = taxAmt.Tax2Percentage
-                ? taxAmt.Tax2Percentage
-                : 0),
-              (item.Tax2Amount = totaltax2);
-            let tax = totaltax1 + totaltax2;
-            let product = item;
-            if (type === "increment") {
-              if (taxAmt) {
-                let proQ;
-                if (!product.IsParentAddOn) {
-                  proQ =
-                    type === "increment"
-                      ? (newQuantity - 1) * product.OrignalQuantity
-                      : newQuantity * product.OrignalQuantity;
-                } else {
-                  proQ = type === "increment" ? newQuantity - 1 : newQuantity;
-                }
-                if (proQ !== product.maxQuantity) {
-                  product.Quantity = newQuantity;
-
-                  if (dr > 0) {
-                    discount = product.DiscountAmount
-                      ? percentageDiscountAmount
-                      : parseFloat(
-                          (dr * product.webperamount * newQuantity) / 100
-                        );
-                    discount = Number(discount);
-                  } else {
-                    discount = product.DiscountAmount
-                      ? product.DiscountAmount
-                      : 0;
-                    discount = Number(discount);
-                  }
-                  var amount = 0;
-                  if (index == 0)
-                    amount = amountBeforeDiscount - percentageDiscountAmount;
-                  else amount = product.GrandAmount;
-                  if (taxAmt.IsTax1IncludedInPrice == false) {
-                    if (taxAmt.Tax1Fragment == 2) {
-                      amount =
-                        amount + taxAmt.Tax1Amount * item.Quantity - discount;
-                    } else {
-                      amount = amount + taxAmt.Tax1Amount - discount; // txAmts.Tax1Amount;
-                    }
-                  }
-                  if (taxAmt.IsTax2IncludedInPrice == false) {
-                    amount = amount + taxAmt.Tax2Amount - discount; //txAmts.Tax2Amount;
-                  }
-                  product.GrandAmount = amount;
-                  if (discount > item.PriceOriginal * newQuantity) {
-                    discount = Number(discount);
-                    discount = 0;
-                  }
-                  item.PriceWithOutTax = Number(item.PriceUnitlesstax);
-                  discount = Number(discount);
-
-                  product.DiscountAmount = Number(discount).toFixed(2);
-                  product.tax = tax;
-                  console.log("Tax is ", tax);
-
-                  product.tax = product.Tax1Amount + product.Tax2Amount;
-                  console.log("Tax is ", product.tax);
-                } else {
-                  setMessage(props.StringsList._230);
-                  setDisplayAlert(true);
+        } else {
+          Alert.alert(
+            "Bnody Restaurant",
+            "Please attach Addons then try again",
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  setisAddon(false);
                   setLoading(false);
-                }
-              }
-            } else if (type === "decrement") {
-              product.Quantity = newQuantity;
-              if (dr > 0) {
-                discount = product.DiscountAmount
-                  ? percentageDiscountAmount
-                  : parseFloat((dr * product.webperamount * newQuantity) / 100);
-              } else {
-                discount = product.DiscountAmount ? product.DiscountAmount : 0;
-              }
-              if (discount > product.PriceOriginal * newQuantity) {
-                discount = 0;
-              }
-              item.PriceWithOutTax = Number(item.PriceUnitlesstax);
-
-              var amount = 0;
-              if (index == 0)
-                amount = amountBeforeDiscount - percentageDiscountAmount;
-              else amount = product.GrandAmount;
-
-              if (taxAmt.IsTax1IncludedInPrice == false) {
-                if (taxAmt.Tax1Fragment == 2) {
-                  amount =
-                    amount + taxAmt.Tax1Amount * item.Quantity - discount;
-                } else {
-                  amount = amount + taxAmt.Tax1Amount - discount; // txAmts.Tax1Amount;
-                }
-              }
-
-              if (taxAmt.IsTax2IncludedInPrice == false) {
-                amount = amount + taxAmt.Tax2Amount - discount; //txAmts.Tax2Amount;
-              }
-
-              product.GrandAmount = amount;
-
-              product.DiscountAmount = Number(discount).toFixed(2);
-              product.tax = tax;
-              product.tax = product.Tax1Amount + product.Tax2Amount;
-            }
-            if (index === productGroupList.length - 1) {
-              let p = [...selectedProducts];
-              for (let i = 0; i < p.length; i++) {
-                let prod = p[i];
-                if (
-                  prod?.AddOnParentSalesInvoiceDetailsID ===
-                    parentItem.SalesBillDetailsID &&
-                  type !== "returnInvoice"
-                ) {
-                  prod = item;
-                } else if (
-                  prod?.ProductBarCode === item?.ProductBarCode &&
-                  prod?.PriceOriginal === item?.PriceOriginal
-                ) {
-                  prod = parentItem;
-                }
-              }
-              finalCalculation(p);
-              setSelectedProducts(p);
-            }
-          });
+                },
+              },
+            ]
+          );
         }
-      });
-    } else {
-      setMessage(props.StringsList._230);
-      setDisplayAlert(true);
-      setLoading(false);
-    }
+      }
+    );
   };
 
-  const addProductToList = async (itm, type, index, proArray, SP, TP) => {
-    console.log("addProductToList item", itm);
-    // getProductsIngredients(itm)
+  const getProductsIngredients = async (item) => {
+    setLoading(true);
+    let selectedProduct = [...selectedProducts];
+    await getDataById(
+      ProductCardIngredientsListTable,
+      "ProductBarCode",
+      item.ProductBarCode,
+      (ingredients) => {
+        // console.log(
+        //   'ingredients.....',
+        //   ingredients,
+        //   'item?.ingredients',
+        //   item?.ingredients,
+        // );
+        setIsIngredient(true);
+        setIngredientsData(ingredients);
+        setIngredientProductCode(item.ProductBarCode);
+        setLoading(false);
+      }
+    );
+  };
+  const searchIngredientFun = (text) => {
     setLoading(true);
 
-    let executeCalculation = true;
-    let addonFinalQuantity = 0;
-    // createInvoiceStyle()
-    if (!returnInvoiceNumber && !invoiceNumber) onNewInvoice();
-    let item = { ...itm },
-      selectedProduct = [...selectedProducts],
-      sPrice = subPrice,
-      tPrice = totalPrice;
-    if (terminalSetup?.BeepSound === "true") {
-      SoundPlay();
-    }
-    if (retunProducts.length > 0 && !itm.IsParentAddOn) {
-      let retp = [...retunProducts];
-      // console.log("Retun Products...", retp)
-      retp.splice(index, 1);
-      setReturnProducts(retp);
-    }
-    let isAlredySelected = false;
-    localIndex = index;
-    if (selectedProducts.length > 0) {
-      let newQuantity;
+    let filteredName = [];
 
-      let isProductExist = selectedProducts.find(
-        (x) =>
-          x?.ProductBarCode === item?.ProductBarCode &&
-          x?.PriceOriginal === item?.PriceOriginal &&
-          x.haveAddon == true
-      );
-
-      if (isProductExist && !isToggle) {
-        let sameProductWithoutAddon = selectedProducts.findIndex(
-          (x) =>
-            x?.ProductBarCode === item?.ProductBarCode &&
-            x?.PriceOriginal === item?.PriceOriginal &&
-            x.haveAddon == undefined
-        );
-
-        if (sameProductWithoutAddon) {
-          item.addAsNew = false;
-          localIndex = sameProductWithoutAddon;
-        } else {
-          item.addAsNew = true;
+    if (text || text !== "") {
+      ingredientsData.filter((item) => {
+        if (
+          item?.IngredientName?.toLowerCase().match(text?.toLowerCase()) ||
+          item?.IngredientName1?.toLowerCase().match(text?.toLowerCase())
+        ) {
+          filteredName.push(item);
         }
-      } else {
-        item.addAsNew = false;
-      }
-      if (item.addAsNew === false) {
-        for (let i = 0; i < selectedProduct.length; i++) {
-          let product = selectedProduct[i];
-          console.log("index is ===>", index);
-
-          let ind;
-          if (localIndex == undefined) {
-            ind = i;
-          } else {
-            ind = localIndex;
-          }
-          console.log("my index is", ind);
-          if (
-            (i === ind ||
-              product?.AddOnParentSalesInvoiceDetailsID ===
-                item.SalesBillDetailsID) &&
-            type !== "returnInvoice"
-          ) {
-            if (
-              product?.ProductBarCode === item?.ProductBarCode &&
-              product?.PriceOriginal === item?.PriceOriginal
-            ) {
-              newQuantity =
-                type !== "increment"
-                  ? product.Quantity - 1
-                  : product.Quantity + 1;
-            }
-            console.log(
-              "add Product To List... item",
-              product.Quantity,
-              newQuantity
-            );
-
-            if (
-              ((product?.ProductBarCode === item?.ProductBarCode &&
-                product?.PriceOriginal === item?.PriceOriginal) ||
-                product?.AddOnParentSalesInvoiceDetailsID ===
-                  item.SalesBillDetailsID) &&
-              type !== "returnInvoice"
-            ) {
-              let groupType = "";
-              if (
-                product?.AddOnParentSalesInvoiceDetailsID ===
-                item.SalesBillDetailsID
-              ) {
-                groupType = "addon";
-              }
-              // console.log("calculateTaxeGroups...", taxAmt)
-
-              let discount = 0;
-              isAlredySelected = true;
-              let Amount = Number(product.PriceOriginal * newQuantity),
-                pd = product.DiscountAmount ? product.DiscountAmount : 0,
-                dr = product.DiscountRate ? product.DiscountRate : 0;
-              if (pd >= Amount && printType === null) {
-                pd = 0;
-              }
-
-              product.DiscountAmount = pd;
-              // console.log("Amount.....", newQuantity, Amount, product.DiscountAmount, product.TaxGroupID, 1, null, 0, product.PriceOriginal, product.DiscountRate, product.ProductName)
-              let taxAmt;
-
-              if (product.ProductType === 3) {
-                if (printType === "returnBill") {
-                  let totalQuantity =
-                    product?.Quantity + product?.ReturnedQuantity;
-                  let discountAfterDivision = Number(
-                    (item.DiscountAmount / totalQuantity) * newQuantity
-                  );
-                  if (product.DiscountRate > 0) {
-                    pd = product.DiscountAmount;
-                  } else {
-                    pd = discountAfterDivision;
-                  }
-                }
-                executeCalculation = false;
-                if (groupType === "addon") {
-                  if (!product?.IsParentAddOn) {
-                    addonFinalQuantity = newQuantity * product.OrignalQuantity;
-                    pd = 0;
-                  }
-                  changeProductGroupAddon(
-                    itm,
-                    product,
-                    type,
-                    addonFinalQuantity,
-                    dr,
-                    pd
-                  );
-                } else {
-                  changeProductGroupItem(itm, type, newQuantity, dr, pd);
-                }
-              } else {
-                if (printType === "returnBill") {
-                  let totalQuantity =
-                    product?.Quantity + product?.ReturnedQuantity;
-                  let discountAfterDivision = Number(
-                    (item.DiscountAmount / totalQuantity) * newQuantity
-                  );
-                  if (product.DiscountRate > 0) {
-                    pd = product.DiscountAmount;
-                  } else {
-                    pd = discountAfterDivision;
-                  }
-                }
-                if (!product?.IsParentAddOn) {
-                  addonFinalQuantity = newQuantity * product.OrignalQuantity;
-                  pd = 0;
-                }
-
-                taxAmt = await calculateTaxeGroups(
-                  product.IsParentAddOn ? newQuantity : addonFinalQuantity,
-                  Amount,
-                  pd,
-                  product.TaxGroupID,
-                  1,
-                  null,
-                  0,
-                  TerminalConfiguration,
-                  product.PriceOriginal,
-                  dr
-                );
-
-                //  console.log("Amount.....taxAmt", taxAmt)
-                product.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-                (product.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
-                  (product.Tax1Rate = taxAmt.Tax1Percentage
-                    ? taxAmt.Tax1Percentage
-                    : 0);
-
-                if (product.Tax1Fragment == 2 || product.Tax2Fragment == 2) {
-                  taxAmt.Tax1Amount = product.IsParentAddOn
-                    ? taxAmt.Tax1Amount * newQuantity
-                    : taxAmt.Tax1Amount * addonFinalQuantity;
-                  taxAmt.DiscountAmount = product.DiscountRate
-                    ? (product.PriceOriginal *
-                        newQuantity *
-                        product.DiscountRate) /
-                      100
-                    : pd;
-                } else {
-                  taxAmt.DiscountAmount = product.DiscountRate
-                    ? (product.PriceOriginal *
-                        newQuantity *
-                        product.DiscountRate) /
-                      100
-                    : pd;
-                }
-
-                product.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-
-                (product.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
-                  (product.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
-                  (product.Tax2Rate = taxAmt?.Tax2Percentage
-                    ? taxAmt?.Tax2Percentage
-                    : 0);
-
-                product.Tax2Amount = taxAmt?.Tax2Amount
-                  ? taxAmt?.Tax2Amount
-                  : 0;
-
-                if (type === "increment") {
-                  if (taxAmt) {
-                    let proQ;
-
-                    if (!product.IsParentAddOn) {
-                      proQ =
-                        type === "increment"
-                          ? (newQuantity - 1) * product.OrignalQuantity
-                          : newQuantity * product.OrignalQuantity;
-                    } else {
-                      proQ =
-                        type === "increment" ? newQuantity - 1 : newQuantity;
-                    }
-                    // console.log("proQ !== product.maxQuantity...", proQ, newQuantity, product)
-                    if (
-                      proQ === product.maxQuantity &&
-                      printType === "returnBill"
-                    ) {
-                      product.Tax1Amount = product.tax;
-                    }
-                    if (proQ !== product.maxQuantity) {
-                      let totalQuantity =
-                        product?.Quantity + product?.ReturnedQuantity;
-                      product.Quantity = newQuantity;
-                      let discountAfterDivision = Number(
-                        (item.DiscountAmount / totalQuantity) * newQuantity
-                      );
-                      if (
-                        printType === "returnBill" &&
-                        product.IsParentAddOn &&
-                        product.DiscountRate === 0
-                      ) {
-                        discount = discountAfterDivision;
-                      } else if (dr > 0) {
-                        discount = taxAmt.DiscountAmount
-                          ? taxAmt.DiscountAmount
-                          : parseFloat(
-                              (dr *
-                                (product.PriceWithOutTax * newQuantity +
-                                  taxAmt.Tax1Amount)) /
-                                100
-                            );
-                      } else {
-                        discount = product.DiscountAmount;
-                      }
-                      let GAmount = 0;
-                      if (
-                        taxAmt.calculationId === 9 ||
-                        taxAmt.calculationId === 1
-                      ) {
-                        GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
-                      } else {
-                        GAmount = !product.IsTax1IncludedInPrice
-                          ? Number(
-                              product.PriceOriginal * product.Quantity -
-                                discount +
-                                taxAmt.Tax1Amount
-                            )
-                          : Number(
-                              product.PriceOriginal * product.Quantity -
-                                discount
-                            );
-                      }
-                      product.GrandAmount = Number(GAmount);
-                      discount = Number(discount);
-                      product.DiscountAmount = discount.toFixed(2);
-                      product.tax = product.Tax1Amount + product.Tax2Amount;
-                      executeCalculation = true;
-                    } else {
-                      setMessage(props.StringsList._230);
-                      setDisplayAlert(true);
-                      setLoading(false);
-                    }
-                  }
-                } else if (type === "decrement") {
-                  let totalQuantity =
-                    product?.Quantity + product?.ReturnedQuantity;
-                  product.Quantity = newQuantity;
-                  let discountAfterDivision = Number(
-                    (item.DiscountAmount / totalQuantity) * newQuantity
-                  );
-                  if (
-                    printType === "returnBill" &&
-                    product.IsParentAddOn &&
-                    product.DiscountRate === 0
-                  ) {
-                    discount = discountAfterDivision;
-                  } else {
-                    discount = taxAmt.DiscountAmount
-                      ? taxAmt.DiscountAmount
-                      : parseFloat(
-                          (dr *
-                            (product.PriceWithOutTax * newQuantity +
-                              taxAmt.Tax1Amount)) /
-                            100
-                        );
-                  }
-                  let GAmount = 0;
-                  if (
-                    taxAmt.calculationId === 9 ||
-                    taxAmt.calculationId === 1
-                  ) {
-                    GAmount = Number(taxAmt.amount + taxAmt.Tax1Amount);
-                  } else {
-                    GAmount = !product.IsTax1IncludedInPrice
-                      ? Number(
-                          product.PriceOriginal * product.Quantity -
-                            discount +
-                            taxAmt.Tax1Amount
-                        )
-                      : Number(
-                          product.PriceOriginal * product.Quantity - discount
-                        );
-                  }
-                  product.GrandAmount = Number(GAmount);
-                  if (printType === "returnBill" && !product.IsParentAddOn) {
-                    discount = Number(0);
-                  } else {
-                    discount = Number(discount);
-                  }
-
-                  product.DiscountAmount = discount.toFixed(2);
-                  product.tax = product.Tax1Amount + product.Tax2Amount;
-                  executeCalculation = true;
-                }
-              }
-            }
-          }
-        }
-      }
+      });
+      setSearchIngredient(filteredName);
+      setIsIngredientSearch(true);
+      setLoading(false);
     } else {
-      let time = moment().format("HH:mm:ss");
-      setStartTime(time);
+      setSearchIngredient([]);
+      setIsIngredientSearch(false);
+      setLoading(false);
     }
-    if (!isAlredySelected) {
-      if (!isReturnInvoice) {
-        if (item.parentQuantity > 0) {
-          item.Quantity = item.parentQuantity;
+  };
+  const onSelectIngredintes = (item, ingredintItem, index) => {
+    let ingredient = [...ingredientsData];
+    let selectpro = [...selectedProducts];
+    ingredient[index].isSelected = !item.isSelected;
+    selectpro.forEach((pro) => {
+      if (pro.ProductBarCode === item.ProductBarCode) {
+        // console.log('select item run', item);
+        if (ingredient[index].isSelected) {
+          pro.IngredientsArray.push(item);
+          pro.Ingredients =
+            String(pro.Ingredients) + String(item.CategoryIngredientCode) + ",";
+          pro.IngredientNames =
+            String(pro.IngredientNames) + String(item.IngredientName) + ",";
         } else {
-          item.Quantity = 1;
-        }
-        let Amount = Number(item.PriceOriginal) * item.Quantity;
-
-        if (item.ProductType === 3) {
-          let taxAmountIncludedInPrice = 0;
-
-          let tax1AmountTotal = 0,
-            tax1ActualAmountTotal = 0,
-            tax2AmountTotal = 0,
-            tax2ActualAmountTotal = 0;
-          let listOfPG;
-          item.Pricefortax = item.PriceOriginal;
-
-          let rr = await getData(SalesFamilySummaryListTable, async (cb) => {
-            let groupTaxCodes = cb.filter(
-              (x) => x.SalesFamilyCode === item.ProductCode
-            );
-            listOfPG = groupTaxCodes;
-            let totaltax1 = 0;
-            let totaltax2 = 0;
-            let myArray = [],
-              innerProductsArray = [];
-            let colloctivePrice = 0,
-              inclusiveTax = 0;
-
-            await listOfPG.forEach(async (element, index) => {
-              let percentageDiscountAmount = 0;
-              let taxGroupID = "";
-              let itemQty = 0,
-                itemAmount = 0,
-                itemProposedSalesAmount = 0,
-                itemDiscountAmount = 0,
-                netQty = 0;
-              if (item.DiscountAmount > item.Quantity * item.PriceOriginal) {
-                item.DiscountAmount = 0;
-              }
-              if (item.DiscountRate > 0) {
-                percentageDiscountAmount =
-                  (item.PriceOriginal * item.Quantity * item.DiscountRate) /
-                  100;
-              } else {
-                percentageDiscountAmount = item.DiscountAmount;
-              }
-              let amountBeforeDiscount = item.PriceOriginal * item.Quantity;
-              taxGroupID = element.SaleTaxFamilyCode;
-              itemQty = element.Quantity;
-              itemAmount = element.Price;
-              netQty = item.Quantity * itemQty;
-              itemProposedSalesAmount =
-                (itemAmount * amountBeforeDiscount) / item.Pricefortax;
-              if (amountBeforeDiscount > 0)
-                itemDiscountAmount =
-                  (itemProposedSalesAmount * percentageDiscountAmount) /
-                  amountBeforeDiscount;
-              let taxAmt = await calculateTaxeGroups(
-                netQty,
-                itemProposedSalesAmount,
-                itemDiscountAmount,
-                taxGroupID,
-                1,
-                null,
-                0,
-                TerminalConfiguration,
-                item.PriceOriginal,
-                item.DiscountRate
-              );
-
-              if (index === listOfPG.length - 1) {
-                for (let i = 0; i < listOfPG.length; i++) {
-                  const element = listOfPG[i];
-                  await getData(
-                    UpdateProductDetailListTable,
-                    (productsDetail) => {
-                      let findProduct = productsDetail.find(
-                        (e) => e.ProductBarCode === element.ProductBarCode
-                      );
-
-                      if (findProduct) {
-                        let isMatch = listOfPG.find(
-                          (e) => e.ProductBarCode === findProduct.ProductBarCode
-                        );
-                        let netQuantity = isMatch?.Quantity * element?.Quantity;
-                        findProduct.Quantity = netQuantity;
-                        findProduct.Price = element?.Price;
-                        findProduct.SalesInvoiceDetailsID = uuid.v4();
-                        innerProductsArray.push(findProduct);
-                      }
-                    }
-                  );
-                }
-                if (innerProductsArray) {
-                  item.innerProductsArray = innerProductsArray;
-                }
-              }
-
-              if (taxAmt.IsTax1IncludedInPrice === true) {
-                inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-              }
-              if (taxAmt.IsTax2IncludedInPrice === true) {
-                inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-              }
-              let productGroupTaxInfoObj = {
-                ProductBarCode: item?.ProductBarCode,
-                newTaxAmount: taxAmt.Tax1Amount
-                  ? taxAmt.Tax1Amount
-                  : 0 + taxAmt.Tax2Amount
-                  ? taxAmt.Tax2Amount
-                  : 0,
-                isFixedTax:
-                  taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
-                    ? true
-                    : false,
-                unitPrice: taxAmt.IsTax1IncludedInPrice
-                  ? taxAmt.Price
-                  : element.Price,
-                proposedPrice: element.Price,
-                taxRate: taxAmt?.Tax1Percentage ? taxAmt.Tax1Percentage : 0,
-                isInclusiveTax:
-                  taxAmt?.IsTax1IncludedInPrice === true ||
-                  taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
-                    ? true
-                    : false,
-              };
-              colloctivePrice += element.Price;
-              myArray.push(productGroupTaxInfoObj);
-
-              if (!item?.IsParentAddOn) {
-                addonFinalQuantity = item.Quantity * item.OrignalQuantity;
-              }
-              if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
-                taxAmt.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-                taxAmt.Tax2Amount = taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-              }
-              (item.Tax1Fragment = taxAmt?.Tax1Fragment
-                ? taxAmt.Tax1Fragment
-                : ""),
-                (item.Tax2Fragment = taxAmt?.Tax2Fragment
-                  ? taxAmt.Tax2Fragment
-                  : "");
-              item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
-                ? taxAmt.IsTax1IncludedInPrice
-                : 0;
-              item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
-                ? taxAmt.IsTax2IncludedInPrice
-                : 0;
-              item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-              item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
-              item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
-              item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
-              item.Price = item.Price;
-              if (!taxAmt.IsTax1IncludedInPrice)
-                tax1ActualAmountTotal += taxAmt.Tax1Amount
-                  ? taxAmt.Tax1Amount
-                  : 0;
-              else
-                taxAmountIncludedInPrice += taxAmt.Tax1Amount
-                  ? taxAmt.Tax1Amount
-                  : 0;
-              if (!taxAmt.IsTax2IncludedInPrice)
-                tax2ActualAmountTotal += taxAmt.Tax2Amount
-                  ? taxAmt.Tax2Amount
-                  : 0;
-              else
-                taxAmountIncludedInPrice += taxAmt.Tax2Amount
-                  ? taxAmt.Tax2Amount
-                  : 0;
-
-              tax1AmountTotal += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-              tax2AmountTotal += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-              if (
-                taxAmountIncludedInPrice > 0 ||
-                taxAmt.Tax1Amount > 0 ||
-                taxAmt.Tax2Amount > 0
-              ) {
-                let amountAfterTax =
-                  amountBeforeDiscount - taxAmountIncludedInPrice;
-
-                if (amountAfterTax > 0)
-                  taxAmt.Price = amountAfterTax / (item.Quantity * 1);
-                else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-              } else if (taxAmt.Tax1Amount == 0 && taxAmt.Tax2Amount == 0) {
-                //It means All the group items dont have tax group id
-                if (amountBeforeDiscount > 0)
-                  taxAmt.Price = amountBeforeDiscount / (item.Quantity * 1);
-                else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-              }
-              item.Price = taxAmt.Price;
-              item.Tax1Amount = tax1AmountTotal ? tax1AmountTotal : 0;
-              item.Tax2Amount = tax2AmountTotal ? tax2AmountTotal : 0;
-              totaltax1 = taxAmt.Tax1Amount
-                ? totaltax1 + taxAmt.Tax1Amount
-                : totaltax1 + 0;
-              totaltax2 = taxAmt.Tax2Amount
-                ? totaltax2 + taxAmt.Tax2Amount
-                : totaltax2 + 0;
-              let tax = totaltax1 + totaltax2;
-              item.Tax1Code = taxAmt.Tax1Code;
-              (item.Tax1Rate = taxAmt.Tax1Percentage
-                ? taxAmt.Tax1Percentage
-                : 0),
-                (item.Tax1Amount = totaltax1),
-                (item.Tax2Rate = taxAmt.Tax2Percentage
-                  ? taxAmt.Tax2Percentage
-                  : 0),
-                (item.Tax2Amount = totaltax2);
-              item.Price = Number(item.PriceOriginal);
-              item.PriceWithOutTax = Number(
-                item.Price - inclusiveTax / item?.Quantity
-              );
-              item.PriceUnitlesstax = item.PriceWithOutTax;
-              item.IngredientsArray = [];
-              item.IngredientNames = "";
-              item.tax = Number(tax);
-              var amount =
-                item?.GrandAmount !== 0
-                  ? item?.GrandAmount
-                  : amountBeforeDiscount - percentageDiscountAmount;
-              if (taxAmt.IsTax1IncludedInPrice == false) {
-                amount = amount + taxAmt.Tax1Amount; // txAmts.Tax1Amount;
-                // item.webperamount = item.PriceOriginal;
-              }
-              if (taxAmt.IsTax2IncludedInPrice == false) {
-                amount = amount + taxAmt.Tax2Amount; //txAmts.Tax2Amount;
-                // item.webperamount = item.PriceOriginal;
-              }
-              if (taxAmt.IsTax2IncludedInPrice == true) {
-                // item.webperamount =
-                //   item.PriceOriginal - totaltax2 / item.Quantity;
-              }
-              if (taxAmt.IsTax1IncludedInPrice == true) {
-                item.webperamount =
-                  item.PriceOriginal - totaltax1 / item.Quantity;
-              }
-              item.GrandAmount = amount;
-              if (!item?.IsParentAddOn) {
-                item.GrandAmount = item.GrandAmount * item?.Quantity;
-              }
-              item.webperamount = item.PriceWithOutTax;
-              item.SalesBillDetailsID = uuid.v4();
-              sPrice = Number(item?.GrandAmount);
-              tPrice = Number(item?.GrandAmount);
-              item.productGroupTaxInfoObj = myArray;
-              item.colloctivePrice = colloctivePrice;
-            });
-            if (item.IsParentAddOn) {
-              selectedProduct.push(item);
-            } else {
-              selectedProduct[item.parentIndex - 1].haveAddon = true;
-              selectedProduct.splice(item.parentIndex, 0, item);
-            }
-            item.groupTaxCodes = groupTaxCodes;
-          });
-        } else {
-          let taxAmt = await calculateTaxeGroups(
-            item.Quantity,
-            Amount,
-            item.DiscountAmount,
-            item.TaxGroupID,
-            1,
-            null,
-            0,
-            TerminalConfiguration,
-            item.PriceOriginal,
-            item.DiscountRate
+          const index = pro.IngredientsArray.findIndex(
+            (res) => res.Id === item.Id
           );
-          console.log("calculateTaxeGroups...", taxAmt, item);
-          item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-          (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
-            (item.Tax1Rate = taxAmt.Tax1Percentage ? taxAmt.Tax1Percentage : 0),
-            (item.Tax1Amount = taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0),
-            (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
-            (item.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
-            (item.Tax2Rate = taxAmt?.Tax2Percentage
-              ? taxAmt?.Tax2Percentage
-              : 0),
-            (item.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
-          item.Tax1Fragment = taxAmt.Tax1Fragment ? taxAmt.Tax1Fragment : "";
-          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : "";
-          item.Tax1Fragment = taxAmt.Tax1Fragment ? taxAmt.Tax1Fragment : "";
-          item.Tax2Fragment = taxAmt.Tax2Fragment ? taxAmt.Tax2Fragment : "";
-          if (
-            (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
-            item?.Tax2Fragment === 2
-          ) {
-            addonFinalQuantity = item.Quantity * item.OrignalQuantity;
-          }
-          if (
-            (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
-            item?.Tax2Fragment === 2
-          ) {
-            item.Tax1Amount = item.Tax1Amount * addonFinalQuantity;
-            item.Tax2Amount = item.Tax2Amount * addonFinalQuantity;
-          }
-          let tax = item.Tax1Amount + item.Tax2Amount;
-          item.Price = Number(taxAmt.Price + tax);
-          item.PriceWithOutTax = Number(taxAmt.Price);
-          item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice
-            ? true
-            : false;
-          item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice
-            ? true
-            : false;
-          item.IngredientsArray = [];
-          item.IngredientNames = "";
-          item.tax = Number(tax);
-          item.GrandAmount = Number(taxAmt.Price * item.Quantity) + tax;
-          item.SalesBillDetailsID = uuid.v4();
-          sPrice = Number(subPrice + taxAmt.Price * item.Quantity + tax);
-          tPrice = Number(totalPrice + taxAmt.Price * item.Quantity + tax);
-          if (item.IsParentAddOn) {
-            selectedProduct.push(item);
-          } else {
-            selectedProduct[item.parentIndex - 1].haveAddon = true;
-            selectedProduct.splice(item.parentIndex, 0, item);
-          }
-        }
-      } else {
-        if (type === "addnos") {
-          sPrice = Number(subPrice + SP);
-          tPrice = Number(totalPrice + TP);
-          selectedProduct = selectedProduct.concat(proArray);
-        } else {
-          sPrice = Number(subPrice + item.GrandAmount - item.DiscountAmount);
-          tPrice = Number(totalPrice + item.GrandAmount - item.DiscountAmount);
-
-          if (item.IsParentAddOn) {
-            selectedProduct.push(item);
-          } else {
-            if (!isReturnInvoice) {
-              selectedProduct[item.parentIndex - 1].haveAddon = true;
-              selectedProduct.splice(item.parentIndex, 0, item);
-            } else {
-              selectedProduct.push(item);
-            }
+          console.log("onSelectIngredintes ", index, pro.IngredientsArray);
+          if (index > -1) {
+            pro.IngredientsArray.splice(index, 1);
+            pro.Ingredients = String(pro.Ingredients).replace(
+              `${item.CategoryIngredientCode},`,
+              ""
+            );
+            pro.IngredientNames = String(pro.IngredientNames).replace(
+              `${item.IngredientName},`,
+              ""
+            );
+            console.log(
+              "pro.Ingredients.replace",
+              pro.Ingredients,
+              `${item.CategoryIngredientCode},`
+            );
           }
         }
       }
-    }
-    if (executeCalculation) {
-      localIndex = undefined;
-      setTimeout(() => {
-        // setStateUpdate(true);
-        // setLoading(false)
-        let p = [...selectedProduct];
-        finalCalculation(p);
-        let srNo = 1;
-        // let array = [...selectedProducts];
-        selectedProduct.forEach((e) => {
-          if (e.IsParentAddOn) {
-            e.srNo = srNo++;
-          } else {
-            e.srNo = 0;
+    });
+
+    setSelectedProducts(selectpro);
+    setIngredientsData(ingredient);
+  };
+
+  const addIngredientFun = async () => {
+    let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
+    let ingredientName = ingredientText,
+      cultureCode = I18nManager.isRTL ? "ar-SA" : "en-US",
+      productBarCode = ingredientProductCode;
+
+    const response1 = await props.dispatch(
+      ServerCall(
+        UserLogin,
+        `Products/CreateProductIngredient?ingredientName=${ingredientName}&cultureCode=${cultureCode}&productBarCode=${productBarCode}`,
+        "GET"
+      )
+    );
+
+    // console.log('add new integredient', response1);
+    let ing = [];
+    ing.push(response1);
+    InsertProductCardIngredientsList(ing);
+  };
+  const onPressAddIntgredient = () => {
+    setMessage(props.StringsList._407);
+    setAlertType("ingredient");
+    setDisplayAlert(true);
+    setisPromptAlert(true);
+  };
+  const getDetailofProduct = async (items) => {
+    setoptionsOpen(false);
+    setPaymentsOpen(false);
+    let filterCategoryProducts = [];
+
+    for (let i = 0; i < items.length; i++) {
+      var product = items[i];
+
+      await getDataById(
+        UpdateProductDetailListTable,
+        "ProductBarCode",
+        product?.ProductCode,
+        async (productDeltail) => {
+          if (productDeltail.length > 0) {
+            filterCategoryProducts.push(productDeltail[0]);
           }
-        });
-        // setSelectedProducts(array);
-        setSelectedProducts(selectedProduct);
-        console.log("after adding product", selectedProduct);
-      }, 100);
+        }
+      );
     }
+    return filterCategoryProducts;
+  };
+  const getSelectedCategoryProducts = async (item, index) => {
+    setLoading(true);
+    let itemId = item
+      ? item.ProductFamilyCode
+      : allCategoreis[0].ProductFamilyCode;
+    let selectCat = item ? item : allCategoreis[0];
+
+    setSelectedcat(selectCat);
+    setSelectedCatIndex(index);
+    setToggle(false);
+
+    setfocus(index ? index : 0);
+
+    let catProducts = [];
+    let filterCategoryProducts;
+
+    await getDataById(
+      ProductListTable,
+      "ProductFamilyCode",
+      itemId,
+      (products) => {
+        catProducts = products;
+      }
+    );
+    filterCategoryProducts = await getDetailofProduct(catProducts);
+    setLoading(false);
+    setCategoryProducts(filterCategoryProducts);
+    if (item) {
+      onSelectProduct(null, filterCategoryProducts);
+    }
+    setLoading(false);
+  };
+  const toggleFun = () => {
+    if (returnInvoiceNumber !== null && selectedProducts.length > 0) {
+      restState();
+    } else {
+      setToggle(!isToggle);
+    }
+  };
+  const onInvoiceClick = () => {
+    let srNo = 1;
+    selectedProducts.forEach((e) => {
+      if (e.IsParentAddOn) {
+        e.srNo = srNo++;
+      } else {
+        e.srNo = 0;
+      }
+    });
+    if (storageItems && orderType.id === 1) {
+      setSelectedOrderType(1);
+    } else if (storageItems === null && orderType.id !== 1) {
+      setSelectedOrderType(orderType.id);
+    }
+    setoptionsOpen(false);
+    setPaymentsOpen(false);
+    if (returnInvoiceNumber) {
+      setisReturnInvoice(true);
+    }
+    setToggle(true);
   };
 
   const onSelectProduct = (item, filterCategoryProducts) => {
-    // console.log("onSelectProduct........", item)
-    if (drawerSetupArr.isInitialCashSet === "false") {
+    console.log("Drawer check ", drawerSetupArr.isInitialCashSet);
+    if (drawerSetupArr?.isInitialCashSet === "false") {
       onNewInvoice();
     } else {
       // onNewInvoice();
@@ -4684,48 +7615,64 @@ const HomeScreen = (props) => {
           });
         }
       }
-      // console.log('categoryProduct.2..', newArray);
       setCategoryProducts(
         newArray.length > 0 ? newArray : filterCategoryProducts
       );
     }
   };
+  const onSelectUpdatedProduct = (item, filterCategoryProducts, type) => {
+    let newArray = [];
+    let categoryProduct = item ? [...categoryProducts] : filterCategoryProducts;
 
+    if (item) {
+      categoryProduct.forEach((product) => {
+        if (product?.ProductBarCode === item?.ProductBarCode) {
+          product.isSelected = true;
+          product.Quantity = item?.Quantity ? item.Quantity : 1;
+          newArray.push(product);
+        } else {
+          newArray.push(product);
+        }
+      });
+      updateProductToList(item, type);
+    } else {
+      if (selectedProducts.length > 0) {
+        categoryProduct.forEach((product) => {
+          let cartItems = selectedProducts.find(
+            (x) => x.ProductBarCode === product.ProductBarCode
+          );
+          if (cartItems) {
+            product.isSelected = true;
+            product.Quantity = item?.Quantity ? item.Quantity : 1;
+            newArray.push(product);
+          } else {
+            product.isSelected = false;
+            newArray.push(product);
+          }
+        });
+      }
+    }
+    setCategoryProducts(
+      newArray.length > 0 ? newArray : filterCategoryProducts
+    );
+  };
   const deleteItem = (item, index) => {
-    // console.log("deleteItem..........", item)
     let sPrice = subPrice,
       tPrice = totalPrice;
 
     let remainProduct = [...selectedProducts];
     let addOn = remainProduct.filter((itm) => {
-      if (itm.ParentInvoiceDetailsID === item.SalesBillDetailsID) {
+      if (itm.ParentInvoiceDetailsID === item.SalesInvoiceDetailsID) {
         sPrice = sPrice - itm.GrandAmount;
-
         tPrice = tPrice - itm.GrandAmount;
         return itm;
       }
     });
-
     remainProduct[index].isSelected = false;
-
-    // console.log('addOn', tPrice, sPrice);
     sPrice = sPrice - item.GrandAmount;
-
     tPrice = tPrice - item.GrandAmount;
-    // console.log('addOn', tPrice, sPrice);
     remainProduct.splice(index, addOn.length + 1);
     let srNo = 1;
-    let rm = [];
-    // remainProduct.filter(e => {
-    //   if (e.IsParentAddOn) {
-    //     e.srNo = srNo++
-    //   } else {
-    //     e.srNo = 0
-    //   }
-    //   // console.log("e.srNo.......", e.srNo)
-    //   rm.push(e)
-    // })
-    // console.log("rem.............................", rm)
     setNumberOfItems(srNo);
     let p = [...remainProduct];
     finalCalculation(p, "delete");
@@ -4736,75 +7683,57 @@ const HomeScreen = (props) => {
         e.srNo = 0;
       }
     });
-    // setSelectedProducts(array);
-    setSelectedProducts(remainProduct);
 
+    setSelectedProducts(remainProduct);
     let number = remainProduct.filter(
       (w) => w.IsParentAddOn === 1 || w.IsParentAddOn === true
     ).length;
-
     setNumberOfItems(number);
-    // if (remainProduct.length === 0) {
-    //   setsubPrice(0)
-    //   setTotalPrice(0)
-    //   setGlobalTax(0)
-    //   if (!returnInvoiceNumber) {
-    //     setToggle(false)
-
-    //     if (!noFamilyFound) {
-    //       getSelectedCategoryProducts()
-    //     } else {
-    //       getAllCategories("isRestState")
-    //     }
-
-    //   }
-    // }
   };
-
-  const createInvoiceNumber = async () => {
-    await getData(DrawerSetupTable, (cb) => {
-      // console.log(' DrawerSetupTable', cb);
+  const numberToEngArbWords = (val, isEnglish) => {
+    let value = Number(val);
+    let words = "";
+    if (isEnglish) {
+      words = numberToWord.toWords(value);
+    } else {
+      words = new numberToArb(value, "SAR").parse();
+    }
+    return words;
+  };
+  const createNewOrderNumber = () => {
+    getData(DrawerSetupTable, (cb) => {
       setDrawerSetupArr(cb[0]);
     });
-    await getData(TerminalConfigurationTable, (cb) => {
-      // console.log('TerminalConfigurationTable', cb[0]?.LastBillNumber);
-
+    getData(TerminalConfigurationTable, (cb) => {
       let preZero = "0000000";
       let silceNumber =
-        Number(cb[0]?.LastBillNumber) >= 99999
+        Number(cb[0]?.LastOrderNumber) >= 99999
           ? preZero.length - 5
-          : Number(cb[0]?.LastBillNumber) >= 9999
+          : Number(cb[0]?.LastOrderNumber) >= 9999
           ? preZero.length - 4
-          : Number(cb[0]?.LastBillNumber) >= 999
+          : Number(cb[0]?.LastOrderNumber) >= 999
           ? preZero.length - 3
-          : Number(cb[0]?.LastBillNumber) >= 99
+          : Number(cb[0]?.LastOrderNumber) >= 99
           ? preZero.length - 2
-          : Number(cb[0]?.LastBillNumber) >= 9
+          : Number(cb[0]?.LastOrderNumber) >= 9
           ? preZero.length - 1
           : preZero.length;
-      let invoiceNumber =
-        Number(cb[0]?.LastBillNumber) >= 999999
-          ? cb[0].BillPrefix + "-" + (Number(cb[0].LastBillNumber) + 1)
-          : cb[0].BillPrefix +
+      let newOrderNumber =
+        Number(cb[0]?.LastOrderNumber) >= 999999
+          ? cb[0].OrderPrefix + "-" + (Number(cb[0].LastOrderNumber) + 1)
+          : cb[0].OrderPrefix +
             "-" +
             preZero.slice(1 - silceNumber) +
-            (Number(cb[0].LastBillNumber) + 1);
+            (Number(cb[0].LastOrderNumber) + 1);
 
-      setInvoiceNumber(invoiceNumber);
+      setOrderNumber(newOrderNumber);
+      createNewInvoiceNumber();
       setTerminalConfiguration(cb[0]);
+      setSalesBillID(uuid.v4());
     });
-    setSalesBillID(uuid.v4());
-    // setOptions([
-    //   { label: props.StringsList._373, value: "holdInvoice" },
-    //   { label: props.StringsList._436, value: "scanner" },
-    //   { label: props.StringsList._30, value: "buyer" },
-    //   { label: props.StringsList._437, value: "loyaltyCard" },
-    // ]);
   };
-
   const createReturnInvoiceNumber = () => {
     getData(DrawerSetupTable, (cb) => {
-      // console.log(' DrawerSetupTable', cb);
       setDrawerSetupArr(cb[0]);
     });
     getData(TerminalConfigurationTable, (cb) => {
@@ -4830,45 +7759,46 @@ const HomeScreen = (props) => {
             "-" +
             preZero.slice(1 - silceNumber) +
             (Number(cb[0].LastReturnBillNumber) + 1);
-
-      // console.log('Return invoice Number', invoiceNumber);
       setReturnInvoiceNumber(invoiceNumber);
       setSalesBillID(uuid.v4());
       setTerminalConfiguration(cb[0]);
     });
   };
-
-  const restState = async () => {
-    setOptions(
-      userConfiguration.SalesRefundAllowed === 1
-        ? [
-            { label: props.StringsList._32, value: "getHoldInvoice" },
-            { label: props.StringsList._105, value: "reprint" },
-            { label: props.StringsList._319, value: "returnBill" },
-            { label: props.StringsList._30, value: "buyer" },
-            { label: props.StringsList._437, value: "loyaltyCard" },
-          ]
-        : [
-            { label: props.StringsList._32, value: "getHoldInvoice" },
-            { label: props.StringsList._30, value: "buyer" },
-            { label: props.StringsList._437, value: "loyaltyCard" },
-          ]
-    );
-    setTotalReprintCount(null);
+  const onPressBackCat = () => {
+    if (noFamilyFound) {
+      setToggle(false);
+    } else {
+      setToggle(false);
+    }
+  };
+  const updateState = async () => {
     setLoading(true);
-    setUserDiscountLimit(0);
+    setIsSearch(false);
+    setPaymentAdded(false);
     setPrintType(null);
+    props.navigation.navigate("home", { id: undefined });
+    setOrderCode(true);
+    setToggle(false);
+    setSearchText("");
+    setShowButton(false);
     selectedProducts.forEach((item) => {
       item.isSelected = false;
     });
-    setCashAmount("");
+    list.isOrderPlaced = false;
+
+    setFocusSearch(false);
+    setOrderValue(0);
+    setCustomerNotes("");
+    setSelectedOrderType(0);
     setSelectedProducts([]);
     setsubPrice(0);
+    setOrderDetails(null);
+    setProductIndex(null);
+    setNotesModal(false);
     setglobalDiscountAmount(0);
     setTotalPrice(0);
-    //  await getAllCategories();
+    setRailStart(false);
     setNumberOfItems(0);
-    setSearchText("");
     setAdvancePaidInCash(0);
     setIngredientsData([]);
     setDueAmount(0);
@@ -4878,7 +7808,7 @@ const HomeScreen = (props) => {
     seOptionsValue(null);
     setUriImage(null);
     setInvoice(false);
-    setClientCustomInvoice(false);
+    setShortInvoice(false);
     setTerminalSetup(false);
     setPairPrinterFamily(false);
     setInvoiceNumber(null);
@@ -4897,7 +7827,6 @@ const HomeScreen = (props) => {
     setAlertType(null);
     setReturnProducts([]);
     setisReturnInvoice(false);
-    setLoading(false);
     setGlobalTax(0);
     setEarnPointCArry([]);
     setEarnPointPArry([]);
@@ -4906,81 +7835,187 @@ const HomeScreen = (props) => {
     setRedeemPoints(0);
     setCheckLoyalityReward(false);
     setStatus(0);
-    // setGlobalTaxObj(null);
-    // setSelectedGlobalTaxObj(null);
+    setGlobalTaxObj(null);
+    setSelectedGlobalTaxObj(null);
     setoptionsOpen(false);
     setPaymentsOpen(false);
-    // setBillingType(null);
-    //  console.log("flatListRef.current", flatListRef.current)
+    setOrderType({ id: 0, value: "Select Type" });
+    setPlaceWithPay(false);
+    list.ordID = 0;
+    list.billHasOrder = false;
+
     if (!noFamilyFound) {
       getSelectedCategoryProducts();
     } else {
       getAllCategories("isRestState");
     }
-    if (userConfiguration) {
-      setUserDiscountLimit(userConfiguration?.DiscountLimit);
-    }
-
-    // await flatListRef.current.scrollToIndex({ index: 0 });
-
-    setBillDate(null);
+    setUserDiscountLimit(userConfiguration.DiscountLimit);
+    setInvoiceDate(null);
+    setLoading(false);
   };
+  const restState = async () => {
+    setLoading(true);
 
+    setIsSearch(false);
+    setPrintType(null);
+    setPaymentAdded(false);
+    props.navigation.navigate("home", { id: undefined });
+    selectedProducts.forEach((item) => {
+      item.isSelected = false;
+    });
+    list.isRefundReturnedCall = false;
+    setFocusSearch(false);
+    setCustomerNotes("");
+    setOrderValue(0);
+    list.isOrderPlaced = false;
+    setSelectedOrderType(0);
+    setRefOrderNumber(null);
+    setSelectedProducts([]);
+    setsubPrice(0);
+    setOrderDetails(null);
+    setProductIndex(null);
+    setNotesModal(false);
+    setglobalDiscountAmount(0);
+    setTotalPrice(0);
+    setRailStart(false);
+    setNumberOfItems(0);
+    setSearchText("");
+    setAdvancePaidInCash(0);
+    setIngredientsData([]);
+    setDueAmount(0);
+    setPaymentsValue(null);
+    setToggle(false);
+    setPopup(false);
+    seOptionsValue(null);
+    setUriImage(null);
+    setInvoice(false);
+    setShortInvoice(false);
+    setTerminalSetup(false);
+    setPairPrinterFamily(false);
+    setInvoiceNumber(null);
+    setOrderNumber(null);
+    setReturnInvoiceNumber(null);
+    setSalesBillID(null);
+    setCreditAmount(0);
+    setGlobalDiscountRate(0);
+    setStartTime(null);
+    setisPromptAlert(false);
+    setDisplayAlert(false);
+    setisHoldInvoices(false);
+    setMessage("");
+    setHoldInvoiceName("");
+    setScanner(false);
+    setAlertValue(null);
+    setAlertType(null);
+    setReturnProducts([]);
+    setisReturnInvoice(false);
+    setOrderCode(true);
+    setToggle(false);
+    setGlobalTax(0);
+    setEarnPointCArry([]);
+    setEarnPointPArry([]);
+    setEarnPointIArry([]);
+    setBuyerInfo(null);
+    setRedeemPoints(0);
+    setCheckLoyalityReward(false);
+    setStatus(0);
+    setGlobalTaxObj(null);
+    setSelectedGlobalTaxObj(null);
+    setoptionsOpen(false);
+    setPaymentsOpen(false);
+    setOrderValue(0);
+    setOrderType({ id: 0, value: "Select Type" });
+    setPlaceWithPay(false);
+    list.ordID = 0;
+    list.billHasOrder = false;
+    setShowButton(false);
+    if (!noFamilyFound) {
+      getSelectedCategoryProducts();
+    } else {
+      getAllCategories("isRestState");
+    }
+    setUserDiscountLimit(userConfiguration.DiscountLimit);
+    setInvoiceDate(null);
+    setLoading(false);
+  };
   const getDrawerSetting = () => {
     getData(DrawerSetupTable, (cb) => {
       setDrawerSetupArr(cb[0]);
     });
   };
-
   const onNewInvoice = async (isCreateInvoice) => {
     if (drawerSetupArr.isInitialCashSet === "false") {
       viewref.current?.slideInRight(280);
       setIsDrawar(!isDrawar);
     } else {
-      createInvoiceNumber();
-    }
-  };
-
-  const onClickCancel = () => {
-    // PrinterNativeModule.printing("react native calling....", uriImage)
-    if (invoiceNumber) {
-      setOptions(
-        userConfiguration.SalesRefundAllowed === 1
-          ? [
-              { label: props.StringsList._32, value: "getHoldInvoice" },
-              { label: props.StringsList._105, value: "reprint" },
-              { label: props.StringsList._319, value: "returnBill" },
-              { label: props.StringsList._30, value: "buyer" },
-              { label: props.StringsList._437, value: "loyaltyCard" },
-            ]
-          : [
-              { label: props.StringsList._32, value: "getHoldInvoice" },
-              { label: props.StringsList._30, value: "buyer" },
-              { label: props.StringsList._437, value: "loyaltyCard" },
-            ]
+      PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
+        PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES
       );
-
-      restState();
-    } else {
-      // props.navigation.goBack();
-
-      props.navigation.navigate("dashboard");
+      setPrintType(null);
+      createNewOrderNumber();
+      // ref_searchBar.current.focus();
     }
   };
+  const changeTableStatus = async (TableCodeID) => {
+    let token = await AsyncStorage.getItem("ACCESS_TOKEN");
+    // setLoading(true);
+
+    try {
+      const response = await props.dispatch(
+        ServerCall(
+          token,
+          `Table/ChangeTableStatus?tableCode=${TableCodeID}
+             &IsAvailable=1`,
+          "GET"
+        )
+      );
+      console.log("onFreeTable", response);
+
+      if (response) {
+        let table = await AsyncStorage.getItem("SELECTED_TABLE");
+        if (table) {
+          await AsyncStorage.removeItem("SELECTED_TABLE");
+          // console.log('Table Removed=================>', storageItems);
+        }
+        setStorageItems(null);
+        // setLoading(false);
+      }
+    } catch (e) {
+      console.log(e, "error");
+      setLoading(false);
+    }
+  };
+  const onClickCancel = async () => {
+    if (orderNumber) {
+      restState();
+    }
+  };
+
   const paymentMethodSelect = async (item) => {
-    // console.log('paymentMethodSelect......', paymentsValue, billingType);
     if (billingType || returnInvoiceNumber) {
       if (selectedProducts.length > 0 && paymentsValue) {
         let checkZeroPrice = selectedProducts.some(
-          (p) => p.PriceOriginal === 0 && p.IsParentAddOn !== false
+          (p) =>
+            p.PriceOriginal === 0 &&
+            (p.IsParentAddOn === 1 || p.IsParentAddOn === true)
         );
+
         if (checkZeroPrice || totalPrice === 0) {
           setPaymentsValue(null);
           setMessage(props.StringsList._270);
+          setRailStart(false);
           setDisplayAlert(true);
         } else {
           let selP = payments.filter((e) => e.PaymentType === paymentsValue);
-          // console.log('setSelectedPyamentMethod', selP[0]);
+          console.log("setSelectedPyamentMethod", selP[0]);
           setSelectedPyamentMethod(selP[0]);
           if (
             buyerInfo?.LoyaltyCard &&
@@ -5000,14 +8035,16 @@ const HomeScreen = (props) => {
                   viewref.current
                     ?.fadeOutRight()
                     .then(() => setPopup(!isPopup));
+                  setRailStart(false);
                 }
               } else {
                 // setSelectedPyamentMethod(null)
                 setPaymentsValue(null);
                 setMessage(props.StringsList._367);
                 setDisplayAlert(true);
+
+                setRailStart(false);
               }
-              // createInvoiceStyle()
             } else if (paymentsValue === "4" || paymentsValue === "5") {
               if (!isPopup) {
                 viewref.current?.slideInRight(280);
@@ -5015,14 +8052,12 @@ const HomeScreen = (props) => {
               } else {
                 setPaymentsValue(null);
                 viewref.current?.fadeOutRight().then(() => setPopup(!isPopup));
+                setRailStart(false);
               }
+
               // setLoading(false);
             } else {
-              if (returnInvoiceNumber === null && isCustomInvoice) {
-                setIsPaidCash(true);
-              } else {
-                paymentProcess(null, selP[0]);
-              }
+              paymentProcess(null, selP[0]);
             }
           }
         }
@@ -5033,59 +8068,7 @@ const HomeScreen = (props) => {
         setPaymentsValue(null);
       }
     } else {
-      if (selectedProducts.length > 0) setisBillingType(true);
-    }
-  };
-
-  const paymentProcess = async (ADamount, selP, type) => {
-    let ConnectedBluetoothInfo = await AsyncStorage.getItem(
-      "ConnectedBluetoothInfo"
-    );
-
-    if (ConnectedBluetoothInfo) {
-      console.log("ConnectedBluetoothInfo", ConnectedBluetoothInfo);
-      let printAdress = ConnectedBluetoothInfo?.split("|");
-      setPrinterMacAddress(printAdress[1]);
-      setPrinterName(printAdress[0]);
-    }
-    console.log("paymentProcess........", type);
-    setLoading(true);
-
-    setUriImage(null);
-    if (type !== "reprint") {
-      setTimeout(() => {
-        console.log("paymentProcess........setTimeout", type);
-        selectedProductUpdate();
-        saleBill(ADamount, selP);
-        if (returnInvoiceNumber) {
-          updateReturnTerminalConfiguration();
-          postBills();
-          Toast.show("Return Invoice Posted Successfully");
-        } else {
-          updateTerminalConfiguration(ADamount);
-        }
-        if (billingStyleId !== 1) {
-          // ;
-          isCustomInvoice ? setClientCustomInvoice(true) : setInvoice(true);
-        } else {
-          printerSelection();
-        }
-
-        setLoading(false);
-      }, 0);
-    } else {
-      setTimeout(() => {
-        console.log("reprint bill style", advancePaidInCash);
-        // updateTerminalConfiguration(ADamount);
-        if (billingStyleId !== 1) {
-          isCustomInvoice ? setClientCustomInvoice(true) : setInvoice(true);
-        } else {
-          // console.log('printer are', selectedProducts);
-          // ReprinterSelection();
-          printerSelection();
-        }
-        setLoading(false);
-      }, 500);
+      if (selectedProducts.length > 0) setInvoice(true);
     }
   };
 
@@ -5098,1110 +8081,20 @@ const HomeScreen = (props) => {
     // console.log("GetDecimalpart", i1, i2)
     return i2;
   };
-  function replaceValuesInRow(rowContent, dynamicValuesBody, thTags) {
-    thTags.forEach((key, i) => {
-      const regex = new RegExp(`<td([^>]*)>([^<]*)<\\/td>`);
-      const tdMatches = rowContent.match(new RegExp(regex.source, "g"));
 
-      if (tdMatches && tdMatches.length > i) {
-        const originalContent = tdMatches[i];
-        const [, attributes, originalTdContent] = originalContent.match(regex);
-
-        // Check if dynamicValuesBody[key] is not an empty string
-        const replacementContent =
-          dynamicValuesBody[key] !== ""
-            ? dynamicValuesBody[key]
-            : originalTdContent;
-
-        const replacement = `<td${attributes}>${originalTdContent}${replacementContent}</td>`;
-        rowContent = rowContent.replace(originalContent, replacement);
-      }
-    });
-
-    return rowContent;
-  }
-  function getHeight(htmlStr, divId) {
-    const regex = new RegExp(
-      `<div[^>]*id="${divId}"[^>]*style="[^"]*height: ([^;]+)px[^"]*"[^>]*>`,
-      "i"
+  const A4RePrinterStyle = async (currentDate, qrUrl) => {
+    console.log(
+      "billingType A4PrinterStyle..",
+      saleBilType,
+      " terminal ",
+      currentDate,
+      invoiceDates,
+      "product are",
+      lastBillDetail.BillDetails
     );
-    const match = htmlStr.match(regex);
-
-    if (match && match[1]) {
-      return parseInt(match[1], 10);
-    }
-
-    return 0; // Default value if not found
-  }
-
-  const A4PrinterStyle = async (
-    currentDate,
-    qrUrl,
-    countNumber,
-    update,
-    page
-  ) => {
-    // console.log(
-    //   'billingType A4PrinterStyle..',
-    //   billingType,
-    //   ' terminal ',
-    //   currentDate,
-    //   billDates,
-    //   'product are',
-    //   selectedProducts,
-    // );
-    console.log("printType", printType);
-    let itemPerPage = 17;
-    let printItems = [],
-      allProducts = [];
-    if (printType === "reprint") {
-      if (
-        Array.isArray(lastBillDetail.BillDetails) &&
-        lastBillDetail.BillDetails.length > 0
-      ) {
-        allProducts = lastBillDetail.BillDetails;
-        printItems = lastBillDetail.BillDetails;
-      } else {
-        allProducts = selectedProducts;
-        printItems = selectedProducts;
-      }
-    } else {
-      allProducts = selectedProducts;
-      printItems = selectedProducts;
-    }
-
-    let pageNo = page;
-
-    let date, month, year, billDate;
-    if (printType === "reprint") {
-      year = lastBillDetail.BillDate.slice(0, 4);
-      month = lastBillDetail.BillDate.slice(4, 6);
-      date = lastBillDetail.BillDate.slice(6, 8);
-      billDate =
-        date + "/" + month + "/" + year + "  " + lastBillDetail.BillTime;
-    }
-
-    if (countNumber * itemPerPage < allProducts.length) {
-      let lastIndex = countNumber * itemPerPage;
-      let startingIndex = lastIndex - itemPerPage;
-      printItems = allProducts.slice(startingIndex, lastIndex);
-    } else {
-      // let lastIndex = countNumber * 15
-      let startingIndex = countNumber * itemPerPage - itemPerPage;
-      printItems = allProducts.slice(startingIndex, allProducts.length);
-    }
-
     let pageId = returnInvoiceNumber
       ? "403007"
-      : billingType?.id === 2
-      ? "4030061"
-      : "403006";
-
-    setLoading(true);
-    await getDataByMultipaleID(
-      A4PrintStylesTable,
-      "PageID",
-      pageId,
-      "UseDefault",
-      "true",
-      async (A4style) => {
-        if (A4style.length === 0) {
-          setLoading(false);
-          alert("There is no A4 printing style available");
-        } else {
-          if (pageNo !== 1 && update) {
-            update = `<div style="page-break-after:always!important;">${update}</div>`;
-          }
-          let updateStyle = update,
-            updateHeader = A4style[0].ReportHeader.replace(
-              /<i\b[^>]*>.*?<\/i>/g,
-              ""
-            ),
-            updateBody = A4style[0].ReportBody.replace(
-              /<i\b[^>]*>.*?<\/i>/g,
-              ""
-            ),
-            updateFooter = A4style[0].ReportFooter.replace(
-              /<i\b[^>]*>.*?<\/i>/g,
-              ""
-            );
-
-          let heightOfHeader = getHeight(updateHeader, "dvhmain"); // 440;
-          let heightOfFooter = getHeight(updateFooter, "dvfmain"); // 760;
-          let BodyHeightGiven = getHeight(updateBody, "dvimain"); // 200;
-
-          let IsFooterOnEveryPage =
-            A4style[0].IsFooterOnEveryPage === "true" ? true : false;
-          let IsHeaderOnEveryPage =
-            A4style[0].IsHeaderOnEveryPage === "true" ? true : false;
-
-          let findPrintStyle = A4style.findIndex(
-            (x) => x.SerialNo > 1 && x.UseDefault === "true"
-          );
-          // let bodyFinalHeight = 327;
-          // if (
-          //   IsFooterOnEveryPage &&
-          //   IsHeaderOnEveryPage &&
-          //   selectedProducts.length <= 15
-          // ) {
-          //   bodyFinalHeight = 327;
-          // } else if (!IsFooterOnEveryPage && selectedProducts.length === 15) {
-          //   bodyFinalHeight = BodyHeightGiven + heightOfFooter;
-          // } else if (!IsHeaderOnEveryPage && selectedProducts.length === 15) {
-          //   bodyFinalHeight = BodyHeightGiven + heightOfHeader;
-          // } else {
-          //   bodyFinalHeight = 327;
-          // }
-
-          if (findPrintStyle !== -1) {
-            const updatedBodyWithAutoHeightAndFonts = updateBody.replace(
-              /id="dvIMain" style=".*?"/,
-              `id="dvIMain" style="width: 1100px; height:auto; margin-top: 11%;margin-bottom: 2%; padding: 0px; background: none rgb(255, 255, 255); font-family: 'proxima nova rg';"`
-            );
-
-            updateBody = updatedBodyWithAutoHeightAndFonts;
-
-            const dynamicValuesHeader = {
-              // logo:
-              //   TerminalConfiguration?.IsGodownInfo === 'true'
-              //     ? TerminalConfiguration?.GoDownLogoType +
-              //       ',' +
-              //       TerminalConfiguration?.GoDownLogo
-              //     : TerminalConfiguration?.CompanyLogoType +
-              //       ',' +
-              //       TerminalConfiguration?.CompanyLogo,
-              CompanyName_profile:
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration.GoDownName
-                  : TerminalConfiguration.CompanyName,
-
-              CCRNumber_profile:
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration.GodownCCRNumber
-                  : TerminalConfiguration.CCRNumber,
-              VATNumber_profile: TerminalConfiguration?.ValueAddedTaxNumber,
-              Page_Title_AR: returnInvoiceNumber
-                ? "استرداد المبيعات"
-                : billingType?.name2,
-              Page_Title_EN: returnInvoiceNumber
-                ? "استرداد المبيعات"
-                : billingType?.name,
-              InvoiceDate_value:
-                printType === "reprint" ? billDate : currentDate,
-              CreditDateUpto_value: currentDate,
-              InvoiceNumber_value:
-                printType === "reprint"
-                  ? lastBillDetail.BillNumber
-                  : returnInvoiceNumber !== null
-                  ? returnInvoiceNumber
-                  : invoiceNumber,
-              BuyerName_value: buyerInfo?.BuyerName ? buyerInfo.BuyerName : "",
-              BuyerCode_value: buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : "",
-              VATNumber_value: buyerInfo?.ValueAddedTaxNumber
-                ? buyerInfo.ValueAddedTaxNumber
-                : "",
-              BuyerAddress_value: buyerInfo?.BuyerAddress
-                ? buyerInfo.BuyerAddress
-                : "",
-              CCRNumber_value: buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : "",
-            };
-            const replacePlaceholdersHeader = (html, values) => {
-              let logo =
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration?.GoDownLogo
-                  : TerminalConfiguration?.CompanyLogo;
-              // Use a placeholder format like {key} for dynamic values
-              for (const key in values) {
-                const regex = new RegExp(key, "g");
-                html = html.replace(regex, values[key]);
-              }
-
-              // Special case: Replace the content of the specific <div> with id="qrcode"
-              const qrCodeDivRegex =
-                /(<div class="rptImgdiv" [^>]*)style="([^"]*)"([^>]*)>/;
-
-              const matches = html.match(qrCodeDivRegex);
-              if (matches) {
-                const styleAttributeContent = matches[2];
-                console.log(styleAttributeContent);
-              } else {
-                console.log("No match found.");
-              }
-
-              if (qrCodeDivRegex.test(html)) {
-                // Replace {your_image_source_here} with the actual base64-encoded qrUrl
-                html = html.replace(
-                  qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${logo}" />$3`
-                );
-              }
-
-              return html;
-            };
-            // const replacePlaceholdersHeader = (html, values) => {
-            //   for (const key in values) {
-            //     const regex = new RegExp(key, 'g');
-            //     html = html.replace(regex, values[key]);
-            //   }
-            //   return html;
-            // };
-
-            updateHeader = replacePlaceholdersHeader(
-              updateHeader,
-              dynamicValuesHeader
-            );
-            const thRegex =
-              /<th[^>]*id="([^"]*)"[^>]*>(.*?)<.*?>.*?([^<>]*)<\/th>/gi;
-
-            const thMatches = updateBody.matchAll(thRegex);
-
-            const thTags = [];
-
-            for (const match of thMatches) {
-              const id = match[1];
-              const content = match[2];
-              const name = content.trim() || "";
-              let finalId = Number(id);
-              thTags.push(finalId);
-            }
-            let tQ = 0;
-            let srNum = countNumber * itemPerPage - itemPerPage;
-            let updatedBodyAccumulator = updateBody;
-
-            const targetRowId = `trRow${2}`;
-            const removeRowRegex = new RegExp(
-              `<tr[^>]*\\sid="${targetRowId}"[^>]*>([\\s\\S]*?)<\\/tr>`
-            );
-            updatedBodyAccumulator = updatedBodyAccumulator.replace(
-              removeRowRegex,
-              ""
-            );
-            // let rowHeight = bodyFinalHeight / selectedProducts.length;
-            // rowHeight = Number(rowHeight % 3);
-            // rowHeight = `${rowHeight}px`;
-            const tdElements = thTags
-              .map((tag) => {
-                return `
-                <td
-                  style="
-                  font-size: 14px;
-                  color: black;
-                  background-color: transparent;
-                  width: 90px; // Adjust width as needed
-                  -webkit-print-color-adjust: exact;
-                  text-align: center;
-                "
-              >
-              </td>`;
-              })
-              .join("");
-            printItems.forEach((p, index) => {
-              srNum = srNum + 1;
-              tQ = tQ + p.Quantity;
-              let taxRate = Number(p.Tax1Rate + p.Tax2Rate);
-
-              const dynamicValuesBody = {};
-
-              thTags.forEach((id) => {
-                switch (id) {
-                  case 12:
-                    dynamicValuesBody[id] = Number(p.GrandAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 16:
-                    dynamicValuesBody[id] = Number(p.PriceWithOutTax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 11:
-                    dynamicValuesBody[id] = Number(p.DiscountAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 28:
-                    dynamicValuesBody[id] = Number(p.tax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 22:
-                    dynamicValuesBody[id] = Number(taxRate).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 6:
-                    dynamicValuesBody[id] = Number(p.PriceOriginal).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 4:
-                    dynamicValuesBody[id] = Number(p.Quantity).toFixed(2);
-                    break;
-                  case 5:
-                    dynamicValuesBody[id] = I18nManager.isRTL
-                      ? p.UOMName2
-                      : p.UOMName;
-                    break;
-                  case 15:
-                    dynamicValuesBody[id] = I18nManager.isRTL
-                      ? p.Description
-                      : p.Description;
-                    break;
-                  case 3:
-                    dynamicValuesBody[id] = I18nManager.isRTL
-                      ? p.ProductName2
-                      : p.ProductName;
-                    break;
-                  case 2:
-                    dynamicValuesBody[id] = p.ProductCode ? p.ProductCode : "";
-                    break;
-                  case 1:
-                    dynamicValuesBody[id] = srNum;
-                    break;
-                  default:
-                    // Handle other ids or provide a default value
-                    dynamicValuesBody[id] = ""; // Default value, change as needed
-                }
-              });
-
-              const targetRowIdNew = `trRow${srNum}`;
-
-              let rowContent = `<tr id="${targetRowIdNew}">${tdElements}</tr>`;
-              const lastIndex = updatedBodyAccumulator.lastIndexOf("</tr>");
-
-              const existingRowStart = updatedBodyAccumulator.indexOf(
-                `<tr id="${targetRowIdNew}"`
-              );
-              const existingRowEnd = updatedBodyAccumulator.indexOf(
-                "</tr>",
-                existingRowStart
-              );
-
-              if (existingRowStart !== -1 && existingRowEnd !== -1) {
-                // Replace the content of the existing row
-                updatedBodyAccumulator =
-                  updatedBodyAccumulator.slice(0, existingRowStart) +
-                  `${rowContent}` +
-                  updatedBodyAccumulator.slice(existingRowEnd + "</tr>".length);
-              } else {
-                // If the row doesn't exist, insert it
-                if (lastIndex !== -1) {
-                  updatedBodyAccumulator =
-                    updatedBodyAccumulator.slice(0, lastIndex) +
-                    `<tr id="${targetRowIdNew}">${rowContent}</tr>` +
-                    updatedBodyAccumulator.slice(lastIndex);
-                }
-              }
-
-              rowContent = replaceValuesInRow(
-                rowContent,
-                dynamicValuesBody,
-                thTags
-              );
-              const rowRegexNew = new RegExp(
-                `<tr[^>]*\\sid="${targetRowIdNew}"[^>]*>([\\s\\S]*?)<\\/tr>`
-              );
-              const rowMatchNew = updatedBodyAccumulator.match(rowRegexNew);
-              if (rowMatchNew && rowMatchNew.length >= 2) {
-                updatedBodyAccumulator = updatedBodyAccumulator.replace(
-                  rowMatchNew[0],
-                  `<tr id="${targetRowIdNew}">${rowContent}</tr>`
-                  // `<tr id="${targetRowIdNew}" style="height: ${rowHeight};">${rowContent}</tr>`,
-                );
-              }
-            });
-
-            updateBody = updatedBodyAccumulator;
-
-            const dynamicValuesFooter = {
-              GrandAmount_value: Number(subPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              ),
-
-              // GrandAmount_value: numberToEngArbWords(
-              //   Number(subPrice).toFixed(
-              //     TerminalConfiguration.DecimalsInAmount,
-              //   ),
-              //   false,
-              // ),
-              NetAmount_value: Number(totalPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              ),
-              // NetAmount_value: numberToEngArbWords(
-              //   Number(totalPrice).toFixed(
-              //     TerminalConfiguration.DecimalsInAmount,
-              //   ),
-              //   true,
-              // ),
-              TaxGroups_value: Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              ),
-              PaymentTypeName_value: I18nManager.isRTL
-                ? selectedPyamentMethod?.PaymentTypeName2
-                : selectedPyamentMethod?.PaymentTypeName,
-              NetAmount_words_EN: numberToEngArbWords(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              ),
-              NetAmount_words_AR: numberToEngArbWords(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              ),
-              Instructions_value: customerNotes ? customerNotes : "",
-              Company_BankDetail:
-                TerminalConfiguration?.CompanyBankDetail !== "null"
-                  ? TerminalConfiguration.CompanyBankDetail
-                  : "",
-              Company_Email: TerminalConfiguration.CompanyEmail,
-              SalesAgentName_value: selectedAgent?.SalesAgentName
-                ? selectedAgent?.SalesAgentName
-                : TerminalConfiguration?.SalesAgentName,
-              ContactNumber_profile: TerminalConfiguration.CompanyPhone
-                ? TerminalConfiguration.CompanyPhone
-                : "",
-              Address_profile:
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration.GoDownAddress
-                  : TerminalConfiguration.CompanyAddress,
-            };
-            // const replacePlaceholdersFooter = (html, values) => {
-            //   for (const key in values) {
-            //     const regex = new RegExp(key, 'g');
-            //     html = html.replace(regex, values[key]);
-            //   }
-            //   return html;
-            // };
-            const replacePlaceholdersFooter = (html, values) => {
-              // Use a placeholder format like {key} for dynamic values
-              for (const key in values) {
-                const regex = new RegExp(key, "g");
-                html = html.replace(regex, values[key]);
-              }
-
-              // Special case: Replace the content of the specific <div> with id="qrcode"
-              const qrCodeDivRegex =
-                /(<div class="rptImgdiv" id="qrcode"[^>]*)style="([^"]*)"([^>]*)>/;
-
-              const matches = html.match(qrCodeDivRegex);
-              if (matches) {
-                const styleAttributeContent = matches[2];
-                console.log(styleAttributeContent);
-              } else {
-                console.log("No match found.");
-              }
-
-              if (qrCodeDivRegex.test(html)) {
-                // Replace {your_image_source_here} with the actual base64-encoded qrUrl
-                html = html.replace(
-                  qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${qrUrl}" style="$2"/>$3`
-                );
-              }
-
-              return html;
-            };
-            updateFooter = replacePlaceholdersFooter(
-              updateFooter,
-              dynamicValuesFooter
-            );
-          } else {
-            updateHeader = updateHeader.replace(
-              "{{logo}}",
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration?.GoDownLogoType +
-                    "," +
-                    TerminalConfiguration?.GoDownLogo
-                : TerminalConfiguration?.CompanyLogoType +
-                    "," +
-                    TerminalConfiguration?.CompanyLogo
-            );
-            updateHeader = updateHeader.replace(
-              /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName
-            );
-            updateHeader = updateHeader.replace(
-              /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber
-            );
-            updateHeader = updateHeader.replace(
-              /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress
-            );
-            // updateHeader = updateHeader.replace(/1060/g, "1100")
-            //updateHeader = updateHeader.replace(/20/g, "20")
-            updateHeader = updateHeader.replace(
-              /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber
-            );
-
-            updateHeader = updateHeader.replace(
-              "{{InvoiceTitleArabic}}",
-              returnInvoiceNumber ? "استرداد المبيعات" : billingType?.name2
-            );
-            updateHeader = updateHeader.replace(
-              "{{InvoiceTitleEnglish}}",
-              returnInvoiceNumber ? "Sales Refund" : billingType?.name
-            );
-            updateHeader = updateHeader.replace("{{PDate}}", currentDate);
-            updateHeader = updateHeader.replace(
-              "{{dateDays}}",
-              currentDate.split("/")[0]
-            );
-            updateHeader = updateHeader.replace(
-              "{{dateMonth}}",
-              currentDate.split("/")[1]
-            );
-            updateHeader = updateHeader.replace(
-              "{{dateYear}}",
-              currentDate.split(/[/" "]/)[2]
-            );
-            updateHeader = updateHeader.replace(
-              /{{record_number}}/g,
-              invoiceNumber
-            );
-            updateHeader = updateHeader.replace(
-              /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber
-            );
-            updateHeader = updateHeader.replace(
-              /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate.split(" ")[0]
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerName}}",
-              buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerCode}}",
-              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerVat}}",
-              buyerInfo?.ValueAddedTaxNumber
-                ? buyerInfo.ValueAddedTaxNumber
-                : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerCCR}}",
-              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerPhone}}",
-              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerAddress}}",
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
-            );
-
-            let tQ = 0;
-            let srNum = countNumber * itemPerPage - itemPerPage;
-            printItems.forEach((p, index) => {
-              srNum = srNum + 1;
-              tQ = tQ + p.Quantity;
-              //  console.log("A4style[0].ReportHeader......", A4style[0].ReportHeader)
-              let body = A4style[0].ReportBody;
-              body = body.replace("{{SerialNumber}}", srNum);
-              body = body.replace("{{ProductCode}}", p.ProductCode);
-              body = body.replace(
-                "{{Description}}",
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName
-              );
-              body = body.replace(
-                "{{ProductName}}",
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName
-              );
-              body = body.replace(
-                "{{Quantity}}",
-                Number(p.Quantity).toFixed(2)
-              );
-              body = body.replace(
-                "{{ProductTax}}",
-                Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount)
-              );
-              body = body.replace(
-                "{{UnitName}}",
-                I18nManager.isRTL ? p.UOMName2 : p.UOMName
-              );
-              body = body.replace(
-                "{{Price}}",
-                Number(p.PriceWithOutTax).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace("{{PriceSIG}}", parseInt(p.PriceWithOutTax));
-              body = body.replace(
-                "{{PricePoints}}",
-                GetDecimalpart(
-                  Number(p.PriceWithOutTax).toFixed(
-                    TerminalConfiguration.DecimalsInAmount
-                  )
-                )
-              );
-              body = body.replace(
-                "{{PriceQuantity}}",
-                Number(p.PriceWithOutTax * p.Quantity).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{GrandAmount}}",
-                Number(p.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{GrandAmountSIG}}",
-                parseInt(p.GrandAmount)
-              );
-              body = body.replace(
-                "{{GrandAmountPoints}}",
-                GetDecimalpart(
-                  Number(p.GrandAmount).toFixed(
-                    TerminalConfiguration.DecimalsInAmount
-                  )
-                )
-              );
-              body = body.replace(
-                "{{Tax1Rate}}",
-                Number(p.Tax1Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{Tax2Rate}}",
-                Number(p.Tax2Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{Tax1Amount}}",
-                Number(p.Tax1Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{Tax2Amount}}",
-                Number(p.Tax2Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace("{{Tax1Name}}", p.Tax1Name);
-              body = body.replace("{{Tax2Name}}", p.Tax2Name);
-              body = body.replace(
-                "{{Discount}}",
-                Number(p.DiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace("{{ProductDescription}}", p.IngredientNames);
-              body = body.replace("{{ProductBarCode}}", p.ProductBarCode);
-
-              updateBody = updateBody + body;
-            });
-            // updateFooter = updateFooter.replace(/1060/g, "1100")
-            //updateFooter = updateFooter.replace(/30%/g, "20%")
-            updateFooter = updateFooter.replace(
-              "{{QRImage}}",
-              "data:image/png;base64," + qrUrl
-            );
-            updateFooter = updateFooter.replace(
-              "{{CompanyStamp}}",
-              TerminalConfiguration.CompanyStampType +
-                "," +
-                TerminalConfiguration.CompanyStamp
-            );
-            updateFooter = updateFooter.replace(
-              "{{AmountWithOutTax}}",
-              Number(subPrice - sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GrandAmountSIG}}",
-              parseInt(subPrice)
-            );
-            updateFooter = updateFooter.replace(
-              "{{grandAmountPoints}}",
-              GetDecimalpart(
-                Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GlobalDiscountAmount}}",
-              Number(globalDiscountAmount + sumOfProductDiscount).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupAmount}}",
-              Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupNames}}",
-              globalTaxObj?.globalTaxGroupName
-                ? globalTaxObj.globalTaxGroupName
-                : "Global Tax"
-            );
-            updateFooter = updateFooter.replace(
-              "{{Roundoff}}",
-              (0).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{CashAdvance}}",
-              Number(advancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{AdvanceAmount}}",
-              Number(advancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{CashPaid}}",
-              Number(
-                advancePaidInCash ? totalPrice - advancePaidInCash : totalPrice
-              ).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{PaymentMethod}}",
-              I18nManager.isRTL
-                ? selectedPyamentMethod?.PaymentTypeName2
-                : selectedPyamentMethod?.PaymentTypeName
-            );
-            console.log("payment method type", selectedPyamentMethod);
-            updateFooter = updateFooter.replace("{{companyCurrency}}", "");
-            updateFooter = updateFooter.replace(
-              "{{NetAmount}}",
-              Number(totalPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{CompanyEmail}}",
-              TerminalConfiguration.CompanyEmail
-            );
-            updateFooter = updateFooter.replace(
-              "{{NetAmountSIG}}",
-              parseInt(totalPrice)
-            );
-            updateFooter = updateFooter.replace(
-              "{{netAmountPoints}}",
-              GetDecimalpart(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{TotalQty}}",
-              Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{TotalItems}}",
-              selectedProducts.length
-            );
-            updateFooter = updateFooter.replace(
-              "{{NetAmountAR}}",
-              numberToEngArbWords(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GrandAmountEN}}",
-              numberToEngArbWords(
-                Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GrandAmountAR}}",
-              numberToEngArbWords(
-                Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{AmountWithOutTaxEN}}",
-              numberToEngArbWords(
-                Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{AmountWithOutTaxAR}}",
-              numberToEngArbWords(
-                Number(subPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GlobalDiscountAmountEN}}",
-              numberToEngArbWords(
-                Number(globalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GlobalDiscountAmountAR}}",
-              numberToEngArbWords(
-                Number(globalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{NetAmountEN}}",
-              numberToEngArbWords(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupAmount}}",
-              Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            // updateFooter = updateFooter.replace(
-            //   '{{TaxGroupAmount}}',
-            //   globalTax.toFixed(TerminalConfiguration.DecimalsInAmount),
-            // );
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupNames}}",
-              globalTaxObj?.globalTaxGroupName
-                ? globalTaxObj.globalTaxGroupName
-                : "ضريبة القيمة المضافة %15 "
-            );
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupAmountSIG}}",
-              parseInt(globalTax)
-            );
-            updateFooter = updateFooter.replace(
-              "{{taxGroupPoints}}",
-              GetDecimalpart(
-                Number(globalTax).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              )
-            );
-            updateFooter = updateFooter.replace("{{TaxGroupsAR}}", "");
-            updateFooter = updateFooter.replace("{{TaxGroupsEN}}", "");
-            updateFooter = updateFooter.replace(
-              /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress
-            );
-            updateFooter = updateFooter.replace(
-              /{{SalesAgentName}}/g,
-              selectedAgent?.SalesAgentName
-                ? selectedAgent?.SalesAgentName
-                : TerminalConfiguration?.SalesAgentName
-            );
-
-            updateFooter = updateFooter.replace(
-              /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName
-            );
-            updateFooter = updateFooter.replace(
-              /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber
-            );
-
-            updateFooter = updateFooter.replace(
-              /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber
-            );
-
-            updateFooter = updateFooter.replace("{{PDate}}", currentDate);
-            updateFooter = updateFooter.replace(
-              "{{dateDays}}",
-              currentDate.split("/")[0]
-            );
-            updateFooter = updateFooter.replace(
-              "{{dateMonth}}",
-              currentDate.split("/")[1]
-            );
-            updateFooter = updateFooter.replace(
-              "{{dateYear}}",
-              currentDate.split(/[/" "]/)[2]
-            );
-            updateFooter = updateFooter.replace(
-              /{{record_number}}/g,
-              invoiceNumber
-            );
-            updateFooter = updateFooter.replace(
-              /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber
-            );
-            updateFooter = updateFooter.replace(
-              /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerName}}",
-              buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerCode}}",
-              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerVat}}",
-              buyerInfo?.ValueAddedTaxNumber
-                ? buyerInfo.ValueAddedTaxNumber
-                : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerCCR}}",
-              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerPhone}}",
-              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerAddress}}",
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
-            );
-            //  updateFooter = updateFooter.replace(/{{CompanyAddress}}/g, saleAgent)
-
-            console.log("updateStyleupdateStyleupdateStyle", updateStyle);
-          }
-
-          let check = countNumber * itemPerPage < allProducts.length;
-
-          if (check) {
-            // if (reportStyle === 1) {
-            //   updateStyle += updateHeader + updateBody + updateFooter;
-            // } else if (reportStyle === 2) {
-            //   updateStyle += updateBody + updateFooter;
-
-            //   let mainDiv = `<div style="page-break-before:always!important;">${updateStyle}</div>`;
-
-            //   updateStyle += mainDiv;
-            // } else if (reportStyle === 3) {
-            //   updateStyle += updateHeader + updateBody;
-            //   let mainDiv = `<div style="page-break-before:always!important;">${updateStyle}</div>`;
-
-            //   updateStyle += mainDiv;
-            // } else if (reportStyle === 4) {
-            //   updateStyle += updateBody;
-            //   let mainDiv = `<div style="page-break-before:always!important;">${updateStyle}</div>`;
-
-            //   updateStyle += mainDiv;
-            // }
-
-            updateStyle =
-              updateStyle === ""
-                ? updateHeader +
-                  updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : "")
-                : updateStyle +
-                  updateHeader +
-                  updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : "");
-
-            let c = countNumber + 1;
-            pageNo = page + 1;
-
-            A4PrinterStyle(currentDate, qrUrl, c, updateStyle, pageNo);
-          } else {
-            console.log(updateStyle);
-            if (pageNo !== 1) {
-              updateStyle =
-                updateStyle + updateHeader + updateBody + updateFooter;
-            } else {
-              updateStyle =
-                updateStyle === ""
-                  ? updateHeader + updateBody + updateFooter
-                  : updateStyle + updateHeader + updateBody + updateFooter;
-            }
-            console.log("updateStyle1", updateStyle);
-            await RNPrint.print({
-              html: updateStyle,
-            });
-          }
-        }
-
-        setLoading(false);
-        onSaveInvoice();
-      }
-    );
-  };
-  const A4RePrinterStyle = async (
-    currentDate,
-    qrUrl,
-    countNumber,
-    update,
-    detail,
-    page
-  ) => {
-    // console.log(
-    //   'billingType A4PrinterStyle..',
-    //   billingType,
-    //   ' terminal ',
-    //   currentDate,
-    //   billDates,
-    //   'product are',
-    //   detail,
-    // );
-    lastBillDetail = detail;
-    let bdetail = detail;
-    let itemPerPage = 17;
-
-    let pageNo = page;
-    let printItems = [];
-    if (countNumber * itemPerPage < lastBillDetail?.BillDetails.length) {
-      let lastIndex = countNumber * itemPerPage;
-      let startingIndex = lastIndex - itemPerPage;
-      printItems = lastBillDetail?.BillDetails.slice(startingIndex, lastIndex);
-    } else {
-      // let lastIndex = countNumber * 15
-      let startingIndex = countNumber * itemPerPage - itemPerPage;
-      printItems = lastBillDetail?.BillDetails.slice(
-        startingIndex,
-        lastBillDetail?.BillDetails?.length
-      );
-    }
-    console.log("printItems....", printItems);
-
-    let pageId = returnInvoiceNumber
-      ? "403007"
-      : billingType?.id === 2
+      : saleBilType?.id === 2
       ? "4030061"
       : "403006";
 
@@ -6219,1013 +8112,474 @@ const HomeScreen = (props) => {
           setLoading(false);
           alert("There is no A4 printing style available");
         } else {
-          if (pageNo !== 1 && update) {
-            update = `<div style="page-break-after:always!important;">${update}</div>`;
-          }
-          let updateStyle = update,
-            updateHeader = A4style[0].ReportHeader.replace(
-              /<i\b[^>]*>.*?<\/i>/g,
-              ""
-            ),
-            updateBody = A4style[0].ReportBody.replace(
-              /<i\b[^>]*>.*?<\/i>/g,
-              ""
-            ),
-            updateFooter = A4style[0].ReportFooter.replace(
-              /<i\b[^>]*>.*?<\/i>/g,
-              ""
-            );
+          let updateStyle = "",
+            updateHeader = A4style[0].ReportHeader,
+            updateBody = "",
+            updateFooter = A4style[0].ReportFooter;
 
-          let heightOfHeader = getHeight(updateHeader, "dvhmain"); // 440;
-          let heightOfFooter = getHeight(updateFooter, "dvfmain"); // 760;
-          let BodyHeightGiven = getHeight(updateBody, "dvimain"); // 200;
-
-          let IsFooterOnEveryPage =
-            A4style[0].IsFooterOnEveryPage === "true" ? true : false;
-          let IsHeaderOnEveryPage =
-            A4style[0].IsHeaderOnEveryPage === "true" ? true : false;
-
-          let findPrintStyle = A4style.findIndex(
-            (x) => x.SerialNo > 1 && x.UseDefault === "true"
+          updateHeader = updateHeader.replace(
+            "{{logo}}",
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration?.GoDownLogoType +
+                  "," +
+                  TerminalConfiguration?.GoDownLogo
+              : TerminalConfiguration?.CompanyLogoType +
+                  "," +
+                  TerminalConfiguration?.CompanyLogo
           );
-          // let bodyFinalHeight = 510;
-          // if (
-          //   IsFooterOnEveryPage &&
-          //   IsHeaderOnEveryPage &&
-          //   selectedProducts.length <= 15
-          // ) {
-          //   bodyFinalHeight = 400;
-          // } else if (!IsFooterOnEveryPage && selectedProducts.length === 15) {
-          //   bodyFinalHeight = BodyHeightGiven + heightOfFooter;
-          // } else if (!IsHeaderOnEveryPage && selectedProducts.length === 15) {
-          //   bodyFinalHeight = BodyHeightGiven + heightOfHeader;
-          // } else {
-          //   bodyFinalHeight = 400;
-          // }
+          updateHeader = updateHeader.replace(
+            /{{companyName}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownName
+              : TerminalConfiguration.CompanyName
+          );
+          updateHeader = updateHeader.replace(
+            /{{ccrNumber}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GodownCCRNumber
+              : TerminalConfiguration.CCRNumber
+          );
+          updateHeader = updateHeader.replace(
+            /{{CompanyAddress}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownAddress
+              : TerminalConfiguration.CompanyAddress
+          );
+          // updateHeader = updateHeader.replace(/1060/g, "1100")
+          //updateHeader = updateHeader.replace(/20/g, "20")
+          updateHeader = updateHeader.replace(
+            /{{vatNumber}}/g,
+            TerminalConfiguration?.ValueAddedTaxNumber
+          );
 
-          if (findPrintStyle !== -1) {
-            const updatedBodyWithAutoHeightAndFonts = updateBody.replace(
-              /id="dvIMain" style=".*?"/,
-              `id="dvIMain" style="width: 1100px; height: auto; margin-top:80px; padding: 0px; background: none rgb(255, 255, 255); font-family: 'proxima nova rg';"`
+          updateHeader = updateHeader.replace(
+            "{{InvoiceTitleArabic}}",
+            returnInvoiceNumber ? "استرداد المبيعات" : saleBilType?.name2
+          );
+          updateHeader = updateHeader.replace(
+            "{{InvoiceTitleEnglish}}",
+            returnInvoiceNumber ? "Sales Refund" : saleBilType?.name
+          );
+          updateHeader = updateHeader.replace("{{PDate}}", currentDate);
+          updateHeader = updateHeader.replace(
+            "{{dateDays}}",
+            currentDate.split("/")[0]
+          );
+          updateHeader = updateHeader.replace(
+            "{{dateMonth}}",
+            currentDate.split("/")[1]
+          );
+          updateHeader = updateHeader.replace(
+            "{{dateYear}}",
+            currentDate.split(/[/" "]/)[2]
+          );
+          updateHeader = updateHeader.replace(
+            /{{record_number}}/g,
+            lastBillDetail.BillNumber
+          );
+          updateHeader = updateHeader.replace(
+            /{{ReturnedBillNumber}}/g,
+            returnInvoiceNumber
+          );
+          updateHeader = updateHeader.replace(
+            /{{InvoiceDate}}/g,
+            invoiceDates ? invoiceDates : currentDate.split(" ")[0]
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerName}}",
+            lastBillDetail.BuyerName
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerCode}}",
+            lastBillDetail.BuyerCode
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerVat}}",
+            buyerInfo?.ValueAddedTaxNumber ? buyerInfo.ValueAddedTaxNumber : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerCCR}}",
+            buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerPhone}}",
+            buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerAddress}}",
+            buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
+          );
+
+          let tQ = 0;
+
+          lastBillDetail.BillDetails.forEach((p, index) => {
+            tQ = tQ + p.Quantity;
+            //  console.log("A4style[0].ReportHeader......", A4style[0].ReportHeader)
+            let body = A4style[0].ReportBody;
+            body = body.replace("{{SerialNumber}}", index + 1);
+            body = body.replace("{{ProductCode}}", p.ProductCode);
+            body = body.replace("{{Description}}", p.ProductName);
+            body = body.replace("{{ProductName}}", p.ProductName);
+            body = body.replace("{{Quantity}}", Number(p.Quantity).toFixed(2));
+            body = body.replace(
+              "{{ProductTax}}",
+              Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount)
             );
-
-            updateBody = updatedBodyWithAutoHeightAndFonts;
-
-            const dynamicValuesHeader = {
-              // logo:
-              //   TerminalConfiguration?.IsGodownInfo === 'true'
-              //     ? TerminalConfiguration?.GoDownLogoType +
-              //       ',' +
-              //       TerminalConfiguration?.GoDownLogo
-              //     : TerminalConfiguration?.CompanyLogoType +
-              //       ',' +
-              //       TerminalConfiguration?.CompanyLogo,
-              CompanyName_profile:
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration.GoDownName
-                  : TerminalConfiguration.CompanyName,
-
-              CCRNumber_profile:
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration.GodownCCRNumber
-                  : TerminalConfiguration.CCRNumber,
-              VATNumber_profile: TerminalConfiguration?.ValueAddedTaxNumber,
-              Page_Title_AR: returnInvoiceNumber
-                ? "استرداد المبيعات"
-                : billingType?.name2,
-              Page_Title_EN: returnInvoiceNumber
-                ? "استرداد المبيعات"
-                : billingType?.name,
-              InvoiceDate_value: lastBillDetail.BillDate,
-              CreditDateUpto_value: currentDate,
-              InvoiceNumber_value: lastBillDetail.BillNumber,
-              BuyerName_value: lastBillDetail?.BuyerName
-                ? lastBillDetail.BuyerName
-                : "",
-              BuyerCode_value: lastBillDetail?.BuyerCode
-                ? lastBillDetail.BuyerCode
-                : "",
-              VATNumber_value: lastBillDetail?.ValueAddedTaxNumber
-                ? lastBillDetail.ValueAddedTaxNumber
-                : "",
-              BuyerAddress_value: lastBillDetail?.BuyerAddress
-                ? lastBillDetail.BuyerAddress
-                : "",
-              CCRNumber_value: lastBillDetail?.CCRNumber
-                ? lastBillDetail.CCRNumber
-                : "",
-            };
-            const replacePlaceholdersHeader = (html, values) => {
-              let logo =
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration?.GoDownLogo
-                  : TerminalConfiguration?.CompanyLogo;
-              // Use a placeholder format like {key} for dynamic values
-              for (const key in values) {
-                const regex = new RegExp(key, "g");
-                html = html.replace(regex, values[key]);
-              }
-
-              // Special case: Replace the content of the specific <div> with id="qrcode"
-              const qrCodeDivRegex =
-                /(<div class="rptImgdiv" [^>]*)style="([^"]*)"([^>]*)>/;
-
-              const matches = html.match(qrCodeDivRegex);
-              if (matches) {
-                const styleAttributeContent = matches[2];
-                console.log(styleAttributeContent);
-              } else {
-                console.log("No match found.");
-              }
-
-              if (qrCodeDivRegex.test(html)) {
-                // Replace {your_image_source_here} with the actual base64-encoded qrUrl
-                html = html.replace(
-                  qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${logo}" />$3`
-                );
-              }
-
-              return html;
-            };
-            // const replacePlaceholdersHeader = (html, values) => {
-            //   for (const key in values) {
-            //     const regex = new RegExp(key, 'g');
-            //     html = html.replace(regex, values[key]);
-            //   }
-            //   return html;
-            // };
-
-            updateHeader = replacePlaceholdersHeader(
-              updateHeader,
-              dynamicValuesHeader
-            );
-            const thRegex =
-              /<th[^>]*id="([^"]*)"[^>]*>(.*?)<.*?>.*?([^<>]*)<\/th>/gi;
-
-            const thMatches = updateBody.matchAll(thRegex);
-
-            const thTags = [];
-
-            for (const match of thMatches) {
-              const id = match[1];
-              const content = match[2];
-              const name = content.trim() || "";
-              let finalId = Number(id);
-              thTags.push(finalId);
-            }
-            let tQ = 0;
-            let srNum = countNumber * itemPerPage - itemPerPage;
-            let updatedBodyAccumulator = updateBody;
-
-            const targetRowId = `trRow${2}`;
-            const removeRowRegex = new RegExp(
-              `<tr[^>]*\\sid="${targetRowId}"[^>]*>([\\s\\S]*?)<\\/tr>`
-            );
-            updatedBodyAccumulator = updatedBodyAccumulator.replace(
-              removeRowRegex,
-              ""
-            );
-            // let rowHeight = bodyFinalHeight / selectedProducts.length;
-            // rowHeight = Number(rowHeight % 3);
-            // rowHeight = `${rowHeight}px`;
-            const tdElements = thTags
-              .map((tag) => {
-                return `
-                <td
-                  style="
-                  font-size: 14px;
-                  color: black;
-                  background-color: transparent;
-                  width: 90px; // Adjust width as needed
-                  -webkit-print-color-adjust: exact;
-                  text-align: center;
-                "
-              >
-              </td>`;
-              })
-              .join("");
-            printItems.forEach((p, index) => {
-              srNum = srNum + 1;
-              tQ = tQ + p.Quantity;
-              let taxRate = Number(p.Tax1Rate + p.Tax2Rate);
-
-              const dynamicValuesBody = {};
-
-              thTags.forEach((id) => {
-                switch (id) {
-                  case 12:
-                    dynamicValuesBody[id] = Number(p.GrandAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 16:
-                    dynamicValuesBody[id] = Number(p.PriceWithOutTax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 11:
-                    dynamicValuesBody[id] = Number(p.DiscountAmount).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 28:
-                    dynamicValuesBody[id] = Number(p.tax).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 22:
-                    dynamicValuesBody[id] = Number(taxRate).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 6:
-                    dynamicValuesBody[id] = Number(p.PriceOriginal).toFixed(
-                      TerminalConfiguration.DecimalsInAmount
-                    );
-                    break;
-                  case 4:
-                    dynamicValuesBody[id] = Number(p.Quantity).toFixed(2);
-                    break;
-                  case 5:
-                    dynamicValuesBody[id] = I18nManager.isRTL
-                      ? p.UOMName2
-                      : p.UOMName;
-                    break;
-                  case 15:
-                    dynamicValuesBody[id] = I18nManager.isRTL
-                      ? p.Description
-                      : p.Description;
-                    break;
-                  case 3:
-                    dynamicValuesBody[id] = I18nManager.isRTL
-                      ? p.ProductName2
-                      : p.ProductName;
-                    break;
-                  case 2:
-                    dynamicValuesBody[id] = p.ProductCode ? p.ProductCode : "";
-                    break;
-                  case 1:
-                    dynamicValuesBody[id] = srNum;
-                    break;
-                  default:
-                    // Handle other ids or provide a default value
-                    dynamicValuesBody[id] = ""; // Default value, change as needed
-                }
-              });
-
-              const targetRowIdNew = `trRow${srNum}`;
-
-              let rowContent = `<tr id="${targetRowIdNew}">${tdElements}</tr>`;
-              const lastIndex = updatedBodyAccumulator.lastIndexOf("</tr>");
-
-              const existingRowStart = updatedBodyAccumulator.indexOf(
-                `<tr id="${targetRowIdNew}"`
-              );
-              const existingRowEnd = updatedBodyAccumulator.indexOf(
-                "</tr>",
-                existingRowStart
-              );
-
-              if (existingRowStart !== -1 && existingRowEnd !== -1) {
-                // Replace the content of the existing row
-                updatedBodyAccumulator =
-                  updatedBodyAccumulator.slice(0, existingRowStart) +
-                  `${rowContent}` +
-                  updatedBodyAccumulator.slice(existingRowEnd + "</tr>".length);
-              } else {
-                // If the row doesn't exist, insert it
-                if (lastIndex !== -1) {
-                  updatedBodyAccumulator =
-                    updatedBodyAccumulator.slice(0, lastIndex) +
-                    `<tr id="${targetRowIdNew}">${rowContent}</tr>` +
-                    updatedBodyAccumulator.slice(lastIndex);
-                }
-              }
-
-              rowContent = replaceValuesInRow(
-                rowContent,
-                dynamicValuesBody,
-                thTags
-              );
-              const rowRegexNew = new RegExp(
-                `<tr[^>]*\\sid="${targetRowIdNew}"[^>]*>([\\s\\S]*?)<\\/tr>`
-              );
-              const rowMatchNew = updatedBodyAccumulator.match(rowRegexNew);
-              if (rowMatchNew && rowMatchNew.length >= 2) {
-                updatedBodyAccumulator = updatedBodyAccumulator.replace(
-                  rowMatchNew[0],
-                  `<tr id="${targetRowIdNew}">${rowContent}</tr>`
-                  // `<tr id="${targetRowIdNew}" style="height: ${rowHeight};">${rowContent}</tr>`,
-                );
-              }
-            });
-
-            updateBody = updatedBodyAccumulator;
-
-            const dynamicValuesFooter = {
-              GrandAmount_value: Number(subPrice).toFixed(
+            body = body.replace("{{UnitName}}", p.UOMName);
+            body = body.replace(
+              "{{Price}}",
+              Number(p.PriceWithOutTax).toFixed(
                 TerminalConfiguration.DecimalsInAmount
-              ),
-
-              // GrandAmount_value: numberToEngArbWords(
-              //   Number(subPrice).toFixed(
-              //     TerminalConfiguration.DecimalsInAmount,
-              //   ),
-              //   false,
-              // ),
-              NetAmount_value: Number(totalPrice).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              ),
-              // NetAmount_value: numberToEngArbWords(
-              //   Number(totalPrice).toFixed(
-              //     TerminalConfiguration.DecimalsInAmount,
-              //   ),
-              //   true,
-              // ),
-              TaxGroups_value: Number(globalTax + sumOfProductTax).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              ),
-              PaymentTypeName_value: I18nManager.isRTL
-                ? selectedPyamentMethod?.PaymentTypeName2
-                : selectedPyamentMethod?.PaymentTypeName,
-              NetAmount_words_EN: numberToEngArbWords(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              ),
-              NetAmount_words_AR: numberToEngArbWords(
-                Number(totalPrice).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              ),
-              Instructions_value: customerNotes ? customerNotes : "",
-              Company_BankDetail:
-                TerminalConfiguration?.CompanyBankDetail !== "null"
-                  ? TerminalConfiguration.CompanyBankDetail
-                  : "",
-              Company_Email: TerminalConfiguration.CompanyEmail,
-              SalesAgentName_value: selectedAgent?.SalesAgentName
-                ? selectedAgent?.SalesAgentName
-                : TerminalConfiguration?.SalesAgentName,
-              ContactNumber_profile: TerminalConfiguration.CompanyPhone
-                ? TerminalConfiguration.CompanyPhone
-                : "",
-              Address_profile:
-                TerminalConfiguration?.IsGodownInfo === "true"
-                  ? TerminalConfiguration.GoDownAddress
-                  : TerminalConfiguration.CompanyAddress,
-            };
-            // const replacePlaceholdersFooter = (html, values) => {
-            //   for (const key in values) {
-            //     const regex = new RegExp(key, 'g');
-            //     html = html.replace(regex, values[key]);
-            //   }
-            //   return html;
-            // };
-            const replacePlaceholdersFooter = (html, values) => {
-              // Use a placeholder format like {key} for dynamic values
-              for (const key in values) {
-                const regex = new RegExp(key, "g");
-                html = html.replace(regex, values[key]);
-              }
-
-              // Special case: Replace the content of the specific <div> with id="qrcode"
-              const qrCodeDivRegex =
-                /(<div class="rptImgdiv" id="qrcode"[^>]*)style="([^"]*)"([^>]*)>/;
-
-              const matches = html.match(qrCodeDivRegex);
-              if (matches) {
-                const styleAttributeContent = matches[2];
-                console.log(styleAttributeContent);
-              } else {
-                console.log("No match found.");
-              }
-
-              if (qrCodeDivRegex.test(html)) {
-                // Replace {your_image_source_here} with the actual base64-encoded qrUrl
-                html = html.replace(
-                  qrCodeDivRegex,
-                  `$1><img src="data:image/png;base64,${qrUrl}" style="$2"/>$3`
-                );
-              }
-
-              return html;
-            };
-            updateFooter = replacePlaceholdersFooter(
-              updateFooter,
-              dynamicValuesFooter
+              )
             );
-          } else {
-            updateHeader = updateHeader.replace(
-              "{{logo}}",
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration?.GoDownLogoType +
-                    "," +
-                    TerminalConfiguration?.GoDownLogo
-                : TerminalConfiguration?.CompanyLogoType +
-                    "," +
-                    TerminalConfiguration?.CompanyLogo
-            );
-            updateHeader = updateHeader.replace(
-              /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName
-            );
-            updateHeader = updateHeader.replace(
-              /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber
-            );
-            updateHeader = updateHeader.replace(
-              /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress
-            );
-            // updateHeader = updateHeader.replace(/1060/g, "1100")
-            //updateHeader = updateHeader.replace(/20/g, "20")
-            updateHeader = updateHeader.replace(
-              /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber
-            );
-
-            updateHeader = updateHeader.replace(
-              "{{InvoiceTitleArabic}}",
-              returnInvoiceNumber ? "استرداد المبيعات" : billingType?.name2
-            );
-            updateHeader = updateHeader.replace(
-              "{{InvoiceTitleEnglish}}",
-              returnInvoiceNumber ? "Sales Refund" : billingType?.name
-            );
-            updateHeader = updateHeader.replace("{{PDate}}", currentDate);
-            updateHeader = updateHeader.replace(
-              "{{dateDays}}",
-              currentDate.split("/")[0]
-            );
-            updateHeader = updateHeader.replace(
-              "{{dateMonth}}",
-              currentDate.split("/")[1]
-            );
-            updateHeader = updateHeader.replace(
-              "{{dateYear}}",
-              currentDate.split(/[/" "]/)[2]
-            );
-
-            updateHeader = updateHeader.replace(
-              /{{record_number}}/g,
-              bdetail.BillNumber
-            );
-            updateHeader = updateHeader.replace(
-              /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber
-            );
-            updateHeader = updateHeader.replace(
-              /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate.split(" ")[0]
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerName}}",
-              bdetail.BuyerName
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerCode}}",
-              bdetail?.BuyerCode ? bdetail.BuyerCode : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerVat}}",
-              bdetail?.BuyerVAT ? bdetail.BuyerVAT : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerCCR}}",
-              buyerInfo?.BuyerCCR ? buyerInfo.BuyerCCR : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerPhone}}",
-              buyerInfo?.BuyerPhone ? buyerInfo.BuyerPhone : ""
-            );
-            updateHeader = updateHeader.replace(
-              "{{BuyerAddress}}",
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
-            );
-
-            // updateHeader = updateHeader.replace(
-            //   /{{record_number}}/g,
-            //   lastBillDetail.BillNumber,
-            // );
-            // updateHeader = updateHeader.replace(
-            //   /{{ReturnedBillNumber}}/g,
-            //   returnInvoiceNumber,
-            // );
-            // updateHeader = updateHeader.replace(
-            //   /{{InvoiceDate}}/g,
-            //   billDates ? billDates : currentDate.split(' ')[0],
-            // );
-            // updateHeader = updateHeader.replace(
-            //   '{{BuyerName}}',
-            //   lastBillDetail.BuyerName,
-            // );
-            // updateHeader = updateHeader.replace(
-            //   '{{BuyerCode}}',
-            //   lastBillDetail.BuyerCode,
-            // );
-            // updateHeader = updateHeader.replace(
-            //   '{{BuyerVat}}',
-            //   buyerInfo?.ValueAddedTaxNumber ? buyerInfo.ValueAddedTaxNumber : '',
-            // );
-            // updateHeader = updateHeader.replace(
-            //   '{{BuyerCCR}}',
-            //   buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : '',
-            // );
-            // updateHeader = updateHeader.replace(
-            //   '{{BuyerPhone}}',
-            //   buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : '',
-            // );
-            // updateHeader = updateHeader.replace(
-            //   '{{BuyerAddress}}',
-            //   buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : '',
-            // );
-            let prodTax = 0;
-            let prodDis = 0;
-            let tQ = 0;
-            let srNum = countNumber * itemPerPage - itemPerPage;
-            printItems.forEach((p, index) => {
-              srNum = srNum + 1;
-              prodTax = prodTax + p.tax;
-              prodDis = prodDis + p.DiscountAmount;
-              tQ = tQ + p.Quantity;
-              //  console.log("A4style[0].ReportHeader......", A4style[0].ReportHeader)
-              let body = A4style[0].ReportBody;
-              body = body.replace("{{SerialNumber}}", srNum);
-              body = body.replace("{{ProductCode}}", p.ProductCode);
-              body = body.replace(
-                "{{Description}}",
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName
-              );
-              body = body.replace(
-                "{{ProductName}}",
-                I18nManager.isRTL ? p.ProductName2 : p.ProductName
-              );
-              body = body.replace(
-                "{{Quantity}}",
-                Number(p.Quantity).toFixed(2)
-              );
-              body = body.replace(
-                "{{ProductTax}}",
-                Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount)
-              );
-              body = body.replace(
-                "{{UnitName}}",
-                I18nManager.isRTL ? p.UOMName2 : p.UOMName
-              );
-              body = body.replace(
-                "{{Price}}",
+            body = body.replace("{{PriceSIG}}", parseInt(p.PriceWithOutTax));
+            body = body.replace(
+              "{{PricePoints}}",
+              GetDecimalpart(
                 Number(p.PriceWithOutTax).toFixed(
                   TerminalConfiguration.DecimalsInAmount
                 )
-              );
-              body = body.replace("{{PriceSIG}}", parseInt(p.PriceWithOutTax));
-              body = body.replace(
-                "{{PricePoints}}",
-                GetDecimalpart(
-                  Number(p.PriceWithOutTax).toFixed(
-                    TerminalConfiguration.DecimalsInAmount
-                  )
-                )
-              );
-              body = body.replace(
-                "{{PriceQuantity}}",
-                Number(p.PriceWithOutTax * p.Quantity).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{GrandAmount}}",
+              )
+            );
+            body = body.replace(
+              "{{PriceQuantity}}",
+              Number(p.PriceWithOutTax * p.Quantity).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace(
+              "{{GrandAmount}}",
+              Number(p.GrandAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{GrandAmountSIG}}", parseInt(p.GrandAmount));
+            body = body.replace(
+              "{{GrandAmountPoints}}",
+              GetDecimalpart(
                 Number(p.GrandAmount).toFixed(
                   TerminalConfiguration.DecimalsInAmount
                 )
-              );
-              body = body.replace(
-                "{{GrandAmountSIG}}",
-                parseInt(p.GrandAmount)
-              );
-              body = body.replace(
-                "{{GrandAmountPoints}}",
-                GetDecimalpart(
-                  Number(p.GrandAmount).toFixed(
-                    TerminalConfiguration.DecimalsInAmount
-                  )
-                )
-              );
-              body = body.replace(
-                "{{Tax1Rate}}",
-                Number(p.Tax1Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{Tax2Rate}}",
-                Number(p.Tax2Rate).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{Tax1Amount}}",
-                Number(p.Tax1Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace(
-                "{{Tax2Amount}}",
-                Number(p.Tax2Amount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace("{{Tax1Name}}", p.Tax1Name);
-              body = body.replace("{{Tax2Name}}", p.Tax2Name);
-              body = body.replace(
-                "{{Discount}}",
-                Number(p.DiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              );
-              body = body.replace("{{ProductDescription}}", p.IngredientNames);
-              body = body.replace("{{ProductBarCode}}", p.ProductBarCode);
+              )
+            );
+            body = body.replace(
+              "{{Tax1Rate}}",
+              Number(p.Tax1Rate).toFixed(TerminalConfiguration.DecimalsInAmount)
+            );
+            body = body.replace(
+              "{{Tax2Rate}}",
+              Number(p.Tax2Rate).toFixed(TerminalConfiguration.DecimalsInAmount)
+            );
+            body = body.replace(
+              "{{Tax1Amount}}",
+              Number(p.Tax1Amount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace(
+              "{{Tax2Amount}}",
+              Number(p.Tax2Amount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{Tax1Name}}", p.Tax1Name);
+            body = body.replace("{{Tax2Name}}", p.Tax2Name);
+            body = body.replace(
+              "{{Discount}}",
+              Number(p.DiscountAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{ProductDescription}}", p.IngredientNames);
+            body = body.replace("{{ProductBarCode}}", p.ProductBarCode);
 
-              updateBody = updateBody + body;
-            });
-            lastBillDetail = bdetail;
-            console.log("product tax of all products", prodTax);
-            // updateFooter = updateFooter.replace(/1060/g, "1100")
-            //updateFooter = updateFooter.replace(/30%/g, "20%")
-            updateFooter = updateFooter.replace(
-              "{{QRImage}}",
-              "data:image/png;base64," + qrUrl
-            );
-            updateFooter = updateFooter.replace(
-              "{{CompanyStamp}}",
-              TerminalConfiguration.CompanyStampType +
-                "," +
-                TerminalConfiguration.CompanyStamp
-            );
-            lastBillDetail = bdetail;
-            updateFooter = updateFooter.replace(
-              "{{AmountWithOutTax}}",
-              Number(lastBillDetail.GrandAmount - prodTax).toFixed(
+            updateBody = updateBody + body;
+          });
+          // updateFooter = updateFooter.replace(/1060/g, "1100")
+          //updateFooter = updateFooter.replace(/30%/g, "20%")
+          updateFooter = updateFooter.replace(
+            "{{QRImage}}",
+            "data:image/png;base64," + qrUrl
+          );
+          updateFooter = updateFooter.replace(
+            "{{AmountWithOutTax}}",
+            Number(lastBillDetail.GrandAmount).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GrandAmountSIG}}",
+            parseInt(lastBillDetail.GrandAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{grandAmountPoints}}",
+            GetDecimalpart(
+              Number(lastBillDetail.GrandAmount).toFixed(
                 TerminalConfiguration.DecimalsInAmount
               )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GrandAmountSIG}}",
-              parseInt(lastBillDetail.GrandAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{grandAmountPoints}}",
-              GetDecimalpart(
-                Number(lastBillDetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GlobalDiscountAmount}}",
-              Number(lastBillDetail.GlobalDiscountAmount + prodDis).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            // updateFooter = updateFooter.replace(
-            //   '{{TaxGroupAmount}}',
-            //   Number(
-            //     lastBillDetail.GlobalTax1Amount + lastBillDetail.GlobalTax2Amount,
-            //   ).toFixed(TerminalConfiguration.DecimalsInAmount),
-            // );
-
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupAmount}}",
-              Number(
-                bdetail.GlobalTax1Amount + bdetail.GlobalTax2Amount + prodTax
-              ).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            // updateFooter = updateFooter.replace(
-            //   '{{TaxGroupNames}}',
-            //   globalTaxObj?.globalTaxGroupName
-            //     ? globalTaxObj.globalTaxGroupName
-            //     : 'Global Tax',
-            // );
-            updateFooter = updateFooter.replace(
-              "{{Roundoff}}",
-              (0).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{CashAdvance}}",
-              Number(lastBillDetail.AdvancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{AdvanceAmount}}",
-              Number(lastBillDetail.AdvancePaidInCash).toFixed(
-                TerminalConfiguration.DecimalsInAmount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{CashPaid}}",
-              Number(
-                lastBillDetail.AdvancePaidInCash
-                  ? lastBillDetail.NetAmount - lastBillDetail.AdvancePaidInCash
-                  : lastBillDetail.NetAmount
-              ).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{PaymentMethod}}",
-              bdetail?.PaymentTypeName
-            );
-            updateFooter = updateFooter.replace("{{companyCurrency}}", "");
-            updateFooter = updateFooter.replace(
-              "{{NetAmount}}",
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GlobalDiscountAmount}}",
+            Number(lastBillDetail.GlobalDiscountAmount).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupAmount}}",
+            Number(
+              lastBillDetail.GlobalTax1Amount + lastBillDetail.GlobalTax2Amount
+            ).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          // updateFooter = updateFooter.replace(
+          //   '{{TaxGroupNames}}',
+          //   globalTaxObj?.globalTaxGroupName
+          //     ? globalTaxObj.globalTaxGroupName
+          //     : 'Global Tax',
+          // );
+          updateFooter = updateFooter.replace(
+            "{{Roundoff}}",
+            (0).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{CashAdvance}}",
+            Number(lastBillDetail.AdvancePaidInCash).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{AdvanceAmount}}",
+            Number(lastBillDetail.AdvancePaidInCash).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{CashPaid}}",
+            Number(
+              lastBillDetail.AdvancePaidInCash
+                ? lastBillDetail.NetAmount - lastBillDetail.AdvancePaidInCash
+                : lastBillDetail.NetAmount
+            ).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{PaymentMethod}}",
+            selectedPyamentMethod?.PaymentTypeName
+          );
+          updateFooter = updateFooter.replace("{{companyCurrency}}", "");
+          updateFooter = updateFooter.replace(
+            "{{NetAmount}}",
+            Number(lastBillDetail.NetAmount).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{NetAmountSIG}}",
+            parseInt(lastBillDetail.NetAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{netAmountPoints}}",
+            GetDecimalpart(
               Number(lastBillDetail.NetAmount).toFixed(
                 TerminalConfiguration.DecimalsInAmount
               )
-            );
-            updateFooter = updateFooter.replace(
-              "{{NetAmountSIG}}",
-              parseInt(lastBillDetail.NetAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{netAmountPoints}}",
-              GetDecimalpart(
-                Number(lastBillDetail.NetAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                )
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{TotalQty}}",
-              Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount)
-            );
-            updateFooter = updateFooter.replace(
-              "{{TotalItems}}",
-              bdetail.length
-            );
-            updateFooter = updateFooter.replace(
-              "{{NetAmountAR}}",
-              numberToEngArbWords(
-                Number(bdetail.NetAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GrandAmountEN}}",
-              numberToEngArbWords(
-                Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GrandAmountAR}}",
-              numberToEngArbWords(
-                Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{AmountWithOutTaxEN}}",
-              numberToEngArbWords(
-                Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{AmountWithOutTaxAR}}",
-              numberToEngArbWords(
-                Number(bdetail.GrandAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GlobalDiscountAmountEN}}",
-              numberToEngArbWords(
-                Number(bdetail.GlobalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{GlobalDiscountAmountAR}}",
-              numberToEngArbWords(
-                Number(bdetail.GlobalDiscountAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                false
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{NetAmountEN}}",
-              numberToEngArbWords(
-                Number(bdetail.NetAmount).toFixed(
-                  TerminalConfiguration.DecimalsInAmount
-                ),
-                true
-              )
-            );
-            // updateFooter = updateFooter.replace(
-            //   '{{TaxGroupAmount}}',
-            //   Number(
-            //     bdetail.GlobalTax1Amount + bdetail.GlobalTax2Amount + prodTax,
-            //   ).toFixed(TerminalConfiguration.DecimalsInAmount),
-            // );
-            lastBillDetail = bdetail;
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupNames}}",
-              globalTaxObj?.globalTaxGroupName
-                ? globalTaxObj.globalTaxGroupName
-                : "ضريبة القيمة المضافة %15 "
-            );
-            updateFooter = updateFooter.replace(
-              "{{TaxGroupAmountSIG}}",
-              parseInt(
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{TotalQty}}",
+            Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{TotalItems}}",
+            lastBillDetail.BillDetails.length
+          );
+          updateFooter = updateFooter.replace(
+            "{{NetAmountAR}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.NetAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GrandAmountEN}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.GrandAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GrandAmountAR}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.GrandAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{AmountWithOutTaxEN}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.GrandAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{AmountWithOutTaxAR}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.GrandAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GlobalDiscountAmountEN}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.GlobalDiscountAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GlobalDiscountAmountAR}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.GlobalDiscountAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{NetAmountEN}}",
+            numberToEngArbWords(
+              Number(lastBillDetail.NetAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupAmount}}",
+            Number(
+              lastBillDetail.GlobalTax1Amount + lastBillDetail.GlobalTax2Amount
+            ).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupNames}}",
+            globalTaxObj?.globalTaxGroupName
+              ? globalTaxObj.globalTaxGroupName
+              : "ضريبة القيمة المضافة %15 "
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupAmountSIG}}",
+            parseInt(
+              lastBillDetail.GlobalTax1Amount + lastBillDetail.GlobalTax2Amount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{taxGroupPoints}}",
+            GetDecimalpart(
+              Number(
                 lastBillDetail.GlobalTax1Amount +
                   lastBillDetail.GlobalTax2Amount
-              )
-            );
-            updateFooter = updateFooter.replace(
-              "{{taxGroupPoints}}",
-              GetDecimalpart(
-                Number(
-                  lastBillDetail.GlobalTax1Amount +
-                    lastBillDetail.GlobalTax2Amount
-                ).toFixed(TerminalConfiguration.DecimalsInAmount)
-              )
-            );
-            updateFooter = updateFooter.replace("{{TaxGroupsAR}}", "");
-            updateFooter = updateFooter.replace("{{TaxGroupsEN}}", "");
-            updateFooter = updateFooter.replace(
-              /{{CompanyAddress}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownAddress
-                : TerminalConfiguration.CompanyAddress
-            );
-            updateFooter = updateFooter.replace(
-              /{{SalesAgentName}}/g,
-              selectedAgent?.SalesAgentName
-                ? selectedAgent?.SalesAgentName
-                : TerminalConfiguration?.SalesAgentName
-            );
+              ).toFixed(TerminalConfiguration.DecimalsInAmount)
+            )
+          );
+          updateFooter = updateFooter.replace("{{TaxGroupsAR}}", "");
+          updateFooter = updateFooter.replace("{{TaxGroupsEN}}", "");
+          updateFooter = updateFooter.replace(
+            /{{CompanyAddress}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownAddress
+              : TerminalConfiguration.CompanyAddress
+          );
+          updateFooter = updateFooter.replace(
+            /{{SalesAgentName}}/g,
+            selectedAgent?.SalesAgentName
+              ? selectedAgent?.SalesAgentName
+              : TerminalConfiguration?.SalesAgentName
+          );
 
-            updateFooter = updateFooter.replace(
-              /{{companyName}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GoDownName
-                : TerminalConfiguration.CompanyName
-            );
-            updateFooter = updateFooter.replace(
-              /{{ccrNumber}}/g,
-              TerminalConfiguration?.IsGodownInfo === "true"
-                ? TerminalConfiguration.GodownCCRNumber
-                : TerminalConfiguration.CCRNumber
-            );
+          updateFooter = updateFooter.replace(
+            /{{companyName}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownName
+              : TerminalConfiguration.CompanyName
+          );
+          updateFooter = updateFooter.replace(
+            /{{ccrNumber}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GodownCCRNumber
+              : TerminalConfiguration.CCRNumber
+          );
 
-            updateFooter = updateFooter.replace(
-              /{{vatNumber}}/g,
-              TerminalConfiguration?.ValueAddedTaxNumber
-            );
+          updateFooter = updateFooter.replace(
+            /{{vatNumber}}/g,
+            TerminalConfiguration?.ValueAddedTaxNumber
+          );
 
-            updateFooter = updateFooter.replace("{{PDate}}", currentDate);
-            updateFooter = updateFooter.replace(
-              "{{dateDays}}",
-              currentDate.split("/")[0]
-            );
-            updateFooter = updateFooter.replace(
-              "{{dateMonth}}",
-              currentDate.split("/")[1]
-            );
-            updateFooter = updateFooter.replace(
-              "{{dateYear}}",
-              currentDate.split(/[/" "]/)[2]
-            );
-            updateFooter = updateFooter.replace(
-              /{{record_number}}/g,
-              lastBillDetail.BillNumber
-            );
-            updateFooter = updateFooter.replace(
-              /{{ReturnedBillNumber}}/g,
-              returnInvoiceNumber
-            );
-            updateFooter = updateFooter.replace(
-              /{{InvoiceDate}}/g,
-              billDates ? billDates : currentDate
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerName}}",
-              buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerCode}}",
-              buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerVat}}",
-              buyerInfo?.ValueAddedTaxNumber
-                ? buyerInfo.ValueAddedTaxNumber
-                : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerCCR}}",
-              buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerPhone}}",
-              buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
-            );
-            updateFooter = updateFooter.replace(
-              "{{BuyerAddress}}",
-              buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
-            );
-          }
-
-          let check = countNumber * itemPerPage < printItems.length;
-
-          if (check) {
-            // if (reportStyle === 1) {
-            //   updateStyle += updateHeader + updateBody + updateFooter;
-            // } else if (reportStyle === 2) {
-            //   updateStyle += updateBody + updateFooter;
-
-            //   let mainDiv = `<div style="page-break-before:always!important;">${updateStyle}</div>`;
-
-            //   updateStyle += mainDiv;
-            // } else if (reportStyle === 3) {
-            //   updateStyle += updateHeader + updateBody;
-            //   let mainDiv = `<div style="page-break-before:always!important;">${updateStyle}</div>`;
-
-            //   updateStyle += mainDiv;
-            // } else if (reportStyle === 4) {
-            //   updateStyle += updateBody;
-            //   let mainDiv = `<div style="page-break-before:always!important;">${updateStyle}</div>`;
-
-            //   updateStyle += mainDiv;
-            // }
-
-            updateStyle =
-              updateStyle === ""
-                ? updateHeader +
-                  updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : "")
-                : updateStyle +
-                  updateHeader +
-                  updateBody +
-                  (IsFooterOnEveryPage === true ? updateFooter : "");
-
-            let c = countNumber + 1;
-            pageNo = page + 1;
-
-            A4RePrinterStyle(
-              currentDate,
-              qrUrl,
-              c,
-              updateStyle,
-              bdetail,
-              pageNo
-            );
-          } else {
-            console.log(updateStyle);
-            if (pageNo !== 1) {
-              updateStyle =
-                updateStyle + updateHeader + updateBody + updateFooter;
-            } else {
-              updateStyle =
-                updateStyle === ""
-                  ? updateHeader + updateBody + updateFooter
-                  : updateStyle + updateHeader + updateBody + updateFooter;
-            }
-            console.log("updateStyle1", updateStyle);
-            await RNPrint.print({
-              html: updateStyle,
-            });
-          }
-
+          updateFooter = updateFooter.replace("{{PDate}}", currentDate);
+          updateFooter = updateFooter.replace(
+            "{{dateDays}}",
+            currentDate.split("/")[0]
+          );
+          updateFooter = updateFooter.replace(
+            "{{dateMonth}}",
+            currentDate.split("/")[1]
+          );
+          updateFooter = updateFooter.replace(
+            "{{dateYear}}",
+            currentDate.split(/[/" "]/)[2]
+          );
+          updateFooter = updateFooter.replace(
+            /{{record_number}}/g,
+            lastBillDetail.BillNumber
+          );
+          updateFooter = updateFooter.replace(
+            /{{ReturnedBillNumber}}/g,
+            returnInvoiceNumber
+          );
+          updateFooter = updateFooter.replace(
+            /{{InvoiceDate}}/g,
+            invoiceDates ? invoiceDates : currentDate
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerName}}",
+            buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerCode}}",
+            buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerVat}}",
+            buyerInfo?.ValueAddedTaxNumber ? buyerInfo.ValueAddedTaxNumber : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerCCR}}",
+            buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerPhone}}",
+            buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerAddress}}",
+            buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
+          );
           //  updateFooter = updateFooter.replace(/{{CompanyAddress}}/g, saleAgent)
           //console.log("updateStyleupdateStyleupdateStyle", updateHeader)
-          // updateStyle = updateHeader + updateBody + updateFooter;
-          // console.log('updateStyleupdateStyleupdateStyle', updateStyle);
-          // await RNPrint.print({
-          //   html: updateStyle,
-          // });
+          updateStyle = updateHeader + updateBody + updateFooter;
+          console.log("updateStyleupdateStyleupdateStyle", updateStyle);
+          await RNPrint.print({
+            html: updateStyle,
+          });
         }
         setLoading(false);
         onSaveInvoice();
@@ -7233,19 +8587,571 @@ const HomeScreen = (props) => {
       }
     );
   };
-  useMemo(() => {
-    paymentMethodSelect();
+
+  const A4PrinterStyle = async (currentDate, qrUrl) => {
+    console.log(
+      "billingType A4PrinterStyle..",
+      saleBilType,
+      " terminal ",
+      currentDate,
+      invoiceDates,
+      "product are",
+      selectedProducts
+    );
+    let pageId = returnInvoiceNumber
+      ? "403007"
+      : saleBilType?.id === 2
+      ? "4030061"
+      : "403006";
+
+    // console.log("pageId....", pageId)
+    setLoading(true);
+    await getDataByMultipaleID(
+      A4PrintStylesTable,
+      "PageID",
+      pageId,
+      "UseDefault",
+      "true",
+      async (A4style) => {
+        //  console.log("A4style", A4style)
+        if (A4style.length === 0) {
+          setLoading(false);
+          alert("There is no A4 printing style available");
+        } else {
+          let updateStyle = "",
+            updateHeader = A4style[0].ReportHeader,
+            updateBody = "",
+            updateFooter = A4style[0].ReportFooter;
+
+          updateHeader = updateHeader.replace(
+            "{{logo}}",
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration?.GoDownLogoType +
+                  "," +
+                  TerminalConfiguration?.GoDownLogo
+              : TerminalConfiguration?.CompanyLogoType +
+                  "," +
+                  TerminalConfiguration?.CompanyLogo
+          );
+          updateHeader = updateHeader.replace(
+            /{{companyName}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownName
+              : TerminalConfiguration.CompanyName
+          );
+          updateHeader = updateHeader.replace(
+            /{{ccrNumber}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GodownCCRNumber
+              : TerminalConfiguration.CCRNumber
+          );
+          updateHeader = updateHeader.replace(
+            /{{CompanyAddress}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownAddress
+              : TerminalConfiguration.CompanyAddress
+          );
+          // updateHeader = updateHeader.replace(/1060/g, "1100")
+          //updateHeader = updateHeader.replace(/20/g, "20")
+          updateHeader = updateHeader.replace(
+            /{{vatNumber}}/g,
+            TerminalConfiguration?.ValueAddedTaxNumber
+          );
+
+          updateHeader = updateHeader.replace(
+            "{{InvoiceTitleArabic}}",
+            returnInvoiceNumber ? "استرداد المبيعات" : saleBilType?.name2
+          );
+          updateHeader = updateHeader.replace(
+            "{{InvoiceTitleEnglish}}",
+            returnInvoiceNumber ? "Sales Refund" : saleBilType?.name
+          );
+          updateHeader = updateHeader.replace("{{PDate}}", currentDate);
+          updateHeader = updateHeader.replace(
+            "{{dateDays}}",
+            currentDate.split("/")[0]
+          );
+          updateHeader = updateHeader.replace(
+            "{{dateMonth}}",
+            currentDate.split("/")[1]
+          );
+          updateHeader = updateHeader.replace(
+            "{{dateYear}}",
+            currentDate.split(/[/" "]/)[2]
+          );
+          updateHeader = updateHeader.replace(
+            /{{record_number}}/g,
+            invoiceNumber
+          );
+          updateHeader = updateHeader.replace(
+            /{{ReturnedBillNumber}}/g,
+            returnInvoiceNumber
+          );
+          updateHeader = updateHeader.replace(
+            /{{InvoiceDate}}/g,
+            invoiceDates ? invoiceDates : currentDate.split(" ")[0]
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerName}}",
+            buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerCode}}",
+            buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerVat}}",
+            buyerInfo?.ValueAddedTaxNumber ? buyerInfo.ValueAddedTaxNumber : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerCCR}}",
+            buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerPhone}}",
+            buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
+          );
+          updateHeader = updateHeader.replace(
+            "{{BuyerAddress}}",
+            buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
+          );
+
+          let tQ = 0;
+
+          selectedProducts.forEach((p, index) => {
+            tQ = tQ + p.Quantity;
+            //  console.log("A4style[0].ReportHeader......", A4style[0].ReportHeader)
+            let body = A4style[0].ReportBody;
+            body = body.replace("{{SerialNumber}}", index + 1);
+            body = body.replace("{{ProductCode}}", p.ProductCode);
+            body = body.replace("{{Description}}", p.ProductName);
+            body = body.replace("{{ProductName}}", p.ProductName);
+            body = body.replace("{{Quantity}}", Number(p.Quantity).toFixed(2));
+            body = body.replace(
+              "{{ProductTax}}",
+              Number(p.tax).toFixed(TerminalConfiguration.DecimalsInAmount)
+            );
+            body = body.replace("{{UnitName}}", p.UOMName);
+            body = body.replace(
+              "{{Price}}",
+              Number(p.PriceWithOutTax).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{PriceSIG}}", parseInt(p.PriceWithOutTax));
+            body = body.replace(
+              "{{PricePoints}}",
+              GetDecimalpart(
+                Number(p.PriceWithOutTax).toFixed(
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              )
+            );
+            body = body.replace(
+              "{{PriceQuantity}}",
+              Number(p.PriceWithOutTax * p.Quantity).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace(
+              "{{GrandAmount}}",
+              Number(p.GrandAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{GrandAmountSIG}}", parseInt(p.GrandAmount));
+            body = body.replace(
+              "{{GrandAmountPoints}}",
+              GetDecimalpart(
+                Number(p.GrandAmount).toFixed(
+                  TerminalConfiguration.DecimalsInAmount
+                )
+              )
+            );
+            body = body.replace(
+              "{{Tax1Rate}}",
+              Number(p.Tax1Rate).toFixed(TerminalConfiguration.DecimalsInAmount)
+            );
+            body = body.replace(
+              "{{Tax2Rate}}",
+              Number(p.Tax2Rate).toFixed(TerminalConfiguration.DecimalsInAmount)
+            );
+            body = body.replace(
+              "{{Tax1Amount}}",
+              Number(p.Tax1Amount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace(
+              "{{Tax2Amount}}",
+              Number(p.Tax2Amount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{Tax1Name}}", p.Tax1Name);
+            body = body.replace("{{Tax2Name}}", p.Tax2Name);
+            body = body.replace(
+              "{{Discount}}",
+              Number(p.DiscountAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              )
+            );
+            body = body.replace("{{ProductDescription}}", p.IngredientNames);
+            body = body.replace("{{ProductBarCode}}", p.ProductBarCode);
+
+            updateBody = updateBody + body;
+          });
+          // updateFooter = updateFooter.replace(/1060/g, "1100")
+          //updateFooter = updateFooter.replace(/30%/g, "20%")
+          updateFooter = updateFooter.replace(
+            "{{QRImage}}",
+            "data:image/png;base64," + qrUrl
+          );
+          updateFooter = updateFooter.replace(
+            "{{AmountWithOutTax}}",
+            Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{GrandAmountSIG}}",
+            parseInt(subPrice)
+          );
+          updateFooter = updateFooter.replace(
+            "{{grandAmountPoints}}",
+            GetDecimalpart(
+              Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GlobalDiscountAmount}}",
+            Number(globalDiscountAmount).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupAmount}}",
+            Number(globalTax).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupNames}}",
+            globalTaxObj?.globalTaxGroupName
+              ? globalTaxObj.globalTaxGroupName
+              : "Global Tax"
+          );
+          updateFooter = updateFooter.replace(
+            "{{Roundoff}}",
+            (0).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{CashAdvance}}",
+            Number(advancePaidInCash).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{AdvanceAmount}}",
+            Number(advancePaidInCash).toFixed(
+              TerminalConfiguration.DecimalsInAmount
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{CashPaid}}",
+            Number(
+              advancePaidInCash ? totalPrice - advancePaidInCash : totalPrice
+            ).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{PaymentMethod}}",
+            selectedPyamentMethod?.PaymentTypeName
+          );
+          updateFooter = updateFooter.replace("{{companyCurrency}}", "");
+          updateFooter = updateFooter.replace(
+            "{{NetAmount}}",
+            Number(totalPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{NetAmountSIG}}",
+            parseInt(totalPrice)
+          );
+          updateFooter = updateFooter.replace(
+            "{{netAmountPoints}}",
+            GetDecimalpart(
+              Number(totalPrice).toFixed(TerminalConfiguration.DecimalsInAmount)
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{TotalQty}}",
+            Number(tQ).toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{TotalItems}}",
+            selectedProducts.length
+          );
+          updateFooter = updateFooter.replace(
+            "{{NetAmountAR}}",
+            numberToEngArbWords(
+              Number(totalPrice).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GrandAmountEN}}",
+            numberToEngArbWords(
+              Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GrandAmountAR}}",
+            numberToEngArbWords(
+              Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{AmountWithOutTaxEN}}",
+            numberToEngArbWords(
+              Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{AmountWithOutTaxAR}}",
+            numberToEngArbWords(
+              Number(subPrice).toFixed(TerminalConfiguration.DecimalsInAmount),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GlobalDiscountAmountEN}}",
+            numberToEngArbWords(
+              Number(globalDiscountAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{GlobalDiscountAmountAR}}",
+            numberToEngArbWords(
+              Number(globalDiscountAmount).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              false
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{NetAmountEN}}",
+            numberToEngArbWords(
+              Number(totalPrice).toFixed(
+                TerminalConfiguration.DecimalsInAmount
+              ),
+              true
+            )
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupAmount}}",
+            globalTax.toFixed(TerminalConfiguration.DecimalsInAmount)
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupNames}}",
+            globalTaxObj?.globalTaxGroupName
+              ? globalTaxObj.globalTaxGroupName
+              : "ضريبة القيمة المضافة %15 "
+          );
+          updateFooter = updateFooter.replace(
+            "{{TaxGroupAmountSIG}}",
+            parseInt(globalTax)
+          );
+          updateFooter = updateFooter.replace(
+            "{{taxGroupPoints}}",
+            GetDecimalpart(
+              Number(globalTax).toFixed(TerminalConfiguration.DecimalsInAmount)
+            )
+          );
+          updateFooter = updateFooter.replace("{{TaxGroupsAR}}", "");
+          updateFooter = updateFooter.replace("{{TaxGroupsEN}}", "");
+          updateFooter = updateFooter.replace(
+            /{{CompanyAddress}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownAddress
+              : TerminalConfiguration.CompanyAddress
+          );
+          updateFooter = updateFooter.replace(
+            /{{SalesAgentName}}/g,
+            selectedAgent?.SalesAgentName
+              ? selectedAgent?.SalesAgentName
+              : TerminalConfiguration?.SalesAgentName
+          );
+
+          updateFooter = updateFooter.replace(
+            /{{companyName}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GoDownName
+              : TerminalConfiguration.CompanyName
+          );
+          updateFooter = updateFooter.replace(
+            /{{ccrNumber}}/g,
+            TerminalConfiguration?.IsGodownInfo === "true"
+              ? TerminalConfiguration.GodownCCRNumber
+              : TerminalConfiguration.CCRNumber
+          );
+
+          updateFooter = updateFooter.replace(
+            /{{vatNumber}}/g,
+            TerminalConfiguration?.ValueAddedTaxNumber
+          );
+
+          updateFooter = updateFooter.replace("{{PDate}}", currentDate);
+          updateFooter = updateFooter.replace(
+            "{{dateDays}}",
+            currentDate.split("/")[0]
+          );
+          updateFooter = updateFooter.replace(
+            "{{dateMonth}}",
+            currentDate.split("/")[1]
+          );
+          updateFooter = updateFooter.replace(
+            "{{dateYear}}",
+            currentDate.split(/[/" "]/)[2]
+          );
+          updateFooter = updateFooter.replace(
+            /{{record_number}}/g,
+            invoiceNumber
+          );
+          updateFooter = updateFooter.replace(
+            /{{ReturnedBillNumber}}/g,
+            returnInvoiceNumber
+          );
+          updateFooter = updateFooter.replace(
+            /{{InvoiceDate}}/g,
+            invoiceDates ? invoiceDates : currentDate
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerName}}",
+            buyerInfo?.BuyerName ? buyerInfo.BuyerName : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerCode}}",
+            buyerInfo?.BuyerCode ? buyerInfo.BuyerCode : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerVat}}",
+            buyerInfo?.ValueAddedTaxNumber ? buyerInfo.ValueAddedTaxNumber : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerCCR}}",
+            buyerInfo?.CCRNumber ? buyerInfo.CCRNumber : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerPhone}}",
+            buyerInfo?.PrimaryPhone ? buyerInfo.PrimaryPhone : ""
+          );
+          updateFooter = updateFooter.replace(
+            "{{BuyerAddress}}",
+            buyerInfo?.BuyerAddress ? buyerInfo.BuyerAddress : ""
+          );
+          //  updateFooter = updateFooter.replace(/{{CompanyAddress}}/g, saleAgent)
+          //console.log("updateStyleupdateStyleupdateStyle", updateHeader)
+          updateStyle = updateHeader + updateBody + updateFooter;
+          console.log("updateStyle", updateStyle);
+          await RNPrint.print({
+            html: updateStyle,
+          });
+        }
+        setLoading(false);
+        onSaveInvoice();
+      }
+    );
+  };
+
+  const printerSelection = (invoiceInfoObj, urii) => {
+    let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
+    if (billingStyleId === 1) {
+      qrRef.current.toDataURL((qrUrl) => {
+        A4PrinterStyle(currentDate, qrUrl);
+      });
+    } else if (printerMacAddress) {
+      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, "[]");
+    }
+  };
+
+  const ReprinterSelection = (invoiceInfoObj, urii) => {
+    let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
+    if (billingStyleId === 1) {
+      qrRef.current.toDataURL((qrUrl) => {
+        A4RePrinterStyle(currentDate, qrUrl);
+      });
+    } else if (printerMacAddress) {
+      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, "[]");
+    }
+  };
+
+  const paymentProcess = async (ADamount, selP, type) => {
+    let ConnectedBluetoothInfo = await AsyncStorage.getItem(
+      "ConnectedBluetoothInfo"
+    );
+
+    if (ConnectedBluetoothInfo) {
+      console.log("ConnectedBluetoothInfo", ConnectedBluetoothInfo);
+      let printAdress = ConnectedBluetoothInfo?.split("|");
+      setPrinterMacAddress(printAdress[1]);
+      setPrinterName(printAdress[0]);
+    }
+
+    setLoading(true);
+
+    //getDataURL()
+
+    setUriImage(null);
+    if (type !== "reprint") {
+      setTimeout(() => {
+        selectedProductUpdate();
+        saleBill(ADamount, selP);
+        if (returnInvoiceNumber) {
+          updateReturnTerminalConfiguration();
+          postBills();
+          Toast.show("Return Invoice Posted Successfully");
+        } else {
+          updateTerminalConfiguration(ADamount);
+        }
+        if (billingStyleId !== 1) {
+          setInvoice(true);
+        } else {
+          printerSelection();
+        }
+        setLoading(false);
+      }, 0);
+    } else {
+      setTimeout(() => {
+        // console.log('reprint bill advancePaidInCash', ADamount, billingStyleId);
+        // updateTerminalConfiguration(ADamount);
+        if (billingStyleId !== 1) {
+          setTimeout(() => {
+            setInvoice(true);
+            setLoading(false);
+          }, 5000);
+        } else {
+          // console.log('printer are', selectedProducts);
+          ReprinterSelection();
+          // printerSelection();
+        }
+        // setLoading(false);
+      }, 1500);
+    }
+  };
+  useMemo(async () => {
+    if (placedwithPay) {
+      let isOrderPlaced = await placeOrderWithPay();
+      if (isOrderPlaced) paymentMethodSelect();
+    } else {
+      paymentMethodSelect();
+    }
   }, [paymentsValue]);
 
-  useEffect(() => {
-    otherOptions();
-  }, [optionsValue]);
-
-  const otherOptions = async () => {
-    // console.log("paymentsValue in buyer optionsValue", optionsValue)
-
+  const otherOptions = () => {
     if (optionsValue === "holdInvoice") {
-      setPrintType(null);
       if (selectedProducts.length > 0) {
         setMessage(props.StringsList._78);
         setAlertType("holdInvoice");
@@ -7262,90 +9168,39 @@ const HomeScreen = (props) => {
         seOptionsValue(null);
       }
     } else if (optionsValue === "getHoldInvoice") {
-      setPrintType(null);
       setisHoldInvoices(true);
       seOptionsValue(null);
       // getHoldInvoiveFun();
     } else if (optionsValue === "scanner") {
-      setPrintType(null);
       setScanner(true);
       seOptionsValue(null);
     } else if (optionsValue === "returnBill") {
-      setPrintType("returnBill");
       setMessage(props.StringsList._63);
       setAlertType("returnInvoice");
-      let num = await getLastInvoiceNumber();
-      setAlertValue(num);
-      setDisplayAlert(true);
-      setisPromptAlert(true);
-    } else if (optionsValue === "reprint") {
-      setPrintType("reprint");
-      let num = await getLastInvoiceNumber();
-      setAlertValue(num);
-      setMessage(props.StringsList._63);
-      setAlertType("reprint");
       setDisplayAlert(true);
       setisPromptAlert(true);
     } else if (optionsValue === "buyer") {
-      setPrintType(null);
       //  console.log("paymentsValue in buyer", paymentsValue, isBuyer, buyerViewRef, viewref)
       if (!isBuyer) {
         buyerViewRef.current?.slideInRight(280);
         setisBuyer(!isBuyer);
       } else {
-        setPrintType(null);
         // console.log("paymentsValue in buyer else")
         seOptionsValue(null);
         buyerViewRef.current?.fadeOutRight().then(() => setisBuyer(!isBuyer));
       }
     } else if (optionsValue === "loyaltyCard") {
-      setPrintType(null);
-      // console.log("paymentsValue in buyer", redeemPoints)
       if (!isLoyaltyCard) {
         loyaltyCardViewRef.current?.slideInRight(280);
         setIsLoyaltyCard(!isLoyaltyCard);
       } else {
         seOptionsValue(null);
-        setPrintType(null);
         loyaltyCardViewRef.current
           ?.fadeOutRight()
           .then(() => setIsLoyaltyCard(!isLoyaltyCard));
       }
     }
   };
-
-  const getLastInvoiceNumber = async () => {
-    let number = "";
-    await getData(TerminalConfigurationTable, (cb) => {
-      // console.log('TerminalConfigurationTable', cb[0]?.LastBillNumber);
-
-      let preZero = "0000000";
-      let silceNumber =
-        Number(cb[0]?.LastBillNumber) >= 100000
-          ? preZero.length - 5
-          : Number(cb[0]?.LastBillNumber) >= 10000
-          ? preZero.length - 4
-          : Number(cb[0]?.LastBillNumber) >= 1000
-          ? preZero.length - 3
-          : Number(cb[0]?.LastBillNumber) >= 100
-          ? preZero.length - 2
-          : Number(cb[0]?.LastBillNumber) >= 10
-          ? preZero.length - 1
-          : preZero.length;
-
-      let invoiceNumber =
-        Number(cb[0]?.LastBillNumber) >= 999999
-          ? cb[0].BillPrefix + "-" + Number(cb[0].LastBillNumber)
-          : cb[0].BillPrefix +
-            "-" +
-            preZero.slice(1 - silceNumber) +
-            Number(cb[0].LastBillNumber);
-      number = invoiceNumber;
-    });
-    // console.log('last bill number', number);
-    return number;
-  };
-
   const onChangeText = (type, text, item) => {
     if (type === "holdInvoice") {
       setHoldInvoiceName(text);
@@ -7358,17 +9213,19 @@ const HomeScreen = (props) => {
       setIngredientText(text);
       setAlertValue(text);
     } else {
-      if (!isNaN(text)) {
-        console.log("the value of this is", text);
-        setmanuallyCount(Number(text));
-      } else {
-        console.log("the value of this is", text);
-        setmanuallyCount(Number(0));
+      try {
+        if (Number(text) > 0) {
+          setmanuallyCount(Number(text));
+        } else {
+          setmanuallyCount(0);
+        }
+      } catch (error) {
+        console.log("onChangeText Error", error);
       }
     }
   };
-
   const onEndEditing = (type, item) => {
+    // console.log('onEndEditing..', type, item);
     if (type === "manuallyCount") {
       onManuallyAddCount(item);
     } else if (type === "DiscountAmount") {
@@ -7387,42 +9244,43 @@ const HomeScreen = (props) => {
   };
 
   const searchTextFun = (e) => {
-    //  console.log("searchText", searchText)
+    if (isFocusSearch === true) {
+      let text = searchText.toLowerCase();
+      let filteredName = [];
+      if (text && text !== "") {
+        setbarCodeText(text);
 
-    let text = searchText.toLowerCase();
-    let filteredName = [];
-    //console.log('text...', text || text !== '');
-    if (text && text !== "") {
-      //console.log("searchText..", text.length)
-      setbarCodeText(text);
-
-      if (barCode) {
-        setLoading(true);
-        onSuccessScan(text);
-        ref_searchBar.current.focus();
-        setSearchText("");
-      } else {
-        getData(UpdateProductDetailListTable, (productsDetail) => {
-          // console.log('all products,  ', productsDetail);
-
-          productsDetail.forEach((item) => {
-            if (
-              item.ProductName.toLowerCase().includes(text) ||
-              item.ProductCode.toLowerCase().includes(text) ||
-              item.ProductName2.toLowerCase().includes(text)
-            ) {
-              filteredName.push(item);
-            }
+        if (barCode) {
+          setLoading(true);
+          onSuccessScan(text);
+          ref_searchBar.current.focus();
+          setSearchText("");
+        } else {
+          getData(UpdateProductDetailListTable, (productsDetail) => {
+            productsDetail.filter((item) => {
+              if (
+                item.ProductName.toLowerCase().match(text) ||
+                item.ProductBarCode.toLowerCase().match(text) ||
+                item.ProductName2.toLowerCase().match(text)
+              ) {
+                filteredName.push(item);
+              }
+            });
+            setCategoryProducts(filteredName);
+            setIsSearch(false);
+            setLoading(false);
           });
-          setCategoryProducts(filteredName);
-          setLoading(false);
-        });
+        }
+      } else {
+        if (!barCode) {
+          getAllCategories(null);
+        }
+        setIsSearch(false);
+        setLoading(false);
       }
     } else {
-      if (!barCode) {
-        getAllCategories(null);
-      }
-      setLoading(false);
+      setSearchText("");
+      setIsSearch(false);
     }
   };
 
@@ -7430,37 +9288,28 @@ const HomeScreen = (props) => {
     setBarCode(!barCode);
     ref_searchBar.current.focus();
     setbarCodeText("");
-    //  Keyboard.dismiss()
   };
-  const onCapture = useCallback((uri) => {
+  const onCapture = (uri) => {
     captureRef(viewShotRef.current, {
       format: "png",
       quality: 1.0,
     }).then(
       (urii) => {
-        console.log("===>", urii);
         // setUriImage(urii);
       },
       (error) => console.error("Oops, snapshot failed", error)
     );
-  }, []);
+  };
 
   const onQRImage = () => {
-    // console.log('invoice info object.............');
     captureRef(qrRef2.current, {
       format: "png",
       quality: 1.0,
-      height: sizeHelper.height,
-      width: sizeHelper.width,
     }).then(
       async (urii) => {
         setUriImage(urii);
-        console.log(
-          "invoice info object",
-          globalDiscountAmount,
-          sumOfProductDiscount
-        );
-        // console.log('setUriImage object.............', urii);
+        //console.log("invoice info object", globalDiscountAmount, sumOfProductDiscount)
+
         let invoiceTypeE = !companyVATRegistor
           ? " Ordinary sales invoice"
           : totalPrice < 1000
@@ -7508,7 +9357,7 @@ const HomeScreen = (props) => {
             printerMacAddress: printerMacAddress,
             printerName: printerName,
             tagNo: terminalSetup.StartFrom,
-            invoiceNumber: invoiceNumber,
+            invoiceNumber: orderNumber,
             totalPrice: totalPrice.toFixed(
               TerminalConfiguration.DecimalsInAmount
             ),
@@ -7543,12 +9392,16 @@ const HomeScreen = (props) => {
             ...buyerInfo,
           },
         ];
-
-        // console.log(
-        //   'invoice info object',
-        //   TerminalConfiguration.DefaultPrintStyle,
-        // );
-        printerSelection(invoiceInfoObj, urii);
+        console.log("invoice info object", selectedProducts);
+        if (!shortInvoice) {
+          if (printerMacAddress) {
+            PrinterNativeModule.printing(
+              JSON.stringify(invoiceInfoObj),
+              urii,
+              "[]"
+            );
+          }
+        }
         // let base64data = await RNFS.readFile(urii, 'base64').then();
 
         // console.log(base64data);
@@ -7559,29 +9412,6 @@ const HomeScreen = (props) => {
     );
   };
 
-  const printerSelection = (invoiceInfoObj, urii) => {
-    let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
-    if (billingStyleId === 1) {
-      if (qrRef.current) {
-        // qrRef.current.toDataURL(qrUrl => {
-        A4PrinterStyle(currentDate, qrRef.current, 1, "", 1);
-      }
-      // });
-    } else if (printerMacAddress) {
-      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, "[]");
-    }
-  };
-
-  const ReprinterSelection = (invoiceInfoObj, urii) => {
-    let currentDate = moment().format("DD/MM/YYYY HH:mm:ss");
-    if (billingStyleId === 1) {
-      if (qrRef.current) {
-        A4RePrinterStyle(currentDate, qrRef.current, 1, "", lastBillDetail, 1);
-      }
-    } else if (printerMacAddress) {
-      PrinterNativeModule.printing(JSON.stringify(invoiceInfoObj), urii, "[]");
-    }
-  };
   async function hasAndroidPermission() {
     const getCheckPermissionPromise = async () => {
       if (Platform.Version >= 33) {
@@ -7639,7 +9469,6 @@ const HomeScreen = (props) => {
     });
   }
   // const saveToGallery = async () => {
-  //   // alert("uriImage:  " + uriImage)
   //   await CameraRoll.save(uriImage, {
   //     type: 'photo',
   //     album: 'Bnody',
@@ -7647,91 +9476,109 @@ const HomeScreen = (props) => {
   // };
 
   const onSaveInvoice = (type) => {
-    console.log("onSaveInvoice");
-    setClientCustomInvoice(false);
+    if (storageItems) {
+      emptyAsyncTableObj();
+    }
     setInvoice(false);
     if (type === "save") {
-      console.log("save on gallery");
-      saveToGallery(false);
-      setInvoice(false);
+      saveToGallery();
+      props.navigation.navigate("home", { id: undefined });
+      setOrderCode(true);
+      setToggle(false);
       setInvoiceNumber(null);
+      setOrderNumber(null);
+      setRefOrderNumber(null);
+
       restState();
     } else {
+      if (storageItems) {
+        emptyAsyncTableObj();
+      }
+      props.navigation.navigate("home", { id: undefined });
+      setOrderCode(true);
+      setToggle(false);
       restState();
       setInvoiceNumber(null);
-      setInvoice(false);
-    }
-  };
-
-  const onClickSetting = (type) => {
-    //console.log(' onClickSetting ', type);
-    switch (type) {
-      case "terminalSetup":
-        setTerminalSetup(true);
-        break;
-      case "pairPrinterFamily":
-        setPairPrinterFamily(true);
-        break;
-
-      default:
-        break;
+      setOrderNumber(null);
+      setRefOrderNumber(null);
     }
   };
 
   const saleBill = async (ADamount, selP) => {
     let ADPay = ADamount ? ADamount : advancePaidInCash;
+    // createInvoiceStyle()
     let earnPoint = 0;
     if (buyerInfo?.LoyaltyCard) earnPoint = await invoiceEarnPoints();
+
     let currentDate = moment().format("YYYYMMDD");
     let time = moment().format("HH:mm:ss");
+    let netAmountTest = totalPrice - ADPay;
+    let roundOffAmountTest = totalPrice - ADPay;
+
     let obj = {
-      salesBillID: salesBillID,
-      billNumber: returnInvoiceNumber ? returnInvoiceNumber : invoiceNumber,
+      SalesInvoiceID: salesBillID,
+      InvoiceNumber: returnInvoiceNumber ? returnInvoiceNumber : invoiceNumber,
       fiscalSpanID: TerminalConfiguration?.FiscalSpanID,
-      billDate: currentDate,
-      billType: returnInvoiceNumber ? 2 : 1,
+      OrderCode: orderNumber ? (list.isOrderPlaced ? orderNumber : "") : "",
+      TableCode: String(list.ordID === 1 ? storageItems?.TableCodeID : ""),
+      OrderType: Number(list.ordID),
+      InvoiceDate: currentDate,
+      InvoiceType: returnInvoiceNumber ? 2 : 1,
       paymentType: selP ? selP.PaymentType : selectedPyamentMethod?.PaymentType,
       godownCode: TerminalConfiguration?.GoDownCode,
+
       cardDetails: "",
+
       salesagentCode: selectedAgent?.SalesAgentCode
         ? selectedAgent.SalesAgentCode
         : TerminalConfiguration?.SalesAgentCode,
       salesmanName: selectedAgent?.SalesAgentName
         ? selectedAgent?.SalesAgentName
         : TerminalConfiguration?.SalesAgentName,
-      grandAmount: subPrice,
+      grandAmount: subPrice.toFixed(TerminalConfiguration.DecimalsInAmount),
+
       globalDiscountRate: globalDiscountRate,
       globalDiscountAmount: globalDiscountAmount,
       globalTax1Code: globalTaxObj?.Tax1Code ? globalTaxObj.Tax1Code : "",
       globalTax1Name: globalTaxObj?.Tax1Name ? globalTaxObj.Tax1Name : "",
       globalTax1Rate: globalTaxObj?.Tax1Percentage
         ? globalTaxObj.Tax1Percentage
-        : "",
+        : 0,
       globalTax1Amount: globalTaxObj?.Tax1Amount ? globalTaxObj.Tax1Amount : 0,
       globalTax2Code: globalTaxObj?.Tax2Code ? globalTaxObj.Tax2Code : "",
       globalTax2Name: globalTaxObj?.Tax2Name ? globalTaxObj.Tax2Name : "",
-      globalTax2Rate: globalTaxObj?.Tax2Percentage
-        ? globalTaxObj.Tax2Percentage
-        : "",
+      globalTax2Rate: Number(
+        globalTaxObj?.Tax2Percentage ? globalTaxObj.Tax2Percentage : 0
+      ),
       globalTax2Amount: globalTaxObj?.Tax2Amount ? globalTaxObj.Tax2Amount : 0,
+
       surplusChargesAmount: 0,
-      netAmount: totalPrice - ADPay,
+
+      netAmount: netAmountTest.toFixed(TerminalConfiguration.DecimalsInAmount),
       advancePaidInCash: ADPay,
       counterCode: TerminalConfiguration?.TerminalCode,
-      roundOffAmount: totalPrice - ADPay,
+      roundOffAmount: roundOffAmountTest.toFixed(
+        TerminalConfiguration.DecimalsInAmount
+      ),
+
       roundOffDifference: 0.0,
+
       posUserID: TerminalConfiguration?.UserCode,
-      returnedBillNumber: returnInvoiceNumber ? invoiceNumber : "",
+      ReturnedInvoiceNumber: returnInvoiceNumber
+        ? returnBill.InvoiceNumber
+        : "",
       returnedFiscalSpanID: returnInvoiceNumber
         ? TerminalConfiguration?.FiscalSpanID
-        : "",
-      returnedBillDate: returnInvoiceNumber ? currentDate : "",
+        : 0,
+      ReturnedInvoiceDate: returnInvoiceNumber ? currentDate : "",
+
       isProcessed: false,
       isUploaded: false,
       startTime: startTime,
       endTime: time,
       tagNo: terminalSetup.StartFrom,
       cashTender: 0,
+
       creditAmount: creditAmount,
       globalTaxGroupID: globalTaxObj?.globalTaxGroupID
         ? globalTaxObj.globalTaxGroupID
@@ -7742,37 +9589,52 @@ const HomeScreen = (props) => {
       isGlobalTax2IncludedInPrice: globalTaxObj?.IsTax2IncludedInPrice
         ? globalTaxObj.IsTax2IncludedInPrice
         : false,
-      billTime: time,
+      InvoiceTime: time,
       paymentTypeName: selP
         ? selP?.PaymentTypeName
         : selectedPyamentMethod?.PaymentTypeName,
+
       BillDetails: "",
+
       buyerCode: buyerInfo?.BuyerCode ? buyerInfo?.BuyerCode : "",
       buyerName: buyerInfo?.BuyerName ? buyerInfo?.BuyerName : "",
       buyerVAT: buyerInfo?.ValueAddedTaxNumber
         ? buyerInfo?.ValueAddedTaxNumber
         : "",
       buyerCCR: buyerInfo?.CCRNumber ? buyerInfo?.CCRNumber : "",
-      buyerPhone: buyerInfo?.PrimaryPhone ? buyerInfo?.PrimaryPhone : "",
+      buyerPhone: buyerInfo?.PrimaryPhone
+        ? String(buyerInfo?.PrimaryPhone)
+        : "",
       buyerAddress: buyerInfo?.BuyerAddress ? buyerInfo?.BuyerAddress : "",
+
       loyaltyCode: buyerInfo?.LoyaltyCard
         ? buyerInfo?.LoyaltyCard.LoyaltyCode
         : "",
       isLoyaltyInvoice: redeemPoints > 0 ? true : false,
+
       deliveryType: "",
-      deliveryTypeNote: customerNotes ? customerNotes : "",
+      deliveryTypeNote: "",
+
       totalPTax1Name: "",
       totalTax1Amount: 0,
       totalPTax2Name: "",
       totalTax2Amount: 0,
+
       totalGlobalTaxAmount: globalTax,
+
       totalTaxAmount: 0,
       totalProductTaxAmount: 0.0,
+
       earnedPoints: earnPoint,
-      redeemPoints: redeemPoints,
+      redeemPoints: Number(redeemPoints ? redeemPoints : 0),
       status: earnPoint > 0 ? 1 : status,
+
       rewardType: rewardType,
     };
+    if (list.billHasOrder) {
+      UpdateOrderWithPaidStatus();
+      list.billHasOrder = false;
+    }
     console.log("sale bill object...", obj);
     InsertSaleBills(obj);
     databaseBackup();
@@ -7780,55 +9642,33 @@ const HomeScreen = (props) => {
 
   const selectedProductUpdate = async () => {
     let updateSelectProducts = [];
-    let tempArray = [];
     selectedProducts.filter(async (product) => {
       let EarnedPoint = 0;
       if (buyerInfo?.LoyaltyCard) EarnedPoint = await proCatEarnPoints(product);
-
       let price = 0;
-      if (product.ProductType === 3) {
+      if (product.ProductType === 3 && product.IsParentAddOn) {
         if (Number(product.DiscountAmount) > 0) {
           price = product.webperamount;
         } else {
           price = product.webperamount;
         }
+      } else if (product.ProductType === 3 && !product.IsParentAddOn) {
+        price = product.PriceWithOutTax / product.OrignalQuantity;
       } else {
         price = product.IsParentAddOn
           ? product.PriceWithOutTax
           : product.PriceWithOutTax / product.OrignalQuantity;
       }
-      if (tempArray.length == 0) {
-        let obj = {};
-        obj.tax = product.Tax1Amount;
-        obj.taxCode = product.Tax1Code;
-        obj.taxName = product.Tax1Name;
-        tempArray.push(obj);
-      } else {
-        let isTaxNew = tempArray.findIndex(
-          (x) => x.taxCode === product.Tax1Code
-        );
-        if (isTaxNew == -1) {
-          let obj = {};
-          obj.tax = product.Tax1Amount;
-          obj.taxCode = product.Tax1Code;
-          obj.taxName = product.Tax1Name;
-          tempArray.push(obj);
-        } else {
-          tempArray[isTaxNew].tax =
-            tempArray[isTaxNew].tax + product.Tax1Amount;
-        }
-      }
       let pro = {
-        SalesBillDetailsID: returnInvoiceNumber
+        SalesInvoiceDetailsID: returnInvoiceNumber
           ? uuid.v4()
-          : product.FreeProduct
-          ? uuid.v4()
-          : product.SalesBillDetailsID,
-        SalesBillID: salesBillID,
-        BillNumber: returnInvoiceNumber ? returnInvoiceNumber : invoiceNumber,
+          : product.SalesInvoiceDetailsID,
+        SalesInvoiceID: salesBillID,
+        InvoiceNumber: returnInvoiceNumber
+          ? returnInvoiceNumber
+          : invoiceNumber,
         FiscalSpanID: TerminalConfiguration?.FiscalSpanID,
-        Description: product?.Description ? product?.Description : "",
-        BillType: returnInvoiceNumber ? 2 : 1,
+        InvoiceType: returnInvoiceNumber ? 2 : 1,
         SerialNumber: Number(product.SerialNumber ? product.SerialNumber : 0),
         ProductCode: product.ProductCode ? product.ProductCode : "",
         ProductName: product.ProductName ? product.ProductName : "",
@@ -7917,25 +9757,21 @@ const HomeScreen = (props) => {
         HoldFromSale: product?.HoldFromSale ? product.HoldFromSale : "",
         PriceType: Number(product.PriceType ? product.PriceType : 0),
       };
-
-      InsertSaleBillDetails(pro);
-
+      await InsertSaleBillDetails(pro);
       updateSelectProducts.push(pro);
     });
-    setProductTaxes(tempArray);
-    console.log("total taxes ", tempArray);
-    console.log("....0003");
-    // console.log('updateSelectProducts...', updateSelectProducts);
+    console.log("updateSelectProducts...", updateSelectProducts);
   };
 
   const onClickIn = () => {
-    console.log("onClickIn");
+    // console.log('onClickIn');
     setLoading(true);
   };
+
   const databaseBackup = async () => {
-    let newBillList = [];
     let uri = await AsyncStorage.getItem("FILE_URI");
     console.log("FILE_URI", uri);
+    let newBillList = [];
     await getData(SaleBillsTable, async (cb) => {
       for (let i = 0; i < cb.length; i++) {
         if (
@@ -7945,8 +9781,8 @@ const HomeScreen = (props) => {
           //console.log('sale bills ', cb[i].isUploaded);
           await getDataById(
             SaleBillDetailsTable,
-            "salesBillID",
-            cb[i].salesBillID,
+            "salesInvoiceID",
+            cb[i].salesInvoiceID,
             (billProducts) => {
               // console.log("billProducts....", billProducts)
               // cb[i].BillDetails = billProducts;
@@ -7966,262 +9802,105 @@ const HomeScreen = (props) => {
       }
       console.log("New Bill list ...", newBillList);
       try {
-        if (Platform.OS === "android") {
-          const folderPath = "/storage/emulated/0/Documents/Bnody POS";
-          const filePath = `${folderPath}/Invoices.txt`;
-
-          try {
-            const folderExists = await RNFS.exists(folderPath);
-            const folderFileExists = await RNFS.exists(filePath);
-            if (!folderExists && !folderFileExists) {
-              try {
-                console.log("Folder and File not found");
-                await AsyncStorage.removeItem("FOLDER_PATH");
-                await AsyncStorage.removeItem("FILE_URI");
-                const dir = await ScopedStorage.openDocumentTree(true);
-                const bnodyDir = await ScopedStorage.createDirectory(
-                  dir.uri,
-                  "Bnody POS"
-                );
-                await AsyncStorage.setItem("FOLDER_PATH", bnodyDir.uri);
-                const filePath = await ScopedStorage.writeFile(
-                  bnodyDir.uri,
-                  newBillList,
-                  "invoices.txt",
-                  "text/plain",
-                  "utf8"
-                );
-                console.log("filePath", filePath);
-                await AsyncStorage.setItem("FILE_URI", filePath);
-                console.log("Folder & File created successfully:", bnodyDir);
-                await AsyncStorage.setItem("FOLDER_URI", bnodyDir.uri);
-                Toast.show("Folder & Invoice File Created", {
-                  duration: Toast.durations.LONG,
-                  position: Toast.positions.BOTTOM,
-                  shadow: true,
-                  animation: true,
-                  hideOnPress: true,
-                  delay: 0,
-                });
-              } catch (error) {
-                console.error("Folder and File not created", error);
-              }
-            } else if (folderExists && !folderFileExists) {
-              await AsyncStorage.removeItem("FILE_URI");
-              try {
-                console.log("folder already exists file not found");
-                const bnodyDir = await AsyncStorage.getItem("FOLDER_PATH");
-                console.log("bnodyDir", bnodyDir);
-                const filePath = await ScopedStorage.writeFile(
-                  bnodyDir,
-                  newBillList,
-                  "invoices.txt",
-                  "text/plain",
-                  "utf8"
-                );
-                console.log("filePath", filePath);
-                await AsyncStorage.setItem("FILE_URI", filePath);
-                Toast.show("Invoice File Created", {
-                  duration: Toast.durations.LONG,
-                  position: Toast.positions.BOTTOM,
-                  shadow: true,
-                  animation: true,
-                  hideOnPress: true,
-                  delay: 0,
-                });
-              } catch (error) {
-                console.error(
-                  "folder already exists file creation error",
-                  error
-                );
-              }
-            } else {
-              if (folderFileExists) {
-                let path =
-                  "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
-                await AsyncStorage.removeItem("FILE_URI");
-                try {
-                  console.log("folder already exists file not found");
-                  const bnodyDir = await AsyncStorage.getItem("FOLDER_PATH");
-                  console.log("bnodyDir", bnodyDir);
-                  const isDeleted = await ScopedStorage.deleteFile(path).then(
-                    () => {
-                      Toast.show("Invoice File Deleted after posting", {
-                        duration: Toast.durations.SHORT,
-                        position: Toast.positions.BOTTOM,
-                        shadow: true,
-                        animation: true,
-                        hideOnPress: true,
-                        delay: 0,
-                      });
-                    }
-                  );
-                  if (isDeleted) {
-                    const filePath = await ScopedStorage.writeFile(
-                      bnodyDir,
-                      newBillList,
-                      "invoices.txt",
-                      "text/plain",
-                      "utf8"
-                    );
-                    console.log("filePath", filePath);
-                    await AsyncStorage.setItem("FILE_URI", filePath);
-                    Toast.show("Invoice File Created", {
-                      duration: Toast.durations.LONG,
-                      position: Toast.positions.BOTTOM,
-                      shadow: true,
-                      animation: true,
-                      hideOnPress: true,
-                      delay: 0,
-                    });
+        const OsVer = Platform.constants["Release"];
+        if (OsVer >= 11) {
+          let path = "/storage/emulated/0/Documents/Restaurant/Invoices.txt";
+          if (await RNFS.exists(path)) {
+            console.log("File already exists", RNFS.exists(path));
+            PermissionFile.deleteFile(uri);
+            setTimeout(() => {
+              PermissionFile.overWriteAbove29(
+                JSON.stringify(newBillList),
+                (err) => {
+                  if (err) {
+                    console.log("Permission Error", err);
                   }
-                } catch (error) {
-                  console.error(
-                    "folder already exists file creation error",
-                    error
-                  );
+                },
+                (success) => {
+                  if (success) {
+                    // You can use RN-fetch-blog to download files and storge into download Manager
+                    console.log("Access granted!");
+                  }
+                }
+              );
+              setBillNeedPost(true);
+            }, 1000);
+          } else {
+            PermissionFile.overWriteAbove29(
+              JSON.stringify(newBillList),
+              (err) => {
+                if (err) {
+                  console.log("Permission Error", err);
+                }
+              },
+              (success) => {
+                if (success) {
+                  // You can use RN-fetch-blog to download files and storge into download Manager
+                  console.log("Access granted!");
                 }
               }
-            }
-          } catch (error) {
-            console.log("Error:", error);
+            );
+            setBillNeedPost(true);
           }
         } else {
-          try {
-            const folderName = "Bnody POS";
-            const fileName = "invoices.txt";
-
-            const libraryDirectoryPath = RNFS.LibraryDirectoryPath;
-
-            console.log("libraryDirectoryPath:", libraryDirectoryPath);
-
-            const folderPath = `${libraryDirectoryPath}/${folderName}`;
-            const filePath = `${folderPath}/${fileName}`;
-
-            console.log("folderPath:", folderPath);
-            console.log("filePath:", filePath);
-
-            const folderExists = await RNFS.exists(folderPath);
-            if (!folderExists) {
-              await RNFS.mkdir(folderPath);
-              console.log("Folder created successfully:", folderPath);
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            {
+              title: "Permissions for write access",
+              message: "Give permission to your storage to write a file",
+              buttonPositive: "ok",
+            }
+          );
+          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            let path = "/storage/emulated/0/Downloads/Restaurant/Invoices.txt";
+            if (RNFS.exists(path)) {
+              console.log("File already exists", RNFS.exists(path));
+              PermissionFile.deleteFile(uri);
+              setTimeout(() => {
+                PermissionFile.overWriteAPI29(
+                  JSON.stringify(newBillList),
+                  (err) => {
+                    if (err) {
+                      console.log("Permission Error", err);
+                    }
+                  },
+                  (success) => {
+                    if (success) {
+                      // You can use RN-fetch-blog to download files and storge into download Manager
+                      console.log("Access granted!");
+                    }
+                  }
+                );
+                setBillNeedPost(true);
+              }, 1000);
             } else {
-              console.log("Folder already exists:", folderPath);
+              PermissionFile.overWriteAPI29(
+                JSON.stringify(newBillList),
+                (err) => {
+                  if (err) {
+                    console.log("Permission Error", err);
+                  }
+                },
+                (success) => {
+                  if (success) {
+                    // You can use RN-fetch-blog to download files and storge into download Manager
+                    console.log("Access granted!");
+                  }
+                }
+              );
+              setBillNeedPost(true);
             }
-
-            const fileExists = await RNFS.exists(filePath);
-            if (fileExists) {
-              await RNFS.unlink(filePath);
-              console.log("File deleted successfully:", filePath);
-            }
-
-            await RNFS.writeFile(filePath, JSON.stringify(newBillList), "utf8");
-            console.log("File created successfully:", filePath);
-          } catch (error) {
-            console.error("Error creating folder and file:", error);
+          } else {
+            console.log("permission denied");
           }
         }
-      } catch (error) {
-        console.log("Error:", error);
+      } catch (err) {
+        console.warn(err);
       }
-      // try {
-      //   const OsVer = Platform.constants["Release"];
-      //   if (OsVer >= 11) {
-      //     let path = "/storage/emulated/0/Documents/Bnody POS/Invoices.txt";
-      //     if (await RNFS.exists(path)) {
-      //       // console.log('File already exists',await RNFS.exists(path));
-      //       PermissionFile.deleteFile(uri);
-      //       setTimeout(() => {
-      //         PermissionFile.overWriteAbove29(
-      //           JSON.stringify(newBillList),
-      //           (err) => {
-      //             if (err) {
-      //               console.log("Permission Error", err);
-      //             }
-      //           },
-      //           (success) => {
-      //             if (success) {
-      //               console.log("Access granted!");
-      //             }
-      //           }
-      //         );
-      //         setBillNeedPost(true);
-      //       }, 1000);
-      //     } else {
-      //       PermissionFile.overWriteAbove29(
-      //         JSON.stringify(newBillList),
-      //         (err) => {
-      //           if (err) {
-      //             console.log("Permission Error", err);
-      //           }
-      //         },
-      //         (success) => {
-      //           if (success) {
-      //             // You can use RN-fetch-blog to download files and storge into download Manager
-      //             console.log("Access granted!");
-      //           }
-      //         }
-      //       );
-      //       setBillNeedPost(true);
-      //     }
-      //   } else {
-      //     const granted = await PermissionsAndroid.request(
-      //       PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-      //       PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-      //       {
-      //         title: "Permissions for write access",
-      //         message: "Give permission to your storage to write a file",
-      //         buttonPositive: "ok",
-      //       }
-      //     );
-      //     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-      //       let path = "/storage/emulated/0/Downloads/Bnody POS/Invoices.txt";
-      //       if (RNFS.exists(path)) {
-      //         // console.log('File already exists',await RNFS.exists(path));
-      //         PermissionFile.deleteFile(uri);
-      //         setTimeout(() => {
-      //           PermissionFile.overWriteAPI29(
-      //             JSON.stringify(newBillList),
-      //             (err) => {
-      //               if (err) {
-      //                 console.log("Permission Error", err);
-      //               }
-      //             },
-      //             (success) => {
-      //               if (success) {
-      //                 // You can use RN-fetch-blog to download files and storge into download Manager
-      //                 console.log("Access granted!");
-      //               }
-      //             }
-      //           );
-      //           setBillNeedPost(true);
-      //         }, 1000);
-      //       } else {
-      //         PermissionFile.overWriteAPI29(
-      //           JSON.stringify(newBillList),
-      //           (err) => {
-      //             if (err) {
-      //               console.log("Permission Error", err);
-      //             }
-      //           },
-      //           (success) => {
-      //             if (success) {
-      //               // You can use RN-fetch-blog to download files and storge into download Manager
-      //               console.log("Access granted!");
-      //             }
-      //           }
-      //         );
-      //         setBillNeedPost(true);
-      //       }
-      //     } else {
-      //       console.log("permission denied");
-      //     }
-      //   }
-      // } catch (err) {
-      //   console.warn(err);
-      // }
     });
   };
+
   const globalDiscountAmountFun = (type, sAmount, tAmount, recalling) => {
     let subA = sAmount > 0 ? sAmount : subPrice;
     let tolA = sAmount > 0 ? tAmount : totalPrice;
@@ -8231,11 +9910,8 @@ const HomeScreen = (props) => {
         : recalling === "recalling"
         ? 0
         : manuallyCount;
-
     if (type === "globalDiscount") {
-      if (subA > disAmt || recalling === "recalling") {
-        //  console.log("disAmt..........", manuallyCount)
-
+      if (subA >= disAmt || recalling === "recalling") {
         let tPrice;
         tPrice = Number(tolA - disAmt + globalDiscountAmount); //;
         setglobalDiscountAmount(Number(disAmt)); //);
@@ -8248,33 +9924,27 @@ const HomeScreen = (props) => {
           setTotalPrice(tPrice);
         }
       } else {
-        setMessage(props.StringsList._267);
+        setMessage(props.StringsList._440);
         setDisplayAlert(true);
       }
     } else {
       let pDiscount;
       let tPrice = subPrice;
       pDiscount = parseFloat((disAmt * subA) / 100);
-      if (subA > pDiscount) {
+      if (subA >= pDiscount) {
         tPrice = Number(subA - pDiscount); //;
         setglobalDiscountAmount(Number(pDiscount)); //);
         setGlobalDiscountRate(Number(disAmt));
 
         setAdvancePaidInCash(0); //);
         setDueAmount(0);
-        console.log(
-          "globalDiscountAmountFun......",
-          pDiscount,
-          disAmt,
-          globalDiscountRate
-        );
         if (selectedGlobalTaxObj) {
           globalTaxFun(selectedGlobalTaxObj, subA, "", tolA, pDiscount);
         } else {
           setTotalPrice(tPrice);
         }
       } else {
-        setMessage(props.StringsList._267);
+        setMessage(props.StringsList._440);
         setDisplayAlert(true);
       }
     }
@@ -8282,7 +9952,6 @@ const HomeScreen = (props) => {
   };
 
   const globalTaxFun = async (itm, type, n, totalAmount, disAmount) => {
-    // console.log('globalTaxFunglobalTaxFunglobalTaxFun', itm);
     setLoading(true);
     if (itm.TaxFamilyCode !== "None") {
       let tPrice = totalAmount ? totalAmount : totalPrice;
@@ -8305,7 +9974,6 @@ const HomeScreen = (props) => {
         true
       );
       taxAmt.globalTaxGroupID = itm.TaxFamilyCode;
-      taxAmt.globalTaxGroupName = itm.TaxFamilyName;
 
       let tax = taxAmt.Tax2Amount
         ? taxAmt.Tax1Amount + taxAmt.Tax2Amount
@@ -8316,11 +9984,11 @@ const HomeScreen = (props) => {
 
       if (tax > 0) {
         tPrice = subPr + tax - diA;
-
+        setsubPrice(subPr);
         setTotalPrice(tPrice);
       } else {
         tPrice = subPr - disA;
-
+        setsubPrice(subPr);
         setTotalPrice(tPrice);
       }
       setGlobalTaxObj(taxAmt);
@@ -8328,7 +9996,7 @@ const HomeScreen = (props) => {
       setLoading(false);
     } else {
       let tPrice = totalPrice - globalTax;
-      console.log("globalTax else", tPrice);
+      // console.log('globalTax else', tPrice);
       setTotalPrice(tPrice);
       setSelectedGlobalTaxObj(null);
       setGlobalTaxObj(null);
@@ -8344,14 +10012,13 @@ const HomeScreen = (props) => {
     duePrice = Number(amount - totalPrice); //;
     setAdvancePaidInCash(Number(am)); //);
     paymentProcess(amount);
-    //  setDueAmount(duePrice);
-    // } else {
-    //   setMessage(props.StringsList._234);
-    //   setDisplayAlert(true);
-    // }
+    setPaymentAdded(true);
   };
-
   const holdInvoiceFun = async () => {
+    let tableData = await AsyncStorage.getItem("SELECTED_TABLE");
+    let table = JSON.parse(tableData);
+    console.log("table", table?.TableCodeID);
+
     if (selectedProducts.length > 0) {
       setLoading(true);
       let invoice = [
@@ -8371,7 +10038,7 @@ const HomeScreen = (props) => {
         userConfiguration.SalesRefundAllowed === 1
           ? [
               { label: props.StringsList._32, value: "getHoldInvoice" },
-              { label: props.StringsList._105, value: "reprint" },
+
               { label: props.StringsList._319, value: "returnBill" },
               { label: props.StringsList._30, value: "buyer" },
               { label: props.StringsList._437, value: "loyaltyCard" },
@@ -8382,6 +10049,12 @@ const HomeScreen = (props) => {
               { label: props.StringsList._437, value: "loyaltyCard" },
             ]
       );
+      setDisplayAlert(true);
+      setOrderCode(true);
+      // props.navigation.replace("home");
+      if (table) {
+        changeTableStatus(table?.TableCodeID);
+      }
       restState();
     } else {
       setMessage(props.StringsList._238);
@@ -8423,6 +10096,7 @@ const HomeScreen = (props) => {
   };
 
   const onSuccessScan = async (itm) => {
+    setIsSearch(false);
     let productBar = itm?.data ? itm.data : itm;
     console.log(" Reward List Table outer", productBar);
     setLoading(true);
@@ -8431,7 +10105,7 @@ const HomeScreen = (props) => {
       "ProductBarCode",
       productBar,
       async (pro) => {
-        console.log(" on Successfully  Scan", selectedProducts);
+        // console.log(' on Successfully  Scan', selectedProducts);
         if (pro.length > 0) {
           let product = selectedProducts.filter((res) => {
             if (
@@ -8441,7 +10115,7 @@ const HomeScreen = (props) => {
               return res;
             }
           });
-          console.log("on Successfully  Scan product", pro);
+          // console.log('on Successfully  Scan product', pro);
           let addPro = product.length > 0 ? product[0] : pro[0];
           await addProductToList(addPro, "increment");
           setToggle(true);
@@ -8451,479 +10125,788 @@ const HomeScreen = (props) => {
           setDisplayAlert(true);
         }
         setLoading(false);
+        setIsSearch(false);
       }
     );
   };
 
-  // const createInvoiceStyle = async (url) => {
-
-  //   // let url = qrRef.current.toDataURL();
-  //   let pageSize = "42"
-
-  //   let a = "a"
-  //   const base64Image = "data:image/png;base64," + url;
-  //   console.log("create Invoice Style cal..", base64Image)
-  //   let proTax = 0, prodDis = 0;
-  //   let printing = new EscPosPrinter.printing();
-  //   const encoder = new Encoder();
-  //   let currentDate = moment().format('DD/MM/YYYY HH:mm:ss');
-  //   switch (pageSize) {
-
-  //     case "36":
-
-  //       selectedProducts.forEach((product) => {
-  //         console.log("printing............selectedProducts", product.DiscountAmount)
-  //         product.DiscountAmount = product.DiscountAmount === "0.00" ? 0 : product.DiscountAmount
-  //         proTax = proTax + product.tax
-  //         prodDis = prodDis + product.DiscountAmount
-
-  //         let w = product.ProductName.split(" ")
-
-  //         let whiteSpaceName = "";
-  //         if (w[w.length - 1].length < 12) {
-  //           whiteSpaceName = "            "
-  //           // console.log("whiteSpace before trim", whiteSpaceName.length)
-  //           whiteSpaceName = whiteSpaceName.slice(w[w.length - 1].length, whiteSpaceName.length)
-  //           // console.log("whiteSpace after trim", whiteSpaceName.length)
-  //         }
-
-  //         encoder
-  //           .initialize()
-  //           .size(1, 2)
-  //           .text(String(product.ProductName), 1)
-  //           .size(1, 2)
-  //           .text(whiteSpaceName + String(product.PriceOriginal),)
-  //           .size(1, 2)
-  //           .text("    " + String(product.Quantity),)
-  //           .size(1, 2)
-  //           .text("      " + String(product.FreeProduct ? "0.00" : (product.GrandAmount).toFixed(TerminalConfiguration.DecimalsInAmount)))
-  //           .newline(0.5)
-
-  //       });
-  //       printing.initialize()
-  //         .align('center')
-  //         .size(2, 1)
-  //         .line(currentDate)
-  //         .smooth(false)
-  //         .size(1, 1)
-  //         .line("******************************************")
-  //         .align('left')
-  //         .bold()
-  //         .line(String(terminalSetup.StartFrom))
-  //         .align('center')
-  //         .size(2)
-  //         .bold()
-  //         .underline()
-  //         .line(invoiceNumber)
-  //         .align('center')
-  //         .barcode({
-  //           value: invoiceNumber,
-  //           type: 'EPOS2_BARCODE_CODE93',
-  //           width: 2,
-  //           height: 50,
-  //           hri: 'EPOS2_HRI_BELOW',
-  //         })
-  //         .underline(false)
-  //         .newline()
-  //         .data(encoder.encode())
-  //         .size(1, 1)
-  //         .align("center")
-  //         .line("********************")
-  //         .align("left")
-  //         .bold(false)
-  //         .text("Sub Amount" + "                " + String(subPrice - prodDis - proTax))//15
-  //         .newline(0.5)
-  //         .text("Tax" + "                       " + String(globalTax + proTax))//15
-  //         .newline(0.5)
-  //         .text("Discount" + "                  " + String(globalDiscountAmount + prodDis))//15
-  //         .newline(0.5)
-  //         .bold()
-  //         .text("Total Price" + "               " + String(totalPrice))//15
-  //         .newline()
-  //         .bold(false)
-  //         .align("center")
-  //         .line("********************")
-  //         .newline()
-  //         .align("left")
-  //         .bold(false)
-  //         .text("Sale type" + "   " + "Sales Agent" + "   " + "Terminal") //4
-  //         .newline(0.5)
-  //         .line("Cash" + "         " + String(selectedAgent?.SalesAgentName ? selectedAgent?.SalesAgentName : TerminalConfiguration?.SalesAgentName) + "       " + String(TerminalConfiguration?.TerminalCode)) //9
-  //         .align('center')
-  //         .line("********************")
-  //         .newline(2)
-  //         .align('center')
-  //         .image({
-  //           uri:
-  //             base64Image
-  //         },
-  //           { width: 255, height: 255 })
-  //       break;
-  //     case "42":
-  //       selectedProducts.forEach((product) => {
-
-  //         product.DiscountAmount = product.DiscountAmount === "0.00" ? 0 : product.DiscountAmount
-  //         proTax = proTax + product.tax
-  //         prodDis = prodDis + product.DiscountAmount
-
-  //         // console.log("printing............selectedProducts", product.ProductName.length,)
-
-  //         let w = product.ProductName.split(" ")
-
-  //         let whiteSpaceName = "";
-  //         if (w[w.length - 1].length < 15) {
-  //           whiteSpaceName = "               "
-  //           // console.log("whiteSpace before trim", whiteSpaceName.length)
-  //           whiteSpaceName = whiteSpaceName.slice(w[w.length - 1].length, whiteSpaceName.length)
-  //           // console.log("whiteSpace after trim", whiteSpaceName.length)
-  //         }
-  //         let priceSpace = "          "
-
-  //         priceSpace = priceSpace.slice(String(product.PriceOriginal).length, priceSpace.length)
-  //         let quantitySpace = "          "
-
-  //         quantitySpace = quantitySpace.slice(String(product.Quantity).length, quantitySpace.length)
-
-  //         console.log("printing............selectedProducts", product.PriceOriginal.length, priceSpace, product.Quantity.length, quantitySpace)
-  //         encoder
-  //           .initialize()
-  //           .size(1, 2)
-  //           .text(String(product.ProductName), 1)
-  //           .size(1, 2)
-  //           .text(whiteSpaceName + String(product.PriceOriginal),)
-  //           .size(1, 2)
-  //           .text(priceSpace + String(product.Quantity),)
-  //           .size(1, 2)
-  //           .text(quantitySpace + String(product.FreeProduct ? "0.00" : (product.GrandAmount).toFixed(TerminalConfiguration.DecimalsInAmount)))
-  //           .newline(0.5)
-
-  //       });
-  //       printing.initialize()
-  //         .align('center')
-  //         .size(2, 1)
-  //         .line(currentDate)
-  //         .smooth(false)
-  //         .size(1, 1)
-  //         .line("******************************************")
-  //         .align('left')
-  //         .bold()
-  //         .line(String(terminalSetup.StartFrom))
-  //         .align('center')
-  //         .size(2)
-  //         .bold()
-  //         .underline()
-  //         .line(invoiceNumber)
-  //         .align('center')
-  //         .barcode({
-  //           value: invoiceNumber,
-  //           type: 'EPOS2_BARCODE_CODE93',
-  //           width: 2,
-  //           height: 50,
-  //           hri: 'EPOS2_HRI_BELOW',
-  //         })
-  //         .underline(false)
-  //         .newline()
-
-  //         .data(encoder.encode())
-  //         .size(1, 1)
-  //         .align("center")
-  //         .line("********************")
-  //         .align("left")
-  //         .bold(false)
-  //         .text("Sub Amount" + "                       " + String(Number(subPrice - prodDis - proTax).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline(0.5)
-  //         .text("Tax" + "                              " + String(Number(globalTax + proTax).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline(0.5)
-  //         .text("Discount" + "                         " + String(Number(globalDiscountAmount + prodDis).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline(0.5)
-  //         .bold()
-  //         .text("Total Price" + "                      " + String(Number(totalPrice).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline()
-  //         .bold(false)
-  //         .align("center")
-  //         .line("********************")
-  //         .newline()
-  //         .align("left")
-  //         .bold(false)
-  //         .text("Sale type" + "         " + "Sales Agent" + "         " + "Terminal") //9
-  //         .newline(0.5)
-  //         .line(selectedPyamentMethod.PaymentTypeName + "              " + String(selectedAgent?.SalesAgentName ? selectedAgent?.SalesAgentName : TerminalConfiguration?.SalesAgentName) + "           " + String(TerminalConfiguration?.TerminalCode)) //9
-  //         .align('center')
-  //         .line("********************")
-  //         .newline(2)
-  //         .align('center')
-  //         .image({
-  //           uri:
-  //             base64Image
-  //         },
-  //           { width: 255, height: 255 })
-  //       const status = await printing.cut().send();
-  //       break;
-  //     default:
-  //       selectedProducts.forEach((product) => {
-
-  //         product.DiscountAmount = product.DiscountAmount === "0.00" ? 0 : product.DiscountAmount
-  //         proTax = proTax + product.tax
-  //         prodDis = prodDis + product.DiscountAmount
-
-  //         // console.log("printing............selectedProducts", product.ProductName.length,)
-
-  //         let w = product.ProductName.split(" ")
-
-  //         let whiteSpaceName = "";
-  //         if (w[w.length - 1].length < 15) {
-  //           whiteSpaceName = "               "
-  //           // console.log("whiteSpace before trim", whiteSpaceName.length)
-  //           whiteSpaceName = whiteSpaceName.slice(w[w.length - 1].length, whiteSpaceName.length)
-  //           // console.log("whiteSpace after trim", whiteSpaceName.length)
-  //         }
-  //         let priceSpace = "          "
-
-  //         priceSpace = priceSpace.slice(String(product.PriceOriginal).length, priceSpace.length)
-  //         let quantitySpace = "          "
-
-  //         quantitySpace = quantitySpace.slice(String(product.Quantity).length, quantitySpace.length)
-
-  //         console.log("printing............selectedProducts", product.PriceOriginal.length, priceSpace, product.Quantity.length, quantitySpace)
-  //         encoder
-  //           .initialize()
-  //           .size(1, 2)
-  //           .text(String(product.ProductName), 1)
-  //           .size(1, 2)
-  //           .text(whiteSpaceName + String(product.PriceOriginal),)
-  //           .size(1, 2)
-  //           .text(priceSpace + String(product.Quantity),)
-  //           .size(1, 2)
-  //           .text(quantitySpace + String(product.FreeProduct ? "0.00" : (product.GrandAmount).toFixed(TerminalConfiguration.DecimalsInAmount)))
-  //           .newline(0.5)
-
-  //       });
-  //       printing.initialize()
-  //         .align('center')
-  //         .size(2, 1)
-  //         .line(currentDate)
-  //         .smooth(false)
-  //         .size(1, 1)
-  //         .line("******************************************")
-  //         .align('left')
-  //         .bold()
-  //         .line(String(terminalSetup.StartFrom))
-  //         .align('center')
-  //         .size(2)
-  //         .bold()
-  //         .underline()
-  //         .line(invoiceNumber)
-  //         .align('center')
-  //         .barcode({
-  //           value: invoiceNumber,
-  //           type: 'EPOS2_BARCODE_CODE93',
-  //           width: 2,
-  //           height: 50,
-  //           hri: 'EPOS2_HRI_BELOW',
-  //         })
-  //         .underline(false)
-  //         .newline()
-
-  //         .data(encoder.encode())
-  //         .size(1, 1)
-  //         .align("center")
-  //         .line("********************")
-  //         .align("left")
-  //         .bold(false)
-  //         .text("Sub Amount" + "                       " + String(Number(subPrice - prodDis - proTax).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline(0.5)
-  //         .text("Tax" + "                              " + String(Number(globalTax + proTax).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline(0.5)
-  //         .text("Discount" + "                         " + String(Number(globalDiscountAmount + prodDis).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline(0.5)
-  //         .bold()
-  //         .text("Total Price" + "                      " + String(Number(totalPrice).toFixed(TerminalConfiguration.DecimalsInAmount)))//25
-  //         .newline()
-  //         .bold(false)
-  //         .align("center")
-  //         .line("********************")
-  //         .newline()
-  //         .align("left")
-  //         .bold(false)
-  //         .text("Sale type" + "         " + "Sales Agent" + "         " + "Terminal") //9
-  //         .newline(0.5)
-  //         .line(selectedPyamentMethod.PaymentTypeName + "              " + String(selectedAgent?.SalesAgentName ? selectedAgent?.SalesAgentName : TerminalConfiguration?.SalesAgentName) + "           " + String(TerminalConfiguration?.TerminalCode)) //9
-  //         .align('center')
-  //         .line("********************")
-  //         .newline(2)
-  //         .align('center')
-  //         .image({
-  //           uri:
-  //             base64Image
-  //         },
-  //           { width: 255, height: 255 })
-  //       const a = await printing.cut().send();
-  //       break;
-  //   }
-  //   console.log("kjhkashdkh", subPrice, prodDis, proTax)
-
-  // }
-
-  const getReturnBill = async (type) => {
+  const getReturnInvoice = async (type, id) => {
     setLoading(true);
     setPrintType(type);
+    setOrderCode(true);
+    setSelectedProducts([]);
+    setReturnProducts([]);
+    setsubPrice(0);
+    setTotalPrice(0);
+    setReturnInvoiceNumber(null);
     let accessToken = await AsyncStorage.getItem("ACCESS_TOKEN");
 
-    var localeInfo = RNLocalize.getLocales();
-    var languageTag = localeInfo[0].languageTag;
+    let caltureCode = I18nManager.isRTL ? "ar-SA" : "en-US";
+    let status = await getNetInfo();
+    if (status === true) {
+      const response = await props.dispatch(
+        ServerCall(
+          accessToken,
+          `SalesBill/FetchSalesBill?billNumber=${id}&CultureCode=${caltureCode}`,
+          "GET"
+        )
+      );
+      console.log("FetchSalesBill....", response);
+      setAlertValue("");
+      seOptionsValue(null);
 
-    let decodeToken = base64.decode(accessToken);
-    console.log("decode token", decodeToken, languageTag);
-    let nw = decodeToken.substring(0, decodeToken.length - 5);
-    let UpdateToken = nw + languageTag;
-    let decodeUpadedToken = base64.encode(UpdateToken);
-    console.log("access token ", decodeUpadedToken);
+      if (response) {
+        setToggle(true);
+        list.isRefundReturnedCall = false;
+        setReturnBill(response);
+        console.log("Return Bill Date....", response.InvoiceDate);
+        let array = [];
 
-    const response = await props.dispatch(
-      ServerCall(
-        decodeUpadedToken,
-        `SalesBill/FetchSalesBill?billNumber=${alertValue}`,
-        "GET"
-      )
-    );
-    console.log("FetchSalesBill....", response);
-    setAlertValue("");
-    seOptionsValue(null);
-
-    if (response) {
-      setReturnBill(response);
-      console.log("ReturnedQuantity....", response.BillDate);
-      if (type === "reprint" && response.TotalRePrintCount) {
-        setTotalReprintCount(response.TotalRePrintCount);
-      }
-
-      if (response?.BillDetails?.length > 0) {
-        lastBillDetail = response;
-        let products = response.BillDetails.filter(async (item) => {
-          let returnQ = item?.ReturnedQuantity / item?.UOMFragment;
-          item.ReturnedQuantity = returnQ;
-          let Quantity =
-            type === "returnInvoice"
-              ? item.Quantity - item.ReturnedQuantity
-              : item.Quantity;
-          if (Quantity > 0) {
-            let addonPQ = response.BillDetails.filter(
-              (r) =>
-                r.SalesBillDetailsID === item.AddOnParentSalesInvoiceDetailsID
+        let parntProducts = response?.BillDetails?.filter(
+          (x) => x.IsParentAddOn === true
+        );
+        let addonnProducts = response?.BillDetails?.filter(
+          (x) => x.IsParentAddOn === false
+        );
+        for (let index = 0; index < parntProducts.length; index++) {
+          const element = parntProducts[index];
+          if (array.length === 0 && element.IsParentAddOn === true) {
+            array.push(element);
+            let Addonsofthis = addonnProducts.filter(
+              (x) =>
+                x.AddOnParentSalesInvoiceDetailsID ===
+                element.SalesInvoiceDetailsID
             );
-            console.log("addonPQaddonPQaddonPQ", addonPQ);
-
-            if (addonPQ.length > 0) {
-              let OQty = item.Quantity / addonPQ[0].Quantity;
-              item.OrignalQuantity = OQty;
-              item.ParentInvoiceDetailsID = addonPQ[0].SalesBillDetailsID;
-              item.maxQuantity = Quantity;
-              let Amount = Number(item.PriceOriginal) * OQty;
-              let taxAmt = await calculateTaxeGroups(
-                Quantity,
-                Amount,
-                0,
-                item.TaxGroupID,
-                1,
-                null,
-                0,
-                TerminalConfiguration,
-                item.PriceOriginal,
-                0
-              );
-              item.Tax1Fragment = taxAmt.Tax1Fragment
-                ? taxAmt.Tax1Fragment
-                : "";
-              item.Tax2Fragment = taxAmt.Tax2Fragment
-                ? taxAmt.Tax2Fragment
-                : "";
-              if (item.Tax1Fragment == 2 || item.Tax2Fragment == 2) {
-                taxAmt.Tax1Amount = taxAmt.Tax1Amount * Quantity;
+            if (Addonsofthis) {
+              for (let x = 0; x < Addonsofthis.length; x++) {
+                const y = Addonsofthis[x];
+                array.push(y);
               }
-              let tax = taxAmt.Tax1Amount
-                ? taxAmt.Tax1Amount
-                : 0 + taxAmt.Tax2Amount
-                ? taxAmt.Tax2Amount
-                : 0;
-              item.tax = Number(tax);
-              item.PriceWithOutTax = Number(item.Price) * OQty;
-              item.webperamount = item.PriceWithOutTax;
-              item.PriceOriginal = item.PriceOriginal * OQty;
-              item.GrandAmount = (
-                Number(item.Price * Quantity) +
-                tax -
-                item?.DiscountAmount
-              ).toFixed(2);
-              item.GrandAmount = Number(item.GrandAmount);
-              // item.GrandAmount = item.GrandAmount; //(item.PriceWithOutTax * addonPQ[0].Quantity) + item.tax
+            }
+          } else {
+            let itemAddons = addonnProducts.filter(
+              (x) =>
+                x.AddOnParentSalesInvoiceDetailsID ===
+                element.SalesInvoiceDetailsID
+            );
+            if (itemAddons) {
+              array.push(element);
+              for (let x = 0; x < itemAddons.length; x++) {
+                const y = itemAddons[x];
+                array.push(y);
+              }
+            } else {
+              array.push(element);
+            }
+          }
+        }
+        if (Array.isArray(array) && array !== undefined) {
+          if (array?.length > 0) {
+            let products = array.filter(async (item) => {
+              let returnQ = item?.ReturnedQuantity / item?.UOMFragment;
               item.ReturnedQuantity = returnQ;
-              item.Quantity = Quantity / OQty;
-            } else if (item.ProductType === 3) {
-              item.maxQuantity = item.Quantity - item.ReturnedQuantity;
-              item.Quantity = Quantity;
-              let taxAmountIncludedInPrice = 0;
-              let tax1AmountTotal = 0,
-                tax1ActualAmountTotal = 0,
-                tax2AmountTotal = 0,
-                tax2ActualAmountTotal = 0;
-              let listOfPG;
-              item.Pricefortax = item.PriceOriginal;
-              let rr = await getData(
-                SalesFamilySummaryListTable,
-                async (cb) => {
-                  let groupTaxCodes = cb.filter(
-                    (x) => x.SalesFamilyCode === item.ProductCode
-                  );
-                  listOfPG = groupTaxCodes;
-                  let totaltax1 = 0;
-                  let totaltax2 = 0;
-                  let myArray = [];
-                  let colloctivePrice = 0,
-                    inclusiveTax = 0;
-                  await listOfPG.forEach(async (element, index) => {
-                    let percentageDiscountAmount = 0;
-                    let taxGroupID = "";
-                    let itemQty = 0,
-                      itemAmount = 0,
-                      itemProposedSalesAmount = 0,
-                      itemDiscountAmount = 0,
-                      netQty = 0;
-                    if (
-                      item.DiscountAmount >
-                      item.Quantity * item.PriceOriginal
-                    ) {
-                      item.DiscountAmount = 0;
-                    }
-                    if (item.DiscountRate > 0) {
-                      percentageDiscountAmount =
-                        (item.PriceOriginal *
-                          item.Quantity *
-                          item.DiscountRate) /
-                        100;
-                    } else {
-                      percentageDiscountAmount = item.DiscountAmount;
-                    }
-                    let amountBeforeDiscount =
-                      item.PriceOriginal * item.Quantity;
-                    taxGroupID = element.SaleTaxFamilyCode;
-                    itemQty = element.Quantity;
-                    itemAmount = element.Price;
+              let Quantity =
+                type === "returnInvoice"
+                  ? item.Quantity - item.ReturnedQuantity
+                  : item.Quantity;
+              if (Quantity > 0) {
+                let addonPQ = array.filter(
+                  (r) =>
+                    r.SalesInvoiceDetailsID ===
+                    item.AddOnParentSalesInvoiceDetailsID
+                );
+                console.log("addonPQ", addonPQ);
 
-                    netQty = item.Quantity * itemQty;
+                // Getting Addons of Products
+                if (addonPQ.length > 0) {
+                  let totalQ =
+                    addonPQ[0].Quantity + addonPQ[0].ReturnedQuantity;
+                  let OQty = item.Quantity / totalQ;
+                  if (item?.ProductType === 3 && !item?.IsParentAddOn) {
+                    item.OrignalQuantity = OQty;
+                    item.ParentInvoiceDetailsID =
+                      addonPQ[0].SalesInvoiceDetailsID;
+                    item.maxQuantity = Quantity / addonPQ[0].Quantity;
+                    item.Quantity = Quantity;
+                    item.totalQuantity = item.Quantity + item.ReturnedQuantity;
+                    item.originalDiscount = item.DiscountAmount;
+                    item.Pricefortax = item.PriceOriginal;
+                    let listOfPG;
+                    let rr = await getData(
+                      SalesFamilySummaryListTable,
+                      async (cb) => {
+                        let groupTaxCodes = cb.filter(
+                          (x) => x.SalesFamilyCode === item.ProductCode
+                        );
+                        listOfPG = groupTaxCodes;
 
-                    itemProposedSalesAmount =
-                      (itemAmount * amountBeforeDiscount) / item.Pricefortax;
+                        let totaltax1 = 0;
+                        let totaltax2 = 0;
+                        let myArray = [];
+                        let colloctivePrice = 0;
+                        await listOfPG.forEach(async (element, index) => {
+                          let isUpdatedGroup = false;
+                          let percentageDiscountAmount = 0;
+                          let taxGroupID = "";
+                          let itemQty = 0,
+                            itemAmount = 0,
+                            itemProposedSalesAmount = 0,
+                            itemDiscountAmount = 0,
+                            netQty = 0,
+                            tamount = 0,
+                            totalTax = 0,
+                            totalPrice = 0,
+                            totalInclusiveTax = 0,
+                            totalDiscount = 0,
+                            discountAfterDivision = 0;
 
-                    if (amountBeforeDiscount > 0)
-                      itemDiscountAmount =
-                        (itemProposedSalesAmount * percentageDiscountAmount) /
-                        amountBeforeDiscount;
+                          let totalQuantity = Quantity + item.ReturnedQuantity;
 
+                          if (
+                            index === listOfPG.length - 1 &&
+                            type === "returnInvoice"
+                          ) {
+                            if (item.DiscountAmount > 0) {
+                              discountAfterDivision = Number(
+                                (item.DiscountAmount / totalQuantity) * Quantity
+                              );
+
+                              item.DiscountAmount = Number(
+                                discountAfterDivision.toFixed(
+                                  TerminalConfiguration.DecimalsInAmount
+                                )
+                              );
+                              percentageDiscountAmount = item.DiscountAmount;
+                            }
+                            if (item.DiscountRate > 0) {
+                              item.DiscountRate = item?.DiscountRate;
+                              percentageDiscountAmount =
+                                (item.Price *
+                                  item.Quantity *
+                                  item.DiscountRate) /
+                                100;
+                              item.DiscountAmount = Number(
+                                percentageDiscountAmount.toFixed(
+                                  TerminalConfiguration.DecimalsInAmount
+                                )
+                              );
+                              percentageDiscountAmount = item.DiscountAmount;
+                            }
+                          } else {
+                            item.DiscountAmount = Number(
+                              item?.DiscountAmount.toFixed(
+                                TerminalConfiguration.DecimalsInAmount
+                              )
+                            );
+                          }
+
+                          let amountBeforeDiscount =
+                            item.PriceOriginal * item.Quantity;
+                          taxGroupID = element.SaleTaxFamilyCode;
+                          itemQty = element.Quantity;
+                          itemAmount = element.Price;
+                          netQty = item.Quantity * itemQty;
+                          itemProposedSalesAmount =
+                            (itemAmount * amountBeforeDiscount) /
+                            item.Pricefortax;
+
+                          if (amountBeforeDiscount > 0) {
+                            itemDiscountAmount =
+                              (itemProposedSalesAmount *
+                                percentageDiscountAmount) /
+                              amountBeforeDiscount;
+                          }
+
+                          let taxAmt = await calculateTaxeGroups(
+                            netQty,
+                            itemProposedSalesAmount,
+                            itemDiscountAmount,
+                            taxGroupID,
+                            1,
+                            null,
+                            0,
+                            TerminalConfiguration,
+                            item.PriceOriginal,
+                            item.DiscountRate
+                          );
+                          let productGroupTaxInfoObj = {
+                            ProductBarCode: element?.ProductBarCode,
+                            newTaxAmount: taxAmt.Tax1Amount
+                              ? taxAmt.Tax1Amount
+                              : 0 + taxAmt.Tax2Amount
+                              ? taxAmt.Tax2Amount
+                              : 0,
+                            isFixedTax:
+                              taxAmt?.Tax1Fragment === 2 ||
+                              taxAmt?.Tax2Fragment === 2
+                                ? true
+                                : false,
+                            unitPrice: taxAmt.IsTax1IncludedInPrice
+                              ? taxAmt.Price
+                              : element.Price,
+                            proposedPrice: element.Price,
+                            taxRate: taxAmt?.Tax1Percentage
+                              ? taxAmt.Tax1Percentage
+                              : 0,
+                            isInclusiveTax:
+                              taxAmt?.IsTax1IncludedInPrice === true ||
+                              taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
+                                ? true
+                                : false,
+                          };
+                          if (productGroupTaxInfoObj) {
+                            colloctivePrice += element?.Price;
+                            myArray.push(productGroupTaxInfoObj);
+                            item.productGroupTaxInfoObj = myArray;
+                            item.colloctivePrice = colloctivePrice;
+                          }
+
+                          if (
+                            taxAmt.Tax1Fragment == 2 ||
+                            taxAmt.Tax2Fragment == 2
+                          ) {
+                            taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                              ? taxAmt.Tax1Amount * item?.Quantity
+                              : 0;
+                            taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                              ? taxAmt.Tax2Amount * item?.Quantity
+                              : 0;
+                          }
+
+                          // tax 1 details
+                          item.Tax1Code = taxAmt.Tax1Code
+                            ? taxAmt.Tax1Code
+                            : "";
+                          item.Tax1Name = taxAmt.Tax1Name
+                            ? taxAmt.Tax1Name
+                            : "";
+                          item.Tax1Amount = totalTax;
+                          item.Tax1Rate = taxAmt.Tax1Percentage
+                            ? taxAmt.Tax1Percentage
+                            : 0;
+                          item.IsTax1IncludedInPrice =
+                            taxAmt.IsTax1IncludedInPrice === true ||
+                            taxAmt.IsTax1IncludedInPrice === 1
+                              ? true
+                              : false;
+                          item.Tax1Fragment = taxAmt?.Tax1Fragment
+                            ? taxAmt.Tax1Fragment
+                            : "";
+                          // tax 2 details
+                          item.Tax2Code = taxAmt.Tax2Code
+                            ? taxAmt.Tax2Code
+                            : "";
+                          item.Tax2Name = taxAmt.Tax2Name
+                            ? taxAmt.Tax2Name
+                            : "";
+
+                          item.Tax2Fragment = taxAmt?.Tax2Fragment
+                            ? taxAmt.Tax2Fragment
+                            : "";
+
+                          item.IsTax2ncludedInPrice =
+                            taxAmt.IsTax2IncludedInPrice === true ||
+                            taxAmt.IsTax2IncludedInPrice === 1
+                              ? true
+                              : false;
+                          item.Tax2Rate = taxAmt.Tax2Percentage
+                            ? taxAmt.Tax2Percentage
+                            : 0;
+                          item.Tax2Amount = totaltax2;
+
+                          totaltax1 = taxAmt.Tax1Amount
+                            ? totaltax1 + taxAmt.Tax1Amount
+                            : totaltax1 + 0;
+                          totaltax2 = taxAmt.Tax2Amount
+                            ? totaltax2 + taxAmt.Tax2Amount
+                            : totaltax2 + 0;
+
+                          let tax = totaltax1 + totaltax2;
+
+                          item.IngredientsArray = [];
+                          item.IngredientNames = "";
+
+                          if (
+                            item.productGroupTaxInfoObj.length ===
+                            listOfPG.length
+                          ) {
+                            isUpdatedGroup = true;
+                          }
+
+                          if (isUpdatedGroup) {
+                            item.productGroupTaxInfoObj.forEach((element) => {
+                              let itemProposedAmount =
+                                ((element.proposedPrice * item.Quantity) /
+                                  (item.Pricefortax * item.Quantity)) *
+                                (item.PriceOriginal * item.Quantity);
+                              let itemDiscountWeight =
+                                (itemProposedAmount /
+                                  (item.PriceOriginal * item.Quantity)) *
+                                item?.DiscountAmount;
+                              totalDiscount += Number(itemDiscountWeight);
+                              let afterDiscountAmount = 0;
+                              if (element.isInclusiveTax) {
+                                let inclTax =
+                                  (itemProposedAmount /
+                                    (100 + element.taxRate)) *
+                                  element.taxRate;
+                                totalInclusiveTax += Number(
+                                  inclTax /
+                                    item?.Quantity.toFixed(
+                                      TerminalConfiguration.DecimalsInAmount
+                                    )
+                                );
+                                let pureAmount = itemProposedAmount - inclTax;
+                                afterDiscountAmount =
+                                  pureAmount - itemDiscountWeight;
+                              } else {
+                                afterDiscountAmount =
+                                  itemProposedAmount - itemDiscountWeight;
+                              }
+                              if (!element.isFixedTax) {
+                                let taxPrice =
+                                  (element.taxRate / 100) * afterDiscountAmount;
+                                totalPrice += afterDiscountAmount + taxPrice;
+                                totalTax += taxPrice;
+                              }
+                              if (element.isFixedTax) {
+                                let fixtax =
+                                  element.newTaxAmount * item.Quantity;
+                                totalPrice += fixtax + afterDiscountAmount;
+                                totalTax = totalTax + fixtax;
+                              }
+                              item.Tax1Amount = totalTax;
+                              tamount += element?.unitPrice;
+                              item.tax = Number(totalTax);
+                            });
+                            item.PriceWithOutTax = Number(item?.Price);
+                            item.PriceUnitlesstax = Number(
+                              item.PriceWithOutTax
+                            );
+                            item.webperamount = Number(item?.PriceWithOutTax);
+                            item.GrandAmount =
+                              type === "reprint"
+                                ? item.GrandAmount
+                                : Number(totalPrice);
+                          }
+                        });
+                      }
+                    );
+                  } else {
+                    let Amount = Number(item.PriceOriginal) * Quantity;
+                    item.OrignalQuantity = OQty;
+                    item.originalDiscount = item.DiscountAmount;
+                    item.ParentInvoiceDetailsID =
+                      addonPQ[0].SalesInvoiceDetailsID;
+                    item.maxQuantity = Quantity;
                     let taxAmt = await calculateTaxeGroups(
-                      netQty,
-                      itemProposedSalesAmount,
-                      itemDiscountAmount,
-                      taxGroupID,
+                      Quantity,
+                      Amount,
+                      0,
+                      item.TaxGroupID,
+                      1,
+                      null,
+                      0,
+                      TerminalConfiguration,
+                      item.PriceOriginal,
+                      0
+                    );
+
+                    console.log("calculateTaxeGroups...", taxAmt, item);
+                    // Tax 1 details
+                    item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                    (item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : ""),
+                      (item.Tax1Rate = taxAmt.Tax1Percentage
+                        ? taxAmt.Tax1Percentage
+                        : 0),
+                      (item.Tax1Amount = taxAmt.Tax1Amount
+                        ? taxAmt.Tax1Amount
+                        : 0),
+                      (item.Tax1Fragment = taxAmt.Tax1Fragment
+                        ? taxAmt.Tax1Fragment
+                        : "");
+                    // Tax 2 details
+                    (item.Tax2Code = taxAmt?.Tax2Code ? taxAmt.Tax2Code : ""),
+                      (item.Tax2Name = taxAmt?.Tax2Name
+                        ? taxAmt?.Tax2Name
+                        : ""),
+                      (item.Tax2Rate = taxAmt?.Tax2Percentage
+                        ? taxAmt?.Tax2Percentage
+                        : 0),
+                      (item.Tax2Amount = taxAmt?.Tax2Amount
+                        ? taxAmt?.Tax2Amount
+                        : 0);
+                    item.Tax2Fragment = taxAmt.Tax2Fragment
+                      ? taxAmt.Tax2Fragment
+                      : "";
+                    // calculate actual quantity
+                    if (
+                      (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
+                      item?.Tax2Fragment === 2
+                    ) {
+                      addonFinalQuantity = Quantity * item.OrignalQuantity;
+                    }
+                    if (
+                      (!item?.IsParentAddOn && item.Tax1Fragment == 2) ||
+                      item?.Tax2Fragment === 2
+                    ) {
+                      item.Tax1Amount = item.Tax1Amount * addonFinalQuantity;
+                      item.Tax2Amount = item.Tax2Amount * addonFinalQuantity;
+                    }
+                    let tax = item.Tax1Amount + item.Tax2Amount;
+
+                    item.PriceWithOutTax = Number(item?.Price);
+                    item.IsTax1IncludedInPrice = taxAmt?.IsTax1IncludedInPrice
+                      ? true
+                      : false;
+                    item.IsTax2IncludedInPrice = taxAmt?.IsTax2IncludedInPrice
+                      ? true
+                      : false;
+
+                    item.tax = Number(tax);
+                    item.DiscountAmount = Number(
+                      item?.DiscountAmount.toFixed(
+                        TerminalConfiguration.DecimalsInAmount
+                      )
+                    );
+                    item.webperamount = Number(item.PriceWithOutTax);
+                    item.PriceOriginal = Number(item.PriceOriginal * OQty);
+                    item.GrandAmount = Number(
+                      item.Price * Quantity + tax - item?.DiscountAmount
+                    );
+                    item.GrandAmount = item.GrandAmount;
+                    item.ReturnedQuantity = returnQ;
+                    item.Quantity = Quantity / OQty;
+                    item.IsAddedInReturnList = false;
+                  }
+                }
+                // Getting Products
+                else if (item.ProductType === 3) {
+                  item.maxQuantity = item.Quantity - item.ReturnedQuantity;
+                  item.Quantity = Quantity;
+                  item.totalQuantity = item.Quantity + item.ReturnedQuantity;
+                  item.originalDiscount = item.DiscountAmount;
+                  let listOfPG;
+                  let rr = await getData(
+                    SalesFamilySummaryListTable,
+                    async (cb) => {
+                      let groupTaxCodes = cb.filter(
+                        (x) => x.SalesFamilyCode === item.ProductCode
+                      );
+
+                      await getData(
+                        UpdateProductDetailListTable,
+                        (productsDetail) => {
+                          let findProduct = productsDetail.find(
+                            (e) => e.ProductBarCode === item.ProductBarCode
+                          );
+                          if (findProduct) {
+                            item.Pricefortax = findProduct.PriceOriginal;
+                          }
+                        }
+                      );
+                      listOfPG = groupTaxCodes;
+
+                      let totaltax1 = 0;
+                      let totaltax2 = 0;
+                      let myArray = [];
+                      let colloctivePrice = 0;
+                      await listOfPG.forEach(async (element, index) => {
+                        let isUpdatedGroup = false;
+                        let percentageDiscountAmount = 0;
+                        let taxGroupID = "";
+                        let itemQty = 0,
+                          itemAmount = 0,
+                          itemProposedSalesAmount = 0,
+                          itemDiscountAmount = 0,
+                          netQty = 0,
+                          tamount = 0,
+                          totalTax = 0,
+                          totalPrice = 0,
+                          totalInclusiveTax = 0,
+                          totalDiscount = 0,
+                          discountAfterDivision = 0,
+                          innerProductsArray = [];
+
+                        let totalQuantity = Quantity + item.ReturnedQuantity;
+
+                        if (
+                          index === listOfPG.length - 1 &&
+                          type === "returnInvoice"
+                        ) {
+                          if (item.DiscountAmount > 0) {
+                            discountAfterDivision = Number(
+                              (item.DiscountAmount / totalQuantity) * Quantity
+                            );
+
+                            item.DiscountAmount = Number(
+                              discountAfterDivision.toFixed(
+                                TerminalConfiguration.DecimalsInAmount
+                              )
+                            );
+                            percentageDiscountAmount = item.DiscountAmount;
+                          }
+                          if (item.DiscountRate > 0) {
+                            item.DiscountRate = item?.DiscountRate;
+                            percentageDiscountAmount =
+                              (item.Price * item.Quantity * item.DiscountRate) /
+                              100;
+                            item.DiscountAmount = Number(
+                              percentageDiscountAmount.toFixed(
+                                TerminalConfiguration.DecimalsInAmount
+                              )
+                            );
+                            percentageDiscountAmount = item.DiscountAmount;
+                          }
+                        } else {
+                          item.DiscountAmount = Number(
+                            item?.DiscountAmount.toFixed(
+                              TerminalConfiguration.DecimalsInAmount
+                            )
+                          );
+                        }
+
+                        let amountBeforeDiscount =
+                          item.PriceOriginal * item.Quantity;
+                        taxGroupID = element.SaleTaxFamilyCode;
+                        itemQty = element.Quantity;
+                        itemAmount = element.Price;
+                        netQty = item.Quantity * itemQty;
+                        itemProposedSalesAmount =
+                          (itemAmount * amountBeforeDiscount) /
+                          item.Pricefortax;
+
+                        if (amountBeforeDiscount > 0) {
+                          itemDiscountAmount =
+                            (itemProposedSalesAmount *
+                              percentageDiscountAmount) /
+                            amountBeforeDiscount;
+                        }
+
+                        let taxAmt = await calculateTaxeGroups(
+                          netQty,
+                          itemProposedSalesAmount,
+                          itemDiscountAmount,
+                          taxGroupID,
+                          1,
+                          null,
+                          0,
+                          TerminalConfiguration,
+                          item.PriceOriginal,
+                          item.DiscountRate
+                        );
+                        let productGroupTaxInfoObj = {
+                          ProductBarCode: element?.ProductBarCode,
+                          newTaxAmount: taxAmt.Tax1Amount
+                            ? taxAmt.Tax1Amount
+                            : 0 + taxAmt.Tax2Amount
+                            ? taxAmt.Tax2Amount
+                            : 0,
+                          isFixedTax:
+                            taxAmt?.Tax1Fragment === 2 ||
+                            taxAmt?.Tax2Fragment === 2
+                              ? true
+                              : false,
+                          unitPrice: taxAmt.IsTax1IncludedInPrice
+                            ? taxAmt.Price
+                            : element.Price,
+                          proposedPrice: element.Price,
+                          taxRate: taxAmt?.Tax1Percentage
+                            ? taxAmt.Tax1Percentage
+                            : 0,
+                          isInclusiveTax:
+                            taxAmt?.IsTax1IncludedInPrice === true ||
+                            taxAmt?.taxAmt?.IsTax2IncludedInPrice === true
+                              ? true
+                              : false,
+                        };
+                        if (productGroupTaxInfoObj) {
+                          colloctivePrice += element?.Price;
+                          myArray.push(productGroupTaxInfoObj);
+                          item.productGroupTaxInfoObj = myArray;
+                          item.colloctivePrice = colloctivePrice;
+                        }
+
+                        if (
+                          taxAmt.Tax1Fragment == 2 ||
+                          taxAmt.Tax2Fragment == 2
+                        ) {
+                          taxAmt.Tax1Amount = taxAmt.Tax1Amount
+                            ? taxAmt.Tax1Amount * item?.Quantity
+                            : 0;
+                          taxAmt.Tax2Amount = taxAmt.Tax2Amount
+                            ? taxAmt.Tax2Amount * item?.Quantity
+                            : 0;
+                        }
+
+                        // tax 1 details
+                        item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
+                        item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
+                        item.Tax1Amount = totalTax;
+                        item.Tax1Rate = taxAmt.Tax1Percentage
+                          ? taxAmt.Tax1Percentage
+                          : 0;
+                        item.IsTax1IncludedInPrice =
+                          taxAmt.IsTax1IncludedInPrice === true ||
+                          taxAmt.IsTax1IncludedInPrice === 1
+                            ? true
+                            : false;
+                        item.Tax1Fragment = taxAmt?.Tax1Fragment
+                          ? taxAmt.Tax1Fragment
+                          : "";
+                        // tax 2 details
+                        item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
+                        item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
+
+                        item.Tax2Fragment = taxAmt?.Tax2Fragment
+                          ? taxAmt.Tax2Fragment
+                          : "";
+
+                        item.IsTax2ncludedInPrice =
+                          taxAmt.IsTax2IncludedInPrice === true ||
+                          taxAmt.IsTax2IncludedInPrice === 1
+                            ? true
+                            : false;
+                        item.Tax2Rate = taxAmt.Tax2Percentage
+                          ? taxAmt.Tax2Percentage
+                          : 0;
+                        item.Tax2Amount = totaltax2;
+
+                        totaltax1 = taxAmt.Tax1Amount
+                          ? totaltax1 + taxAmt.Tax1Amount
+                          : totaltax1 + 0;
+                        totaltax2 = taxAmt.Tax2Amount
+                          ? totaltax2 + taxAmt.Tax2Amount
+                          : totaltax2 + 0;
+                        //
+                        let tax = totaltax1 + totaltax2;
+
+                        //
+                        // item.Price = Number(item.PriceOriginal);
+
+                        item.IngredientsArray = [];
+                        item.IngredientNames = "";
+                        if (index === listOfPG.length - 1) {
+                          for (let i = 0; i < listOfPG.length; i++) {
+                            const element = listOfPG[i];
+                            await getData(
+                              UpdateProductDetailListTable,
+                              (productsDetail) => {
+                                let findProduct = productsDetail.find(
+                                  (e) =>
+                                    e.ProductBarCode === element.ProductBarCode
+                                );
+
+                                if (findProduct) {
+                                  let isMatch = listOfPG.find(
+                                    (e) =>
+                                      e.ProductBarCode ===
+                                      findProduct.ProductBarCode
+                                  );
+                                  let netQuantity =
+                                    isMatch?.Quantity * element?.Quantity;
+                                  findProduct.Quantity = netQuantity;
+                                  findProduct.Price = element?.Price;
+                                  findProduct.SalesInvoiceDetailsID = uuid.v4();
+                                  innerProductsArray.push(findProduct);
+                                }
+                              }
+                            );
+                          }
+                          if (innerProductsArray) {
+                            item.innerProductsArray = innerProductsArray;
+                          }
+                        }
+                        if (
+                          item.productGroupTaxInfoObj.length === listOfPG.length
+                        ) {
+                          isUpdatedGroup = true;
+                        }
+
+                        if (isUpdatedGroup) {
+                          item.productGroupTaxInfoObj.forEach((element) => {
+                            let itemProposedAmount =
+                              ((element.proposedPrice * item.Quantity) /
+                                (item.Pricefortax * item.Quantity)) *
+                              (item.PriceOriginal * item.Quantity);
+                            let itemDiscountWeight =
+                              (itemProposedAmount /
+                                (item.PriceOriginal * item.Quantity)) *
+                              item?.DiscountAmount;
+                            totalDiscount += Number(itemDiscountWeight);
+                            let afterDiscountAmount = 0;
+                            if (element.isInclusiveTax) {
+                              let inclTax =
+                                (itemProposedAmount / (100 + element.taxRate)) *
+                                element.taxRate;
+                              totalInclusiveTax += Number(
+                                inclTax /
+                                  item?.Quantity.toFixed(
+                                    TerminalConfiguration.DecimalsInAmount
+                                  )
+                              );
+                              let pureAmount = itemProposedAmount - inclTax;
+                              afterDiscountAmount =
+                                pureAmount - itemDiscountWeight;
+                            } else {
+                              afterDiscountAmount =
+                                itemProposedAmount - itemDiscountWeight;
+                            }
+                            if (!element.isFixedTax) {
+                              let taxPrice =
+                                (element.taxRate / 100) * afterDiscountAmount;
+                              totalPrice += afterDiscountAmount + taxPrice;
+                              totalTax += taxPrice;
+                            }
+                            if (element.isFixedTax) {
+                              let fixtax = element.newTaxAmount * item.Quantity;
+                              totalPrice += fixtax + afterDiscountAmount;
+                              totalTax = totalTax + fixtax;
+                            }
+                            item.Tax1Amount = totalTax;
+                            tamount += element?.unitPrice;
+                            item.tax = Number(totalTax);
+                          });
+
+                          item.PriceWithOutTax = Number(item?.Price);
+                          item.PriceUnitlesstax = Number(item.PriceWithOutTax);
+                          item.webperamount = Number(item?.PriceWithOutTax);
+                          item.GrandAmount =
+                            type === "reprint"
+                              ? item.GrandAmount
+                              : Number(totalPrice);
+                        }
+                      });
+                    }
+                  );
+                } else {
+                  let taxAmt;
+                  item.originalDiscount = item.DiscountAmount;
+                  item.maxQuantity = Quantity;
+                  item.Quantity = Quantity;
+                  item.totalQuantity = item.Quantity + item.ReturnedQuantity;
+                  item.ReturnedQuantity = returnQ;
+                  item.DiscountAmount = Number(
+                    item.DiscountAmount.toFixed(
+                      TerminalConfiguration.DecimalsInAmount
+                    )
+                  );
+                  let Amount = Number(item.PriceOriginal) * Quantity;
+                  let totalQuantity = Quantity + item.ReturnedQuantity;
+                  let discountAfterDivision = Number(
+                    (item.DiscountAmount / totalQuantity) * Quantity
+                  );
+                  discountAfterDivision = Number(
+                    discountAfterDivision.toFixed(
+                      TerminalConfiguration.DecimalsInAmount
+                    )
+                  );
+                  if (type === "reprint") {
+                    taxAmt = await calculateTaxeGroups(
+                      Quantity,
+                      Amount,
+                      item.DiscountAmount,
+                      item.TaxGroupID,
                       1,
                       null,
                       0,
@@ -8931,372 +10914,188 @@ const HomeScreen = (props) => {
                       item.PriceOriginal,
                       item.DiscountRate
                     );
-                    if (taxAmt.IsTax1IncludedInPrice === true) {
-                      inclusiveTax += taxAmt.Tax1Amount ? taxAmt.Tax1Amount : 0;
-                    }
-                    if (taxAmt.IsTax2IncludedInPrice === true) {
-                      inclusiveTax += taxAmt.Tax2Amount ? taxAmt.Tax2Amount : 0;
-                    }
-                    let productGroupTaxInfoObj = {
-                      ProductBarCode: item?.ProductBarCode,
-                      newTaxAmount: taxAmt.Tax1Amount
-                        ? taxAmt.Tax1Amount
-                        : 0 + taxAmt.Tax2Amount
-                        ? taxAmt.Tax2Amount
-                        : 0,
-                      isFixedTax:
-                        taxAmt?.Tax1Fragment === 2 || taxAmt?.Tax2Fragment === 2
-                          ? true
-                          : false,
-                      unitPrice: taxAmt.IsTax1IncludedInPrice
-                        ? taxAmt.Price
-                        : element.Price,
-                      proposedPrice: element.Price,
-                      taxRate: taxAmt?.Tax1Percentage
-                        ? taxAmt.Tax1Percentage
-                        : 0,
-                      isInclusiveTax:
-                        taxAmt?.IsTax1IncludedInPrice === true ||
-                        taxAmt?.IsTax2IncludedInPrice === true
-                          ? true
-                          : false,
-                    };
-                    colloctivePrice += element.Price;
-                    myArray.push(productGroupTaxInfoObj);
-                    if (taxAmt.Tax1Fragment == 2 || taxAmt.Tax2Fragment == 2) {
-                      taxAmt.Tax1Amount = taxAmt.Tax1Amount
-                        ? taxAmt.Tax1Amount
-                        : 0;
-                      taxAmt.Tax2Amount = taxAmt.Tax2Amount
-                        ? taxAmt.Tax2Amount
-                        : 0;
-                    }
-                    (item.Tax1Fragment = taxAmt?.Tax1Fragment
-                      ? taxAmt.Tax1Fragment
-                      : ""),
-                      (item.Tax2Fragment = taxAmt?.Tax2Fragment
-                        ? taxAmt.Tax2Fragment
-                        : "");
-                    item.IsTax1IncludedInPrice = taxAmt.IsTax1IncludedInPrice
-                      ? taxAmt.IsTax1IncludedInPrice
-                      : 0;
-                    item.IsTax2IncludedInPrice = taxAmt.IsTax2IncludedInPrice
-                      ? taxAmt.IsTax2IncludedInPrice
-                      : 0;
-                    item.Tax1Code = taxAmt.Tax1Code ? taxAmt.Tax1Code : "";
-                    item.Tax1Name = taxAmt.Tax1Name ? taxAmt.Tax1Name : "";
-                    item.Tax2Code = taxAmt.Tax2Code ? taxAmt.Tax2Code : "";
-                    item.Tax2Name = taxAmt.Tax2Name ? taxAmt.Tax2Name : "";
-                    item.Price = item.Price;
-                    if (!taxAmt.IsTax1IncludedInPrice)
-                      tax1ActualAmountTotal += taxAmt.Tax1Amount
-                        ? taxAmt.Tax1Amount
-                        : 0;
-                    else
-                      taxAmountIncludedInPrice += taxAmt.Tax1Amount
-                        ? taxAmt.Tax1Amount
-                        : 0;
-                    if (!taxAmt.IsTax2IncludedInPrice)
-                      tax2ActualAmountTotal += taxAmt.Tax2Amount
-                        ? taxAmt.Tax2Amount
-                        : 0;
-                    else
-                      taxAmountIncludedInPrice += taxAmt.Tax2Amount
-                        ? taxAmt.Tax2Amount
-                        : 0;
-                    tax1AmountTotal += taxAmt.Tax1Amount
-                      ? taxAmt.Tax1Amount
-                      : 0;
-                    tax2AmountTotal += taxAmt.Tax2Amount
-                      ? taxAmt.Tax2Amount
-                      : 0;
-                    if (
-                      taxAmountIncludedInPrice > 0 ||
-                      taxAmt.Tax1Amount > 0 ||
-                      taxAmt.Tax2Amount > 0
-                    ) {
-                      let amountAfterTax =
-                        amountBeforeDiscount - taxAmountIncludedInPrice;
-                      if (amountAfterTax > 0)
-                        taxAmt.Price = amountAfterTax / (item.Quantity * 1);
-                      else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-                    } else if (
-                      taxAmt.Tax1Amount == 0 &&
-                      taxAmt.Tax2Amount == 0
-                    ) {
-                      //It means All the group items dont have tax group id
-                      if (amountBeforeDiscount > 0)
-                        taxAmt.Price =
-                          amountBeforeDiscount / (item.Quantity * 1);
-                      else taxAmt.Price = 0; //we will not allow to proceed if price is zero
-                    }
-                    item.Price = taxAmt.Price;
-                    item.Tax1Amount = item.Tax1Amount;
-                    item.Tax2Amount = item.Tax2Amount;
-                    totaltax1 = taxAmt.Tax1Amount
-                      ? totaltax1 + taxAmt.Tax1Amount
-                      : totaltax1 + 0;
-                    totaltax2 = taxAmt.Tax2Amount
-                      ? totaltax2 + taxAmt.Tax2Amount
-                      : totaltax2 + 0;
-                    let tax = totaltax1 + totaltax2;
-                    item.Tax1Code = taxAmt.Tax1Code;
-                    (item.Tax1Rate = taxAmt.Tax1Percentage
-                      ? taxAmt.Tax1Percentage
-                      : 0),
-                      (item.Tax2Rate = taxAmt.Tax2Percentage
-                        ? taxAmt.Tax2Percentage
-                        : 0),
-                      (item.IngredientsArray = []);
-                    item.IngredientNames = "";
-                    item.tax = Number(tax);
-                    item.productGroupTaxInfoObj = myArray;
-                    item.colloctivePrice = colloctivePrice;
-                    let totalTax = 0,
-                      totalPrice = 0;
-                    item.productGroupTaxInfoObj.forEach((element) => {
-                      let itemProposedAmount =
-                        ((element.proposedPrice * item.Quantity) /
-                          (item.Pricefortax * item.Quantity)) *
-                        (item.PriceOriginal * item.Quantity);
-                      let itemDiscountWeight =
-                        (itemProposedAmount /
-                          (item.PriceOriginal * item.Quantity)) *
-                        percentageDiscountAmount;
-                      let afterDiscountAmount = 0;
-                      if (element.isInclusiveTax) {
-                        let inclTax =
-                          (itemProposedAmount / (100 + element.taxRate)) *
-                          element.taxRate;
-                        let pureAmount = itemProposedAmount - inclTax;
-                        afterDiscountAmount = pureAmount - itemDiscountWeight;
-                      } else {
-                        afterDiscountAmount =
-                          itemProposedAmount - itemDiscountWeight;
-                      }
-                      if (!element.isFixedTax) {
-                        let taxPrice =
-                          (element.taxRate / 100) * afterDiscountAmount;
-                        totalPrice += afterDiscountAmount + taxPrice;
-                        totalTax += taxPrice;
-                      }
-                      if (element.isFixedTax) {
-                        let fixtax = element.newTaxAmount * item.Quantity;
-                        totalPrice += fixtax + afterDiscountAmount;
-                        totalTax = totalTax + fixtax;
-                      }
-                    });
-                    tax1AmountTotal = totalTax;
-                    if (index === item.groupTaxCodes.length - 1) {
-                      let totalQuantity = Quantity + item.ReturnedQuantity;
-                      item.tax =
-                        ((item.Tax1Amount + item.Tax2Amount) / totalQuantity) *
-                        Quantity;
-                      item.GrandAmount =
-                        (item.GrandAmount * Quantity) / totalQuantity; //(item.PriceWithOutTax * Quantity) + item.tax
-                      item.Tax1Amount = item.tax;
-                      if (item?.IsTax1IncludedInPrice) {
-                        item.Price = Number(item.PriceOriginal);
-                        item.PriceWithOutTax = Number(
-                          item.Price - inclusiveTax / item?.Quantity
-                        );
-                        item.PriceUnitlesstax = item.PriceWithOutTax;
-                        item.webperamount = item.PriceWithOutTax;
-                      } else {
-                        item.Price = Number(item.PriceOriginal);
-                        item.PriceWithOutTax = Number(item?.Price);
-                        item.PriceUnitlesstax = item.PriceWithOutTax;
-                        item.webperamount = item.PriceWithOutTax;
-                      }
-                    }
-                  });
-                  item.groupTaxCodes = groupTaxCodes;
-                  item.ReturnedQuantity = returnQ;
+                    item.DiscountAmount = Number(
+                      item.DiscountAmount.toFixed(
+                        TerminalConfiguration.DecimalsInAmount
+                      )
+                    );
+                  } else {
+                    taxAmt = await calculateTaxeGroups(
+                      Quantity,
+                      Amount,
+                      discountAfterDivision,
+                      item.TaxGroupID,
+                      1,
+                      null,
+                      0,
+                      TerminalConfiguration,
+                      item.PriceOriginal,
+                      item.DiscountRate
+                    );
+                    item.DiscountAmount = Number(
+                      discountAfterDivision.toFixed(
+                        TerminalConfiguration.DecimalsInAmount
+                      )
+                    );
+                  }
+                  console.log("calculating tax amount", taxAmt);
+                  item.Tax1Fragment = taxAmt.Tax1Fragment
+                    ? taxAmt.Tax1Fragment
+                    : "";
+                  item.Tax2Fragment = taxAmt.Tax2Fragment
+                    ? taxAmt.Tax2Fragment
+                    : "";
+                  item.OrignalQuantity = 1;
+                  item.IsTax1IncludedInPrice =
+                    taxAmt?.IsTax1IncludedInPrice === true ? true : false;
+                  item.IsTax2IncludedInPrice =
+                    taxAmt?.IsTax2IncludedInPrice === true ? true : false;
+                  if (item.Tax1Fragment == 2 || item.Tax2Fragment == 2) {
+                    taxAmt.Tax1Amount = taxAmt.Tax1Amount * item.Quantity;
+                  }
+                  let tax = taxAmt.Tax1Amount
+                    ? taxAmt.Tax1Amount
+                    : 0 + taxAmt.Tax2Amount
+                    ? taxAmt.Tax2Amount
+                    : 0;
+                  item.GrandAmount = Number(
+                    taxAmt.Price * item.Quantity + tax - item?.DiscountAmount
+                  );
+                  item.GrandAmount = Number(item.GrandAmount);
+                  item.PriceWithOutTax = Number(item.Price);
+                  item.tax = Number(tax);
+                  item.webperamount = Number(item.Price);
+                  item.Tax1Amount = Number(tax);
+                  item.IsAddedInReturnList = false;
                 }
-              );
-            } else {
-              let taxAmt;
-              item.maxQuantity = Quantity;
-              item.Quantity = Quantity;
-              item.ReturnedQuantity = returnQ;
-              item.PriceWithOutTax = Number(item.Price);
-              let Amount = Number(item.PriceOriginal) * Quantity;
-              let totalQuantity = Quantity + item.ReturnedQuantity;
-              let discountAfterDivision = Number(
-                (item.DiscountAmount / totalQuantity) * Quantity
-              );
-              taxAmt = await calculateTaxeGroups(
-                Quantity,
-                Amount,
-                discountAfterDivision,
-                item.TaxGroupID,
-                1,
-                null,
-                0,
-                TerminalConfiguration,
-                item.PriceOriginal,
-                item.DiscountRate
-              );
-              item.DiscountAmount = discountAfterDivision;
-              // }
-              item.Tax1Fragment = taxAmt.Tax1Fragment
-                ? taxAmt.Tax1Fragment
-                : "";
-              item.Tax2Fragment = taxAmt.Tax2Fragment
-                ? taxAmt.Tax2Fragment
-                : "";
-              item.OrignalQuantity = 1;
-              if (item.Tax1Fragment == 2 || item.Tax2Fragment == 2) {
-                taxAmt.Tax1Amount = taxAmt.Tax1Amount * item.Quantity;
+                item.IsParentAddOn = item.AddOnParentSalesInvoiceDetailsID
+                  ? false
+                  : true;
+                return item;
               }
-              let tax = taxAmt.Tax1Amount
-                ? taxAmt.Tax1Amount
-                : 0 + taxAmt.Tax2Amount
-                ? taxAmt.Tax2Amount
-                : 0;
-              item.GrandAmount = (
-                Number(taxAmt.Price * item.Quantity) +
-                tax -
-                item?.DiscountAmount
-              ).toFixed(2);
-              item.GrandAmount = Number(item.GrandAmount);
-              item.tax = tax;
-              item.webperamount = Number(item.Price);
-              item.Tax1Amount = tax;
+            });
+
+            if (response.GlobalDiscountRate > 0) {
+              console.log(
+                "response.GlobalDiscountRate ",
+                response.GlobalDiscountRate
+              );
+              setGlobalDiscountRate(response.GlobalDiscountRate);
+            } else if (response.GlobalDiscountAmount > 0) {
+              setglobalDiscountAmount(response.GlobalDiscountAmount);
             }
-            item.IsParentAddOn = item.AddOnParentSalesInvoiceDetailsID
-              ? false
-              : true;
-            return item;
-          }
-        });
 
-        if (response.GlobalDiscountRate > 0) {
-          setGlobalDiscountRate(response.GlobalDiscountRate);
-        } else if (response.GlobalDiscountAmount > 0) {
-          setglobalDiscountAmount(response.GlobalDiscountAmount);
-        }
+            if (products.length > 0) {
+              let GT = globalTaxList.filter(
+                (e) => response.GlobalTaxGroupID === e.TaxFamilyCode
+              );
+              // console.log('GTGTGTGT', GT);
+              setSelectedGlobalTaxObj(GT[0]);
+              setInvoiceNumber(response.InvoiceNumber);
 
-        if (products.length > 0) {
-          let GT = globalTaxList.filter(
-            (e) => response.GlobalTaxGroupID === e.TaxFamilyCode
-          );
-          // console.log('GTGTGTGT', GT);
-          setSelectedGlobalTaxObj(GT[0]);
-          setInvoiceNumber(response.BillNumber);
-          setReturnProducts(products);
+              if (response.BuyerCode) {
+                const current = new Date();
+                let date, month, year;
+                date = current.getDate();
+                month = current.getMonth() + 1;
+                year = current.getFullYear();
 
-          if (type === "returnInvoice") {
-            setisReturnInvoice(true);
-            createReturnInvoiceNumber();
-            // console.log('kjsahkjfhksdhkfh', response.BillNumber);
-            setToggle(true);
-          }
+                const currentDate = `${year}${
+                  month < 10 ? "0" + month : month + 1
+                }${date < 10 ? "0" + date : date}`;
 
-          if (response.BuyerCode) {
-            const current = new Date();
-            let date, month, year;
-            date = current.getDate();
-            month = current.getMonth() + 1;
-            year = current.getFullYear();
+                let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
 
-            const currentDate = `${year}${
-              month < 10 ? "0" + month : month + 1
-            }${date < 10 ? "0" + date : date}`;
+                let body = {
+                  BuyerName: "",
+                  ReturnCode: 0,
+                  BuyerCode: null,
+                  PrimaryPhone: response.BuyerCode,
+                  CCRNumber: "",
+                  ValueAddedTaxNumber: "",
+                  BuyerAddress: "",
+                  Operation: "search",
+                  CurrentDate: currentDate,
+                  LoyaltyCard: null,
+                  CaltureCode: caltureCode,
+                };
 
-            let UserLogin = await AsyncStorage.getItem("ACCESS_TOKEN");
+                const response1 = await props.dispatch(
+                  ServerCall(UserLogin, "Buyer/CreateBuyer", "POST", body)
+                );
+                const res = JSON.parse(response1);
+                if (res !== undefined) {
+                  setBuyerInfo(res);
+                }
+              }
 
-            let body = {
-              BuyerName: "",
-              ReturnCode: 0,
-              BuyerCode: null,
-              PrimaryPhone: response.BuyerCode,
-              CCRNumber: "",
-              ValueAddedTaxNumber: "",
-              BuyerAddress: "",
-              Operation: "search",
-              CurrentDate: currentDate,
-              LoyaltyCard: null,
-            };
+              if (type === "reprint") {
+                setAdvancePaidInCash(Number(response.AdvancePaidInCash)); //);
+                let selP = payments.filter(
+                  (e) => e.PaymentType === String(response.PaymentType)
+                );
+                setSelectedPyamentMethod(selP[0]);
 
-            const response1 = await props.dispatch(
-              ServerCall(UserLogin, "Buyer/CreateBuyer", body)
-            );
-            if (response1.success) {
-              setBuyerInfo(response1);
+                let date, month, year;
+                year = response.InvoiceDate.slice(0, 4);
+                month = response.InvoiceDate.slice(4, 6);
+                date = response.InvoiceDate.slice(6, 8);
+                let InvoiceTime =
+                  date + "/" + month + "/" + year + "  " + response.InvoiceTime;
+                setInvoiceDate(InvoiceTime);
+
+                selectedAllProducts(products, response, GT[0], type);
+              }
+              if (type === "returnInvoice") {
+                setisReturnInvoice(true);
+                createReturnInvoiceNumber();
+                setReturnProducts(products);
+                // setToggle(true);
+              }
+            } else {
+              setMessage(props.StringsList._301);
+              setDisplayAlert(true);
+              seOptionsValue(null);
+              setLoading(false);
             }
+            setLoading(false);
           }
-
-          if (type === "reprint") {
-            setAdvancePaidInCash(Number(response.AdvancePaidInCash)); //);
-            let selP = payments.filter(
-              (e) => e.PaymentType === String(response.PaymentType)
-            );
-            // console.log('setSelectedPyamentMethod', payments, selP);
-            setSelectedPyamentMethod(selP[0]);
-
-            let date, month, year;
-            year = response.BillDate.slice(0, 4);
-            month = response.BillDate.slice(4, 6);
-            date = response.BillDate.slice(6, 8);
-            let billDate =
-              date + "/" + month + "/" + year + "  " + response.BillTime;
-            setBillDate(billDate);
-            console.log("billDate..", billDate);
-            selectedAllProducts(products, response, GT[0], type);
-          }
-        } else {
-          setMessage(props.StringsList._301);
-          setDisplayAlert(true);
-          seOptionsValue(null);
         }
+      } else {
+        list.isRefundReturnedCall = false;
+        setMessage(props.StringsList._301);
+        setDisplayAlert(true);
         setLoading(false);
       }
     } else {
-      setMessage(props.StringsList._301);
-      setDisplayAlert(true);
-      setLoading(false);
+      Alert.alert(
+        "Bnody Restaurant",
+        "Internet Connect Not Available Please Connected to internet and try again",
+        [
+          {
+            text: "OKAY",
+            onPress: () => {
+              restState();
+            },
+          },
+        ]
+      );
     }
   };
 
   const reacallFunc = (type) => {
-    console.log("reacallFunc", type);
     if (type === "holdInvoice") {
       holdInvoiceFun();
-    } else if (type === "returnInvoice" || type === "reprint") {
-      getReturnBill(type);
-    } else if (type === "ingredient") {
+    }
+    // else if (type === 'returnInvoice' || type === 'reprint') {
+    //   getReturnInvoice(type);
+    // }
+    else if (type === "ingredient") {
       addIngredientFun();
-    } else if (type === "billingType") {
-      if (alertType === "reprint") {
-        paymentProcess("", "", "reprint");
-      } else {
-        paymentMethodSelect();
-      }
-      setisBillingType(false);
-
-      selectBillingType({ name: "Set" });
-    } else if ("cashpaid") {
-      paymentProcess("", "");
+    } else if (type === "rebootTerminal") {
+      onClickPowerOff("terminal");
     }
   };
-
-  const selectBillingType = (item) => {
-    let d = [...billingTypeData];
-    console.log("billingType...", item);
-    d.forEach((e) => {
-      if (item.name === e.name) {
-        e.isSelected = true;
-      } else {
-        e.isSelected = false;
-      }
-    });
-    if (item.name !== "Set") {
-      setBillingType(item);
-    }
-    setBillingTypeData(d);
-  };
-
   const checkReturnProductAddons = async (itm, type, index) => {
     let proArray = [],
       sPrice = Number(itm.GrandAmount - itm.DiscountAmount),
@@ -9304,23 +11103,14 @@ const HomeScreen = (props) => {
     proArray.push(itm);
 
     let addons = retunProducts.filter(async (pro) => {
-      if (itm.SalesBillDetailsID === pro.AddOnParentSalesInvoiceDetailsID) {
-        // console.log(
-        //   'pro.Quantitypro.Quantitypro.Quantitypro.Quantity',
-        //   pro.Quantity,
-        //   itm.Quantity,
-        // );
+      if (itm.SalesInvoiceDetailsID === pro.AddOnParentSalesInvoiceDetailsID) {
+        // console.log('pro Quantitypro', pro.Quantity, itm.Quantity);
 
         sPrice = Number(sPrice + pro.GrandAmount - pro.DiscountAmount);
         tPrice = Number(tPrice + pro.GrandAmount - pro.DiscountAmount);
-        // if (!pro.ParentInvoiceDetailsID) {
-        //   let OQty = pro.Quantity / itm.Quantity;
-        //   pro.Quantity = itm.Quantity
-        //   pro.OrignalQuantity = OQty
-        //   pro.ParentInvoiceDetailsID = itm.SalesBillDetailsID
-        // }
+
         proArray.push(pro);
-        // setTimeout(() => { addProductToList(pro, "addons") }, 1000)
+
         return pro;
       }
     });
@@ -9332,7 +11122,6 @@ const HomeScreen = (props) => {
   };
 
   useEffect(async () => {
-    // console.log("buyer Info", buyerInfo)
     if (buyerInfo?.LoyaltyCard) {
       let pArry = [],
         cArry = [],
@@ -9342,7 +11131,6 @@ const HomeScreen = (props) => {
         "LoyaltyCode",
         buyerInfo.LoyaltyCard.LoyaltyCode,
         (loyalty) => {
-          // console.log("Loyalty Detail List Table", loyalty)
           loyalty.forEach((e) => {
             if (e.CalculationType === 1) {
               pArry.push(e);
@@ -9363,15 +11151,12 @@ const HomeScreen = (props) => {
         "LoyaltyCode",
         buyerInfo.LoyaltyCard.LoyaltyCode,
         (loyalty) => {
-          // console.log("Loyalty Reward List Table", loyalty)
           setLoyaltyRewardsList(loyalty);
         }
       );
     }
   }, [buyerInfo]);
-
   async function checkLoyalitRewardsFun() {
-    // console.log('ghahagga', 'hfhhfhfhfhgfghfhhfggfhfhd');
     if (loyaltyRewardsList?.length > 0 && redeemPoints > 0) {
       let rewards = loyaltyRewardsList.filter(
         (res) =>
@@ -9429,13 +11214,11 @@ const HomeScreen = (props) => {
       }
     }
   }
-
-  async function freeProductReward(rewards) {
+  const freeProductReward = async (rewards) => {
     let selectedP = [...selectedProducts];
     setToggle(true);
     for (let i = 0; i < rewards.length; i++) {
       let e = rewards[i];
-      // console.log(" Reward List ProductBarCode", e)
       await getDataById(
         UpdateProductDetailListTable,
         "ProductBarCode",
@@ -9462,9 +11245,6 @@ const HomeScreen = (props) => {
             (P.Tax2Name = taxAmt?.Tax2Name ? taxAmt?.Tax2Name : ""),
             (P.Tax2Rate = taxAmt?.Tax2Percentage ? taxAmt?.Tax2Percentage : 0),
             (P.Tax2Amount = taxAmt?.Tax2Amount ? taxAmt?.Tax2Amount : 0);
-
-          // console.log(" Reward List Table", P, taxAmt)
-          // await addProductToList(pro[0], "FreeProduct")
           P.GrandAmount = 0;
           P.tax = P.Tax1Amount + P.Tax2Amount;
           P.PriceWithOutTax = taxAmt.Price;
@@ -9472,14 +11252,14 @@ const HomeScreen = (props) => {
           P.FreeProduct = true;
           P.DiscountRate = 100;
           P.DiscountAmount = P.PriceOriginal;
+
           selectedP.push(P);
           setRewardType(1);
         }
       );
     }
     setSelectedProducts(selectedP);
-  }
-
+  };
   const invoiceDiscountReward = (rewards, excludeProSum) => {
     let tAmount = totalPrice,
       amountGD = globalDiscountAmount,
@@ -9532,7 +11312,6 @@ const HomeScreen = (props) => {
       alert("invoice amount must be greater then Reward minimum amount");
     }
   };
-
   const invoiceEarnPoints = async (cb) => {
     let tAmount = totalPrice,
       amountGD = globalDiscountAmount,
@@ -9541,7 +11320,6 @@ const HomeScreen = (props) => {
       (e) =>
         totalPrice >= e.InvoiceAmountFrom && totalPrice <= e.InvoiceAmountTo
     );
-    // console.log("invoiceEarnPointsinvoiceEarnPoints", invEP)
     if (!invEP) {
       return 0;
     }
@@ -9592,7 +11370,6 @@ const HomeScreen = (props) => {
         return 0;
       }
     } else {
-      // alert("invoice amount must be greater then Reward minimum amount")
       return 0;
     }
   };
@@ -9606,57 +11383,19 @@ const HomeScreen = (props) => {
         e.ProductBarCode === pro.ProductBarCode && e.Quantity === pro.Quantity
     );
     let erP;
-    // console.log("product.EarnedPoints + EarnPointPArry.PointsEarned", proMatch, catMatch, pro)
     if (proMatch && catMatch) {
       erP = proMatch.PointsEarned + catMatch.PointsEarned;
-      // console.log("1....", erP)
       return erP;
     } else if (catMatch) {
       erP = catMatch.PointsEarned;
-      // console.log("2....", erP)
       return erP;
     } else if (proMatch) {
       erP = proMatch.PointsEarned;
-      // console.log("3...", erP)
       return erP;
     } else {
       erP = 0;
       return erP;
     }
-  };
-
-  const onClickPowerOff = async () => {
-    Alert.alert("Bnody POS", props.StringsList._443, [
-      {
-        text: "yes",
-        onPress: async () => {
-          setLoading(true);
-          if (drawerSetupArr.isInitialCashSet === "true") {
-            setisLogout(true);
-          }
-          let loginUserInfo = await AsyncStorage.getItem("LOGIN_USER_INFO");
-          loginUserInfo = JSON.parse(loginUserInfo);
-          // console.log('access token ', loginUserInfo);
-          setTimeout(async () => {
-            const response = await props.dispatch(
-              ServerCall("", "AuthorizeUser/SignOut", loginUserInfo)
-            );
-            setisLogout(false);
-            ResetDrawerSetup();
-            // console.log('user logout response.. ', response);
-            // http://bnodyapi.bnody.com/api/AuthorizeUser/SignOut
-            props.navigation.replace("Auth");
-            await AsyncStorage.removeItem("ACCESS_TOKEN");
-            setLoading(false);
-          }, 1000);
-        },
-      },
-      {
-        text: "Cancel",
-
-        style: "cancel",
-      },
-    ]);
   };
 
   const selectedAllProducts = (products, response, tax, type) => {
@@ -9666,7 +11405,7 @@ const HomeScreen = (props) => {
     let retunProduct = products ? products : retunProducts;
     let returnBills = response ? response : returnBill;
     let selectedGlobalTax = tax ? tax : selectedGlobalTaxObj;
-    // console.log('return billsssssss', returnBills);
+    console.log("return billsssssss", returnBills);
     retunProduct.forEach((pro) => {
       tPrice = tPrice + pro.GrandAmount;
       sPrice = sPrice + pro.GrandAmount;
@@ -9677,16 +11416,21 @@ const HomeScreen = (props) => {
       setTotalPrice(returnBills.RoundOffAmount + response.AdvancePaidInCash);
       setglobalDiscountAmount(returnBills.GlobalDiscountAmount);
       setGlobalTax(returnBills.GlobalTax1Amount);
-      lastBillDetail.BillDetails = retunProduct;
-      setSelectedProducts(lastBillDetail.BillDetails);
-      let number = retunProduct.filter(
-        (w) => w.IsParentAddOn === 1 || w.IsParentAddOn === true
-      ).length;
-      setNumberOfItems(number);
+      returnBills.BillDetails = retunProduct;
+      setSelectedProducts(retunProduct);
+      setInvoiceNumber(returnBills.InvoiceNumber);
+      setLoading(true);
+      // let number = retunProduct.filter(
+      //   w => w.IsParentAddOn === 1 || w.IsParentAddOn === true,
+      // ).length;
+      // setNumberOfItems(number);
       setisReturnInvoice(false);
 
-      paymentProcess(returnBill.AdvancePaidInCash, "", "reprint");
+      paymentProcess("", "", type);
+
+      // paymentProcess(returnBill.AdvancePaidInCash, '', 'reprint');
     } else {
+      // setToggle(true);
       if (
         returnBills.GlobalTax1Amount > 0 ||
         returnBills.GlobalDiscountRate > 0
@@ -9723,7 +11467,8 @@ const HomeScreen = (props) => {
           array.push(element);
           let Addonsofthis = addonnProducts.filter(
             (x) =>
-              x.AddOnParentSalesInvoiceDetailsID === element.SalesBillDetailsID
+              x.AddOnParentSalesInvoiceDetailsID ===
+              element.SalesInvoiceDetailsID
           );
           if (Addonsofthis) {
             for (let x = 0; x < Addonsofthis.length; x++) {
@@ -9734,7 +11479,8 @@ const HomeScreen = (props) => {
         } else {
           let itemAddons = addonnProducts.filter(
             (x) =>
-              x.AddOnParentSalesInvoiceDetailsID === element.SalesBillDetailsID
+              x.AddOnParentSalesInvoiceDetailsID ===
+              element.SalesInvoiceDetailsID
           );
           if (itemAddons) {
             array.push(element);
@@ -9747,7 +11493,9 @@ const HomeScreen = (props) => {
           }
         }
       }
+
       setSelectedProducts(array);
+
       // setSelectedProducts(retunProduct);
       let number = retunProduct.filter(
         (w) => w.IsParentAddOn === 1 || w.IsParentAddOn === true
@@ -9756,7 +11504,6 @@ const HomeScreen = (props) => {
       setisReturnInvoice(false);
     }
   };
-
   const deleteHoldedInvoice = (holdInvoiceNumber) => {
     DeleteColumnById(HoldInvoiceTable, "invoiceNumber", holdInvoiceNumber);
   };
@@ -9764,10 +11511,10 @@ const HomeScreen = (props) => {
   const productAssignSaleAgent = (items, value, item) => {
     // console.log('productAssignSaleAgent', items, value, item);
     let selectedAgent = items.filter((res) => res.value === value);
-    console.log("selectedAgent", selectedAgent);
+    // console.log('selectedAgent', selectedAgent);
     let selectedPro = [...selectedProducts];
     selectedPro.forEach((pro) => {
-      if (pro.SalesBillDetailsID === item.SalesBillDetailsID) {
+      if (pro.SalesInvoiceDetailsID === item.SalesInvoiceDetailsID) {
         pro.SalesAgentCode = selectedAgent[0].SalesAgentCode;
         pro.value = value;
       }
@@ -9777,11 +11524,21 @@ const HomeScreen = (props) => {
 
   return (
     <Design
-      onClickPowerOff={onClickPowerOff}
+      navigation={props.navigation}
       options={options}
       setOptions={setOptions}
       payments={payments}
       setPayments={setPayments}
+      paymentsValue={paymentsValue}
+      setPaymentsValue={setPaymentsValue}
+      paymentsOpen={paymentsOpen}
+      setPaymentsOpen={setPaymentsOpen}
+      refundPayments={refundPayments}
+      setRefundPayments={setRefundPayments}
+      refundPaymentsOpen={refundPaymentsOpen}
+      setRefundPaymentsOpen={setRefundPaymentsOpen}
+      refundPaymentsValue={refundPaymentsValue}
+      setRefundPaymentsValue={setRefundPaymentsValue}
       isToggle={isToggle}
       toggleFun={toggleFun}
       onInvoiceClick={onInvoiceClick}
@@ -9791,6 +11548,7 @@ const HomeScreen = (props) => {
       onSelectProduct={onSelectProduct}
       selectedProducts={selectedProducts}
       addProductToList={addProductToList}
+      updateProductToList={updateProductToList}
       totalPrice={totalPrice}
       subPrice={subPrice}
       globalDiscountAmount={globalDiscountAmount}
@@ -9808,10 +11566,9 @@ const HomeScreen = (props) => {
       AgentList={AgentList}
       searchTextFun={searchTextFun}
       searchText={searchText}
+      setSearchText={setSearchText}
       StringsList={props.StringsList}
       flatListRef={flatListRef}
-      paymentsValue={paymentsValue}
-      setPaymentsValue={setPaymentsValue}
       optionsValue={optionsValue}
       setOptionsValue={seOptionsValue}
       viewShotRef={viewShotRef}
@@ -9820,7 +11577,6 @@ const HomeScreen = (props) => {
       onSaveInvoice={onSaveInvoice}
       isInvoice={isInvoice}
       isTerminalSetup={isTerminalSetup}
-      onClickSetting={onClickSetting}
       setTerminalSetup={setTerminalSetup}
       isPairPrinterFamily={isPairPrinterFamily}
       setPairPrinterFamily={setPairPrinterFamily}
@@ -9829,6 +11585,8 @@ const HomeScreen = (props) => {
       setmanuallyCount={setmanuallyCount}
       isLoading={isLoading}
       invoiceNumber={invoiceNumber}
+      orderNumber={orderNumber}
+      setOrderNumber={setOrderNumber}
       setLoading={setLoading}
       dueAmount={dueAmount}
       advancePaidInCash={advancePaidInCash}
@@ -9866,6 +11624,7 @@ const HomeScreen = (props) => {
       globalTax={globalTax}
       buyerViewRef={buyerViewRef}
       isBuyer={isBuyer}
+      setisBuyer={setisBuyer}
       loyaltyList={loyaltyList}
       setBuyerInfo={setBuyerInfo}
       buyerInfo={buyerInfo}
@@ -9875,8 +11634,6 @@ const HomeScreen = (props) => {
       otherOptions={otherOptions}
       setRedeemPoints={setRedeemPoints}
       redeemPoints={redeemPoints}
-      paymentsOpen={paymentsOpen}
-      setPaymentsOpen={setPaymentsOpen}
       optionsOpen={optionsOpen}
       setoptionsOpen={setoptionsOpen}
       globalDiscountRate={globalDiscountRate}
@@ -9900,6 +11657,10 @@ const HomeScreen = (props) => {
       numberOfItems={numberOfItems}
       qrRef2={qrRef2}
       onQRImage={onQRImage}
+      areaItem={areaItem}
+      setAreaItem={setAreaItem}
+      tableItem={tableItem}
+      setTableItem={setTableItem}
       getProductsIngredients={getProductsIngredients}
       searchIngredient={searchIngredient}
       searchIngredientFun={searchIngredientFun}
@@ -9921,43 +11682,127 @@ const HomeScreen = (props) => {
       barCode={barCode}
       ref_searchBar={ref_searchBar}
       barCodeText={barCodeText}
-      billFormatType={billFormatType}
-      billDates={billDates}
-      returnBill={returnBill}
-      isLogout={isLogout}
-      billingType={billingType}
+      displayModal={displayModal}
+      setDisplayModal={setDisplayModal}
+      guestItem={guestItem}
+      setGuestItem={setGuestItem}
+      notesModal={notesModal}
+      setNotesModal={setNotesModal}
+      notesDetail={notesDetail}
+      setNotesDetail={setNotesDetail}
+      onOpenModal={onOpenModal}
+      selectedGuest={selectedGuest}
+      setSelectedGuest={setSelectedGuest}
+      selectedArea={selectedArea}
+      setSelectedArea={setSelectedArea}
+      areas={areas}
+      setAreas={setAreas}
+      onSelect={onSelect}
+      isdisabled={isdisabled}
+      setisDisabled={setisDisabled}
+      DineInOrder={DineInOrder}
+      orderTaker={orderTaker}
+      orderTakerType={orderTakerType}
+      setOrderTakerType={setOrderTakerType}
+      setOrderTaker={setOrderTaker}
+      placeOrderWithPay={placeOrderWithPay}
+      placeOrderWithoutPay={placeOrderWithoutPay}
+      getStorageItem={getStorageItem}
+      storageItems={storageItems}
+      setStorageItems={setStorageItems}
+      enableTBut={enableTBut}
+      setEnableTbut={setEnableTbut}
+      openModal={openModal}
+      setOpenModal={setOpenModal}
+      orderType={orderType}
+      setOrderType={setOrderType}
+      orderItems={orderItems}
+      setOrderItems={setOrderItems}
+      disable={disable}
+      setDisable={setDisable}
+      onPressSave={onPressSave}
+      onPressSaveTime={onPressSaveTime}
+      rebootTerminalFunction={rebootTerminalFunction}
+      onClickLogoutFunction={onClickLogoutFunction}
+      onClickMenuFunction={onClickMenuFunction}
+      getLastOrderNumber={getLastOrderNumber}
+      rebootAlert={rebootAlert}
+      orderCode={orderCode}
+      setOrderCode={setOrderCode}
+      orderDetails={orderDetails}
+      setOrderDetails={setOrderDetails}
+      getOrderDetails={getOrderDetails}
+      CancelOrder={CancelOrder}
+      isSearch={isSearch}
+      setIsSearch={setIsSearch}
+      placeholder={placeholder}
+      setPlaceHolder={setPlaceHolder}
+      getOrder={getOrder}
+      getOrderBySearch={getOrderBySearch}
+      PrinterFunc={PrinterFunc}
       isBillingType={isBillingType}
       setisBillingType={setisBillingType}
       billingTypeData={billingTypeData}
+      setBillingTypeData={setBillingTypeData}
+      saleBilType={saleBilType}
+      setSaleBilType={setSaleBilType}
+      isSaleBilType={isSaleBilType}
+      setISSaleBilType={setISSaleBilType}
+      saleBilData={saleBilData}
+      setSaleBilData={setSaleBilData}
+      selectSaleBilType={selectSaleBilType}
       selectBillingType={selectBillingType}
+      UpdateOrder={UpdateOrder}
+      holdBillFunction={holdBillFunction}
+      shortInvoice={shortInvoice}
+      setShortInvoice={setShortInvoice}
+      lastOrderNumber={lastOrderNumber}
+      setLastOrderNumber={setLastOrderNumber}
       billingStyleId={billingStyleId}
       isInnerPrinter={isInnerPrinter}
       setInnerPrinter={setInnerPrinter}
-      setClientCustomInvoice={setClientCustomInvoice}
-      clientCustomInvoice={clientCustomInvoice}
-      isPaidCash={isPaidCash}
-      setIsPaidCash={setIsPaidCash}
-      cashAmount={cashAmount}
-      setCashAmount={setCashAmount}
-      onChangePrice={onChangePrice}
-      printType={printType}
-      refundPayments={refundPayments}
-      setRefundPayments={setRefundPayments}
-      productTaxes={productTaxes}
-      descriptionModal={descriptionModal}
-      setDescriptionModal={setDescriptionModal}
-      descriptionDetail={descriptionDetail}
-      setDescriptionDetail={setDescriptionDetail}
+      invoiceDates={invoiceDates}
+      restState={restState}
+      toggled={toggled}
+      setToggled={setToggled}
+      placewithpay={placewithpay}
+      paymentView={paymentView}
+      setPaymentView={setPaymentView}
+      orderPopup={orderPopup}
+      setOrderPopup={setOrderPopup}
+      // requiredTime={requiredTime}
+      // setRequiredTime={setRequiredTime}
+      onCloseTimeModal={onCloseTimeModal}
+      railStart={railStart}
+      setRailStart={setRailStart}
+      selectedOrderType={selectedOrderType}
+      setSelectedOrderType={setSelectedOrderType}
+      placedwithPay={placedwithPay}
+      setMessage={setMessage}
+      billingType={billingType}
       selectedProductNotes={selectedProductNotes}
       setSelectedProductsNotes={setSelectedProductsNotes}
       onSaveNotes={onSaveNotes}
+      orderUpdate={orderUpdate}
+      setOrderUpdate={setOrderUpdate}
+      orderPickerOpen={orderPickerOpen}
+      setOrderPickerOpen={setOrderPickerOpen}
+      orderValue={orderValue}
+      setOrderValue={setOrderValue}
+      showButton={showButton}
+      setShowButton={setShowButton}
       customerNotes={customerNotes}
       setCustomerNotes={setCustomerNotes}
       customerNotesOpen={customerNotesOpen}
       setCustomerNotesOpen={setCustomerNotesOpen}
-      totalReprintCount={totalReprintCount}
-      isSearch={true}
-      isDashboard={false}
+      changeTableStatus={changeTableStatus}
+      printType={printType}
+      isLogout={isLogout}
+      setisLogout={setisLogout}
+      optionType={optionType}
+      setOptionType={setOptionType}
+      isFocusSearch={isFocusSearch}
+      setFocusSearch={setFocusSearch}
     />
   );
 };

@@ -1,59 +1,69 @@
 import React from "react";
-import { View, StatusBar, SafeAreaView, Platform } from "react-native";
+import {
+  View,
+  StatusBar,
+  SafeAreaView,
+  ImageBackground,
+  Text,
+  I18nManager,
+} from "react-native";
 import * as Progress from "react-native-progress";
 
-import { DotIndicator } from "react-native-indicators";
 import { createStackNavigator } from "@react-navigation/stack";
 import * as Animatable from "react-native-animatable";
 import AppIntroSlider from "react-native-app-intro-slider";
 import Icon from "react-native-vector-icons/FontAwesome";
 
 import styles from "./style";
-import Logo from "../../assets/svg/logo.svg";
+import BnodyLogo from "../../assets/svg/bnodyLogo.svg";
 import sizeHelper from "../../helpers/sizeHelper";
 import AppColor from "../../constant/AppColor";
 
 const Design = (props) => {
-  return !props.showRealApp ? (
+  return props.showRealApp === false ? (
     <Animatable.View style={{ flex: 1 }} animation="zoomIn">
       <StatusBar
-        hidden
+        hidden={true}
         barStyle="light-content"
         backgroundColor={AppColor.blue}
       />
 
       <AppIntroSlider
         activeDotStyle={{
-          marginBottom: 20,
-          width: 30,
-          backgroundColor: AppColor.white,
+          marginBottom: -20,
+          // width: 30,
+          backgroundColor: AppColor.blue2,
         }}
         dotStyle={{
-          marginBottom: 20,
+          marginBottom: -20,
           backgroundColor: AppColor.gray3,
         }}
-        data={props.slides}
+        data={I18nManager.isRTL ? props.slidesArb : props.slidesEng}
         renderItem={props.renderItem}
         renderDoneButton={props.renderDoneButton}
         renderNextButton={props.renderNextButton}
       />
     </Animatable.View>
   ) : (
-    <View style={styles.splashContainer}>
+    <ImageBackground
+      source={require("../../assets/images/splashBg.png")}
+      imageStyle={{ width: "100%", height: "100%" }}
+      style={styles.splashContainer}
+    >
       <StatusBar hidden />
-      <Logo />
+      <BnodyLogo />
       <Progress.Bar
         useNativeDriver
         indeterminate
         progress={1}
         width={sizeHelper.calWp(400)}
         height={sizeHelper.calHp(2)}
-        unfilledColor={AppColor.yellowColor}
+        unfilledColor={AppColor.blue5}
         borderWidth={0}
         style={{ marginTop: sizeHelper.calHp(64) }}
         color={AppColor.white}
       />
-    </View>
+    </ImageBackground>
   );
 };
 

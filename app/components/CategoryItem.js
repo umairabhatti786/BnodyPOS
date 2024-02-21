@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   StyleSheet,
@@ -6,11 +6,11 @@ import {
   Text,
   TouchableOpacity,
   I18nManager,
-} from 'react-native';
-import AppColor from '../constant/AppColor';
-import sizeHelper from '../helpers/sizeHelper';
-import Icon from 'react-native-vector-icons/FontAwesome';
-
+} from "react-native";
+import AppColor from "../constant/AppColor";
+import sizeHelper from "../helpers/sizeHelper";
+import Icon from "react-native-vector-icons/FontAwesome";
+import FastImage from "react-native-fast-image";
 const CategoryItem = ({
   isSelected,
   onPressItem,
@@ -26,20 +26,22 @@ const CategoryItem = ({
       style={[
         styles.mainContainer,
         {
-          borderColor: index === focus ? AppColor.yellowColor : AppColor.gray2,
+          borderColor: index === focus ? AppColor.blue5 : AppColor.gray2,
         },
-      ]}>
+      ]}
+    >
       {item.MediaContents ? (
-        <Image
-          source={{ uri: item.MediaContentType + ',' + item.MediaContents }}
+        <FastImage
+          source={{ uri: item.MediaContentType + "," + item.MediaContents }}
           style={styles.categoryImage}
+          resizeMode={FastImage.resizeMode.contain}
         />
       ) : (
         <View style={styles.categoryImage}>
           <Icon
             name="file-image-o"
             size={sizeHelper.calWp(50)}
-            color={AppColor.black + '36'}
+            color={AppColor.black + "36"}
           />
         </View>
       )}
@@ -53,14 +55,17 @@ const CategoryItem = ({
 const styles = StyleSheet.create({
   mainContainer: {
     height: sizeHelper.calHp(150),
-    width: sizeHelper.calWp(165),
+    width:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.screenWidth / 4 - sizeHelper.calWp(30)
+        : sizeHelper.screenWidth / 3 - sizeHelper.calWp(23),
     paddingTop: sizeHelper.calHp(13),
     paddingBottom: sizeHelper.calHp(17),
     borderRadius: sizeHelper.calWp(5),
     paddingHorizontal: sizeHelper.calWp(11),
     borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: sizeHelper.calWp(5),
     shadowColor: AppColor.black,
     // shadowOffset: {
@@ -75,16 +80,16 @@ const styles = StyleSheet.create({
   categoryImage: {
     height: sizeHelper.calHp(80),
     width: sizeHelper.calWp(155),
-    resizeMode: 'contain',
-    justifyContent: 'center',
-    alignItems: 'center',
+    resizeMode: "contain",
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(15),
     color: AppColor.black,
-    textAlign: 'center',
-    fontFamily: 'ProximaNova-Semibold',
+    textAlign: "center",
+    fontFamily: "ProximaNova-Semibold",
   },
 });
 

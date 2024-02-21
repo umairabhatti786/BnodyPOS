@@ -1,15 +1,20 @@
 import React, {useState, useEffect} from 'react';
-import {StyleSheet, View, Text, TextInput, I18nManager} from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  I18nManager,
+  Alert,
+} from 'react-native';
 import translatorHelper, {t} from '../helpers/translatorHelp';
-import i18n from 'i18n-js';
+
 import {Formik} from 'formik';
 import * as yup from 'yup';
 import * as Animatable from 'react-native-animatable';
 import {connect} from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import base64 from 'react-native-base64';
-import * as RNLocalize from 'react-native-localize';
 
 import Header from './Header';
 import sizeHelper from '../helpers/sizeHelper';
@@ -19,6 +24,7 @@ import AppColor from '../constant/AppColor';
 import {ServerCall} from '../redux/actions/asynchronousAction';
 import Loading from './Loading';
 import CustomDropDown from './CustomDropDown';
+import {initial} from 'lodash';
 
 // import { date } from 'yup';
 
@@ -39,13 +45,13 @@ const AddSearchBuyer = ({props}) => {
   const [loyaltyEmail, setLoyaltyEmail] = useState(null);
 
   const current = new Date();
-  //console.log("current date....", props)
+  console.log('current date....', initialValues);
   const [date, setDate] = useState('select Date');
   const [show, setShow] = useState(false);
   const [currentDate, setCurrentDate] = useState('');
   const [loyaltyDate, setLoyaltyDate] = useState('');
   const [loyaltyOpen, setLoyaltyOpen] = useState(false);
-
+  const [type, setType] = useState('');
   const arry = [
     {title: props.StringsList._285, value: 'BuyerName'},
     {title: props.StringsList._138, value: 'PrimaryPhone'},
@@ -65,7 +71,7 @@ const AddSearchBuyer = ({props}) => {
   useEffect(async () => {
     let date, month, year;
     date = current.getDate();
-    month = current.getMonth();
+    month = current.getMonth() + 1;
     year = current.getFullYear();
     const ndate = year + '/' + month + '/' + date;
     const currentDate = `${year}${month < 10 ? '0' + month : month + 1}${
@@ -89,10 +95,17 @@ const AddSearchBuyer = ({props}) => {
           const currentDate = year + '/' + month + '/' + date;
           setLoyaltyDate(currentDate);
         }
-        setSelectedLoyalty(props.buyerInfo.LoyaltyCard.LoyaltyName);
+        setSelectedLoyalty(
+          props.buyerInfo.LoyaltyCard.LoyaltyName
+            ? props.buyerInfo.LoyaltyCard.LoyaltyName
+            : '',
+        );
       }
-
-      setInitialValues(props.buyerInfo);
+      if (props.buyerInfo !== null && props.buyerInfo?.BuyerName !== '') {
+        setInitialValues(props.buyerInfo);
+      } else {
+        setInitialValues(null);
+      }
     }
   }, []);
 
@@ -121,6 +134,7 @@ const AddSearchBuyer = ({props}) => {
   const onSelect = type => {
     if (type === 'Add') {
       setAdd(true);
+      setType('Add');
       let inital = {
         BuyerName: '',
         PrimaryPhone: '',
@@ -140,6 +154,7 @@ const AddSearchBuyer = ({props}) => {
     let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
     let loyaltyObj = null;
     setLoading(true);
+    let ccode = I18nManager.isRTL ? 'ar-SA' : 'en-US';
 
     if (selectedLoyalty !== '') {
       loyaltys.forEach(element => {
@@ -171,41 +186,40 @@ const AddSearchBuyer = ({props}) => {
         Operation: 'add',
         CurrentDate: currentDate,
         LoyaltyCard: loyaltyObj,
+        CultureCode: ccode,
       };
       // console.log("add buyer body", body)
-      const response1 = await props.dispatch(
-        ServerCall(UserLogin, 'Buyer/CreateBuyer', body),
-      );
 
-      if (response1.ReturnCode === -1) {
-        alert(
-          I18nManager.isRTL
-            ? 'حدث خطأ في إعدادات الحساب'
-            : 'Something went wrong with account settings',
-        );
-      } else {
-        searchBuyer(response1.BuyerCode, 'add');
+      const response1 = await props.dispatch(
+        ServerCall(UserLogin, 'Buyer/CreateBuyer', 'POST', body),
+      );
+      let res = await JSON.parse(response1);
+      console.log('parse res data==>', res);
+      if (res && res.BuyerName !== '') {
+        setInitialValues(res);
+        setAdd(false);
       }
-      props.setBuyerInfo(null);
+      // searchBuyer(response1.BuyerCode, "add");
+      // props.setBuyerInfo(null);
       // props.setBuyerInfo(response1)
-      setAdd(false);
+
+      // props.setisBuyer(false);
     } else {
       if (initialValues.BuyerName !== '') {
         if (values === 'Save') {
           props.otherOptions('buyer');
           props.setBuyerInfo(initialValues);
+          props.setisBuyer(false);
         } else {
           if (selectedLoyalty !== '' && !initialValues.LoyaltyCard) {
             initialValues.LoyaltyCard = loyaltyObj;
             initialValues.Operation = 'search';
             initialValues.CurrentDate = currentDate;
+            initialValues.CultureCode = ccode;
             console.log(' initial Values...', initialValues);
+
             const response1 = await props.dispatch(
-              ServerCall(UserLogin, 'Buyer/CreateBuyer', initialValues),
-            );
-            console.log(
-              'response1.ReturnCoderesponse1.ReturnCode',
-              response1.ReturnCode,
+              ServerCall(UserLogin, 'Buyer/CreateBuyer', 'POST', initialValues),
             );
 
             props.setBuyerInfo(response1);
@@ -219,18 +233,11 @@ const AddSearchBuyer = ({props}) => {
 
   const searchBuyer = async (BCode, type) => {
     console.log('searchBuyer', BCode);
+    let ccode = I18nManager.isRTL ? 'ar-SA' : 'en-US';
     setLoading(true);
     if (!props.buyerInfo || type === 'add') {
       let UserLogin = await AsyncStorage.getItem('ACCESS_TOKEN');
-
-      var localeInfo = RNLocalize.getLocales();
-      var languageTag = localeInfo[0].languageTag;
-
-      let decodeToken = base64.decode(UserLogin);
-      console.log('decode token', decodeToken, languageTag);
-      let nw = decodeToken.substring(0, decodeToken.length - 5);
-      let UpdateToken = nw + languageTag;
-      let decodeUpadedToken = base64.encode(UpdateToken);
+      setType('search');
       let body = {
         BuyerName: '',
         ReturnCode: 0,
@@ -242,51 +249,86 @@ const AddSearchBuyer = ({props}) => {
         Operation: 'search',
         CurrentDate: currentDate,
         LoyaltyCard: null,
+        CaltureCode: ccode,
       };
 
       const response1 = await props.dispatch(
-        ServerCall(decodeUpadedToken, 'Buyer/CreateBuyer', body),
+        ServerCall(UserLogin, 'Buyer/CreateBuyer', 'POST', body),
       );
-      if (response1.ReturnCode === 1) {
-        alert(
-          I18nManager.isRTL
-            ? 'لم يتم العثور على مشتري'
-            : 'There is no buyer found',
-        );
-      } else {
-        if (response1.success) {
-          setInitialValues(response1);
-          if (response1.LoyaltyCard !== null) {
-            if (
-              response1.LoyaltyCard.RegistrationDate &&
-              response1.LoyaltyCard.RegistrationDate !== ''
-            ) {
-              let date, month, year;
-              year = response1.LoyaltyCard.RegistrationDate.slice(0, 4);
-              month = response1.LoyaltyCard.RegistrationDate.slice(4, 6);
-              date = response1.LoyaltyCard.RegistrationDate.slice(6, 8);
-              const currentDate = year + '/' + month + '/' + date;
-              setLoyaltyDate(currentDate);
-            } else {
-              setLoyaltyDate('');
-            }
 
-            setSelectedLoyalty(response1.LoyaltyCard.LoyaltyName);
+      let res = await JSON.parse(response1);
+      console.log('parse res data==>', res);
+      if (res && res.BuyerName !== null) {
+        setInitialValues(res);
+        setSearchText('');
+        if (res.LoyaltyCard !== null) {
+          if (
+            res.LoyaltyCard.RegistrationDate &&
+            res.LoyaltyCard.RegistrationDate !== ''
+          ) {
+            let date, month, year;
+            year = res.LoyaltyCard.RegistrationDate.slice(0, 4);
+            month = res.LoyaltyCard.RegistrationDate.slice(4, 6);
+            date = res.LoyaltyCard.RegistrationDate.slice(6, 8);
+            const currentDate = year + '/' + month + '/' + date;
+            setLoyaltyDate(currentDate);
           } else {
-            setSelectedLoyalty('');
+            setLoyaltyDate('');
           }
+
+          setSelectedLoyalty(res?.LoyaltyCard?.LoyaltyName);
         } else {
-          let inital = {
-            BuyerName: '',
-            PrimaryPhone: '',
-            CCRNumber: '',
-            ValueAddedTaxNumber: '',
-            BuyerCode: '',
-            BuyerAddress: '',
-          };
-          setInitialValues(inital);
-          props.setBuyerInfo(null);
+          setSelectedLoyalty('');
         }
+      } else if (res.BuyerName === null) {
+        Alert.alert('Restaurant POS', 'Buyer not found', [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('okkkk'), setLoading(false);
+              let inital = {
+                BuyerName: '',
+                PrimaryPhone: '',
+                CCRNumber: '',
+                ValueAddedTaxNumber: '',
+                BuyerCode: '',
+                BuyerAddress: '',
+              };
+              setInitialValues(inital);
+              setSearchText('');
+            },
+          },
+          {
+            text: 'Cancel',
+            onPress: () => {
+              console.log('cancel'), setLoading(false);
+              let inital = {
+                BuyerName: '',
+                PrimaryPhone: '',
+                CCRNumber: '',
+                ValueAddedTaxNumber: '',
+                BuyerCode: '',
+                BuyerAddress: '',
+              };
+              setInitialValues(inital);
+              setSearchText('');
+            },
+            style: 'cancel',
+          },
+        ]);
+        setLoading(false);
+      } else {
+        let inital = {
+          BuyerName: '',
+          PrimaryPhone: '',
+          CCRNumber: '',
+          ValueAddedTaxNumber: '',
+          BuyerCode: '',
+          BuyerAddress: '',
+        };
+        setInitialValues(inital);
+        props.setBuyerInfo(null);
+        setSearchText('');
       }
       // console.log("response1..........", loyaltys)
       setLoading(false);
@@ -302,6 +344,7 @@ const AddSearchBuyer = ({props}) => {
       setSelectedLoyalty('');
       setInitialValues(inital);
       props.setBuyerInfo(null);
+      setSearchText('');
       setLoading(false);
     }
   };
@@ -309,7 +352,7 @@ const AddSearchBuyer = ({props}) => {
     setShow(false);
     let date, month, year;
     date = selectedDate.getDate();
-    month = selectedDate.getMonth();
+    month = selectedDate.getMonth() + 1;
     year = selectedDate.getFullYear();
 
     const currentDate = year + '/' + month + '/' + date;
@@ -339,25 +382,49 @@ const AddSearchBuyer = ({props}) => {
       </View>
       {!isAdd && (
         <View style={styles.searchAddContainer}>
-          <Text style={styles.title}>{props.StringsList._137}</Text>
+          <Text
+            style={[
+              styles.title,
+              {right: sizeHelper.screenWidth > 450 ? 35 : -5},
+            ]}>
+            {props.StringsList._137}
+          </Text>
           <View style={styles.textInputContainer2}>
             <TextInput
               style={[styles.textInput2]}
               placeholder={props.StringsList._135}
               onChangeText={text => {
-                onChangeText(text);
+                onChangeText(text.trim());
               }}
+              value={searchText}
             />
           </View>
           <CustomButton
-            containerStyle={{
-              marginEnd: sizeHelper.calHp(15),
-            }}
-            backgroundColor={props.buyerInfo ? AppColor.red1 : AppColor.blue2}
-            title={
-              props.buyerInfo ? props.StringsList._117 : props.StringsList._135
+            backgroundColor={
+              initialValues.BuyerName !== '' && searchText === ''
+                ? AppColor.red
+                : AppColor.blue2
             }
-            onPressButton={() => searchBuyer(null)}
+            title={
+              initialValues.BuyerName !== '' && searchText === ''
+                ? props.StringsList._117
+                : props.StringsList._135
+            }
+            onPressButton={() => {
+              if (searchText !== '') {
+                searchBuyer(null);
+              } else {
+                setInitialValues({
+                  BuyerName: '',
+                  PrimaryPhone: '',
+                  CCRNumber: '',
+                  ValueAddedTaxNumber: '',
+                  BuyerCode: '',
+                  BuyerAddress: '',
+                });
+                setSearchText('');
+              }
+            }}
           />
         </View>
       )}
@@ -403,7 +470,7 @@ const AddSearchBuyer = ({props}) => {
                           zIndex={0}
                           editable={isAdd}
                           BuyerName={item.value}
-                          onChangeText={handleChange(item.value)}
+                          onChangeText={handleChange(item.value.trim())}
                           style={styles.textInput}
                           placeholder={item.title}
                           value={
@@ -490,14 +557,25 @@ const AddSearchBuyer = ({props}) => {
                 }}
                 backgroundColor={AppColor.blue2}
                 title={props.StringsList._1}
-                onPressButton={() => addSaveBuyer('Save')}
+                onPressButton={() => {
+                  if (
+                    initialValues.BuyerName !== '' &&
+                    initialValues.BuyerName !== null
+                  ) {
+                    console.log(
+                      initialValues.BuyerName !== '' &&
+                        initialValues.BuyerName !== null,
+                    );
+                    addSaveBuyer('Save');
+                  }
+                }}
               />
               <CustomButton
                 containerStyle={{
                   backgroundColor: AppColor.red1,
                 }}
                 backgroundColor={AppColor.red1}
-                onPressButton={() => props.otherOptions('buyer')}
+                onPressButton={() => props.setisBuyer(false)}
                 title={props.StringsList._2}
               />
             </View>
@@ -527,10 +605,11 @@ const styles = StyleSheet.create({
   container: {
     width: '95%',
     backgroundColor: AppColor.white,
-    paddingBottom: sizeHelper.calHp(20),
+    paddingBottom: sizeHelper.calHp(30),
     borderRadius: sizeHelper.calWp(15),
     shadowColor: AppColor.black,
     paddingHorizontal: sizeHelper.calWp(40),
+
     shadowOffset: {
       width: 52,
       height: 40,
@@ -584,15 +663,22 @@ const styles = StyleSheet.create({
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
+    overflow: 'hidden',
     //backgroundColor: 'green',
   },
   textInputContainer2: {
-    width: sizeHelper.calWp(250),
-    height: sizeHelper.calHp(60),
+    width:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.calWp(230)
+        : sizeHelper.calWp(200),
+    height: sizeHelper.calHp(50),
     backgroundColor: AppColor.white,
-    borderRadius: sizeHelper.calHp(60),
+    borderRadius: sizeHelper.calHp(5),
     paddingStart: sizeHelper.calWp(20),
-    marginHorizontal: sizeHelper.calWp(60),
+    marginHorizontal:
+      sizeHelper.screenWidth > 450
+        ? sizeHelper.calWp(60)
+        : sizeHelper.calWp(40),
     alignItems: 'center',
     flexDirection: 'row',
     shadowColor: AppColor.blue1,
@@ -603,6 +689,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 2.22,
     elevation: 10,
+    overflow: 'hidden',
+    textAlignVertical: 'center',
   },
   divider: {
     width: '100%',
@@ -619,7 +707,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: sizeHelper.calHp(60),
+    marginTop: sizeHelper.calHp(40),
   },
   redioButtonContainer: {
     flexDirection: 'row',

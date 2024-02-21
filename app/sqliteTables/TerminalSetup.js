@@ -6,7 +6,7 @@ export const TerminalSetupCoulumnskey = [
   {
     id: '12345678',
     DrawerHanding: false,
-    DeliveryNotes: false,
+    AddParcelType: false,
     EndDrawerOnLogout: false,
     BeepSound: false,
     TerminalLanguage: 'engliah',
@@ -16,15 +16,17 @@ export const TerminalSetupCoulumnskey = [
     StartFrom: '001',
     PrintProductFamily: false,
     PrintAddons: false,
-    printGroupProducts: false,
     BillLabeling: false,
+    printGroupProducts: false,
+    requiredTime: '30',
+    IsKitchenDisplay: true,
   },
 ];
 export const TerminalSetupCreateTableCoulumns =
-  `id TEXT  PRIMARY KEY NOT NULL, DeliveryNotes  TEXT, EndDrawerOnLogout  TEXT, BeepSound  TEXT, TerminalLanguage TEXT, SelfBilling TEXT,` +
-  ` DrawerHanding TEXT,BillLabeling TEXT, Copies TEXT, SelfCount TEXT, StartFrom  TEXT, PrintProductFamily TEXT, PrintAddons TEXT , printGroupProducts  TEXT`;
+  `id TEXT  PRIMARY KEY NOT NULL, AddParcelType  TEXT, EndDrawerOnLogout  TEXT, BeepSound  TEXT, TerminalLanguage TEXT, SelfBilling TEXT,` +
+  ` DrawerHanding TEXT,BillLabeling TEXT, Copies TEXT,requiredTime  TEXT,printGroupProducts  TEXT, SelfCount TEXT, StartFrom  TEXT, PrintProductFamily TEXT, PrintAddons TEXT , IsKitchenDisplay TEXT`;
 
-export const TerminalSetupInsertCoulumns = `id, DeliveryNotes,EndDrawerOnLogout, BeepSound, TerminalLanguage, SelfBilling, DrawerHanding, BillLabeling, Copies, SelfCount, StartFrom, PrintProductFamily, PrintAddons, printGroupProducts`;
+export const TerminalSetupInsertCoulumns = `id, AddParcelType,EndDrawerOnLogout, BeepSound, TerminalLanguage, SelfBilling, DrawerHanding, BillLabeling, Copies,requiredTime, SelfCount,printGroupProducts, StartFrom, PrintProductFamily, PrintAddons , IsKitchenDisplay`;
 
 export const InsertTerminalSetup = async values => {
   let InsertDataQuery = `INSERT INTO ${TerminalSetupTable} (${TerminalSetupInsertCoulumns}) VALUES`;
@@ -35,15 +37,13 @@ export const InsertTerminalSetup = async values => {
       "('" +
       values[i].id +
       "','" +
-      values[i].DeliveryNotes +
+      values[i].AddParcelType +
       "','" +
       values[i].EndDrawerOnLogout +
       "','" +
       values[i].BeepSound +
       "','" +
       values[i].TerminalLanguage +
-      "','" +
-      values[i].printGroupProducts +
       "','" +
       values[i].SelfBilling +
       "','" +
@@ -53,6 +53,10 @@ export const InsertTerminalSetup = async values => {
       "','" +
       values[i].Copies +
       "','" +
+      values[i].requiredTime +
+      "','" +
+      values[i].printGroupProducts +
+      "','" +
       values[i].SelfCount +
       "','" +
       values[i].StartFrom +
@@ -60,6 +64,8 @@ export const InsertTerminalSetup = async values => {
       values[i].PrintProductFamily +
       "','" +
       values[i].PrintAddons +
+      "','" +
+      values[i].IsKitchenDisplay +
       "')";
     if (i != values.length - 1) {
       InsertDataQuery = InsertDataQuery + ',';

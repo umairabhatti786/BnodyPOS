@@ -1,37 +1,37 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import {StyleSheet, View, Text, TextInput, BackHandler} from 'react-native';
-import i18n from 'i18n-js';
-import * as Animatable from 'react-native-animatable';
-import Header from './Header';
-import sizeHelper from '../helpers/sizeHelper';
-import CustomButton from './CustomButton';
-import CustomRadioButton from './CustomRadioButton';
-import AppColor from '../constant/AppColor';
-import {CreateTable, DeleteTable, getData, updateColunm} from '../sqliteHelper';
+import React, { useCallback, useEffect, useState } from "react";
+import { StyleSheet, View, Text, TextInput, BackHandler } from "react-native";
+
+import * as Animatable from "react-native-animatable";
+import Header from "./Header";
+import sizeHelper from "../helpers/sizeHelper";
+import CustomButton from "./CustomButton";
+import CustomRadioButton from "./CustomRadioButton";
+
+import AppColor from "../constant/AppColor";
+import {
+  CreateTable,
+  DeleteTable,
+  getData,
+  updateColunm,
+} from "../sqliteHelper";
 import {
   DrawerSetupCoulumnskey,
   DrawerSetupCreateTableCoulumns,
   DrawerSetupTable,
   InsertDrawerSetup,
-} from '../sqliteTables/DrawerSetup';
-import Loading from './Loading';
-import moment from 'moment';
-import {
-  InsertPaymentMethodList,
-  PaymentMethodListCreateTableCoulumns,
-  PaymentMethodTable,
-} from '../sqliteTables/PaymentMethods';
-import {SalesPostingConfigurationListTable} from '../sqliteTables/SalesPostingConfigurationList';
+} from "../sqliteTables/DrawerSetup";
+import Loading from "./Loading";
+import moment from "moment";
 
-const DrawerPopUp = props => {
+const DrawerPopUp = (props) => {
   const [isDesposit, setDesposit] = useState(true);
   const [drawerSetupArr, setDrawerSetupArr] = useState({});
-  const [iniCash, setIniCash] = useState('');
-  const [dwCash, setDWCash] = useState('');
+  const [iniCash, setIniCash] = useState("");
+  const [dwCash, setDWCash] = useState("");
   const [isLoading, setLoading] = useState(false);
 
-  const onSelect = type => {
-    if (type === 'Deposit') {
+  const onSelect = (type) => {
+    if (type === "Deposit") {
       setDesposit(true);
     } else {
       setDesposit(false);
@@ -39,28 +39,28 @@ const DrawerPopUp = props => {
   };
 
   let amountDetails = [
-    {id: 'StartDate', title: props.StringsList._47, value: '0'},
-    {id: 'initialCash', title: props.StringsList._48, value: '0'},
-    {id: 'DepositCash', title: props.StringsList._50, value: '0'},
-    {id: 'CashRefund', title: props.StringsList._49, value: '0'},
-    {id: 'CashSales', title: props.StringsList._52, value: '0'},
-    {id: 'withDraw', title: props.StringsList._51, value: '0'},
-    {id: 'estimatedAmountinDrawer', title: props.StringsList._53, value: '0'},
+    { id: "StartDate", title: props.StringsList._47, value: "0" },
+    { id: "initialCash", title: props.StringsList._48, value: "0" },
+    { id: "DepositCash", title: props.StringsList._50, value: "0" },
+    { id: "CashRefund", title: props.StringsList._49, value: "0" },
+    { id: "CashSales", title: props.StringsList._52, value: "0" },
+    { id: "withDraw", title: props.StringsList._51, value: "0" },
+    { id: "estimatedAmountinDrawer", title: props.StringsList._53, value: "0" },
     {
-      id: 'creditSales',
+      id: "creditSales",
       title: props.StringsList._54,
-      value: '0',
+      value: "0",
     },
     {
-      id: 'creditRefunds',
-      title: props.StringsList._55 + ' ' + props.StringsList._56,
-      value: '0',
+      id: "creditRefunds",
+      title: props.StringsList._55 + " " + props.StringsList._56,
+      value: "0",
     },
-    {id: 'cardSale', title: props.StringsList._57, value: '0'},
-    {id: 'cardReturn', title: props.StringsList._58, value: '0'},
+    { id: "cardSale", title: props.StringsList._57, value: "0" },
+    { id: "cardReturn", title: props.StringsList._58, value: "0" },
   ];
   const onClickCancel = () => {
-    props.navigation.navigate('dashboard');
+    props.navigation.navigate("dashboard");
   };
 
   useEffect(() => {
@@ -68,76 +68,57 @@ const DrawerPopUp = props => {
     // CreateTable(DrawerSetupTable, DrawerSetupCreateTableCoulumns);
     // InsertDrawerSetup(DrawerSetupCoulumnskey);
     console.log(
-      'props.userConfiguration.EndCashDrawerAllowed',
-      props.userConfiguration,
+      "props.userConfiguration.EndCashDrawerAllowed",
+      props.userConfiguration
     );
-    getData(DrawerSetupTable, cb => {
+    getData(DrawerSetupTable, (cb) => {
       setDrawerSetupArr(cb[0]);
+      console.log("drawerSetupArr", drawerSetupArr);
     });
   }, []);
 
-  const onStartCash = type => {
+  const onStartCash = (type) => {
     setLoading(true);
-    if (type === 'start') {
-      CreateTable(PaymentMethodTable, PaymentMethodListCreateTableCoulumns);
+    if (type === "start") {
       let columnName = [
-        'StartDate',
-        'initialCash',
-        'estimatedAmountinDrawer',
-        'isInitialCashSet',
-        'InitialBillNumber',
+        "StartDate",
+        "initialCash",
+        "estimatedAmountinDrawer",
+        "isInitialCashSet",
       ];
       let columnValue = [
-        moment().format('DD-MM-YYYY, hh:mm:ss A'),
+        moment().format("DD-MM-YYYY, hh:mm:ss A"),
         iniCash,
         iniCash,
-        'true',
-        props.TerminalConfiguration.LastBillNumber,
+        "true",
       ];
       updateColunm(
         DrawerSetupTable,
         columnName,
-        'id',
-        'D12345678',
-        columnValue,
+        "id",
+        "D12345678",
+        columnValue
       );
-      getData(DrawerSetupTable, cb => {
+      getData(DrawerSetupTable, (cb) => {
         setDrawerSetupArr(cb[0]);
         setLoading(false);
-        setIniCash('');
-      });
-
-      getData(SalesPostingConfigurationListTable, cb => {
-        console.log('payments table data is', cb);
-        if (cb.length > 0) {
-          let InsertValue = [];
-          cb.forEach(element => {
-            let obj = {};
-            obj.PaymentType = element.PaymentType;
-            obj.PaymentTypeName = element.PaymentTypeName;
-            obj.PaymentTypeName2 = element.PaymentTypeName2;
-            obj.Sales = '0';
-            InsertValue.push(obj);
-          });
-          InsertPaymentMethodList(InsertValue);
-        }
+        setIniCash("");
       });
     } else {
       if (props.userConfiguration.EndCashDrawerAllowed === 1) {
         DeleteTable(DrawerSetupTable);
-        DeleteTable(PaymentMethodTable);
         CreateTable(DrawerSetupTable, DrawerSetupCreateTableCoulumns);
         InsertDrawerSetup(DrawerSetupCoulumnskey);
-        getData(DrawerSetupTable, cb => {
+        getData(DrawerSetupTable, (cb) => {
           setDrawerSetupArr(cb[0]);
           setLoading(false);
-          setIniCash('');
+          setIniCash("");
           updateColunm(
             DrawerSetupTable,
-            ['isInitialLogin'],
-            'id',
-            'D12345678',
-            'false',
+            ["isInitialLogin"],
+            "id",
+            "D12345678",
+            "false"
           );
         });
       } else {
@@ -146,7 +127,7 @@ const DrawerPopUp = props => {
     }
   };
   const changeText = (text, type) => {
-    if (type === 'dwCash') {
+    if (type === "dwCash") {
       setDWCash(text);
     } else {
       setIniCash(text);
@@ -157,34 +138,34 @@ const DrawerPopUp = props => {
     let estimatedAmountinDrawer = isDesposit
       ? Number(drawerSetupArr.estimatedAmountinDrawer) + Number(dwCash)
       : Number(drawerSetupArr.estimatedAmountinDrawer) - Number(dwCash);
-    if (dwCash !== '') {
+    if (dwCash !== "") {
       let dCash = isDesposit
         ? Number(drawerSetupArr.DepositCash) + Number(dwCash)
         : Number(drawerSetupArr.withDraw) + Number(dwCash);
-      console.log('sdasdsadasads', dCash);
+      console.log("sdasdsadasads", dCash);
       setLoading(true);
-      if (estimatedAmountinDrawer >= 0) {
+      if (estimatedAmountinDrawer > 0) {
         let columnName = isDesposit
-          ? ['DepositCash', 'estimatedAmountinDrawer']
-          : ['withDraw', 'estimatedAmountinDrawer'];
+          ? ["DepositCash", "estimatedAmountinDrawer"]
+          : ["withDraw", "estimatedAmountinDrawer"];
         let columnValue = [dCash, estimatedAmountinDrawer];
         updateColunm(
           DrawerSetupTable,
           columnName,
-          'id',
-          'D12345678',
-          columnValue,
+          "id",
+          "D12345678",
+          columnValue
         );
-        getData(DrawerSetupTable, cb => {
+        getData(DrawerSetupTable, (cb) => {
           setDrawerSetupArr(cb[0]);
           setLoading(false);
-          setDWCash('');
+          setDWCash("");
         });
+        props.cancel("drawer");
       } else {
-        alert('you don’t have sufficient balance to complete this request');
+        alert("you don’t have sufficient balance to complete this request");
         setLoading(false);
       }
-      // props.setIsDrawar(!props.isDrawar);
     }
   };
 
@@ -196,7 +177,8 @@ const DrawerPopUp = props => {
       useNativeDriver
       value={100}
       // easing="ease-in"
-      animation="slideInRight">
+      animation="slideInRight"
+    >
       {/* <Header title={i18n.t('drawer')} /> */}
 
       <View style={styles.amountDetailsContianer}>
@@ -204,16 +186,17 @@ const DrawerPopUp = props => {
           return (
             <View
               key={item.title + item.value}
-              style={styles.titleValueContainer}>
+              style={styles.titleValueContainer}
+            >
               <Text style={[styles.titleValueStyle]}>{item.title}</Text>
               <View
               // style={{justifyContent: 'flex-end', alignItems: 'flex-end'}}
               >
                 <Text style={[styles.titleValueStyle]}>
-                  {item.id === 'StartDate'
+                  {item.id === "StartDate"
                     ? drawerSetupArr[item.id]
                     : Number(drawerSetupArr[item.id]).toFixed(
-                        props.TerminalConfiguration.DecimalsInAmount,
+                        props.TerminalConfiguration.DecimalsInAmount
                       )}
                 </Text>
               </View>
@@ -224,20 +207,38 @@ const DrawerPopUp = props => {
         <Text style={styles.initialAmount}>{props.StringsList._46}</Text>
         <View
           style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
+            flexDirection: "row",
+            justifyContent: "space-between",
             marginTop: sizeHelper.calHp(10),
-          }}>
+          }}
+        >
           <TextInput
             style={styles.inputField}
-            onChangeText={text => {
+            onChangeText={(text) => {
               changeText(text);
             }}
-            editable={drawerSetupArr.isInitialCashSet === 'false'}
+            editable={drawerSetupArr.isInitialCashSet === "false"}
             value={iniCash}
             placeholder="0.00"
           />
-          <CustomButton
+          {/* New button code here  */}
+          <View style={{ zIndex: 0, alignItems: "center" }}>
+            <CustomButton
+              containerStyle={[styles.buttonStyle]}
+              title={
+                drawerSetupArr.isInitialCashSet === "true"
+                  ? props.StringsList._100
+                  : props.StringsList._184
+              }
+              backgroundColor={AppColor.blue2}
+              onPressButton={() => {
+                drawerSetupArr.isInitialCashSet === "true"
+                  ? onStartCash("end")
+                  : onStartCash("start");
+              }}
+            />
+          </View>
+          {/* <CustomButton
             backgroundColor={AppColor.blue2}
             title={
               drawerSetupArr.isInitialCashSet === 'true'
@@ -249,15 +250,15 @@ const DrawerPopUp = props => {
                 ? onStartCash('end')
                 : onStartCash('start');
             }}
-          />
+          /> */}
         </View>
         <Text style={styles.initialAmount}>
-          {props.StringsList._50 + ' ' + props.StringsList._51}
+          {props.StringsList._50 + " " + props.StringsList._51}
         </Text>
         <View style={styles.redioButtonContainer}>
           <View>
             <CustomRadioButton
-              onSelect={() => onSelect('Deposit')}
+              onSelect={() => onSelect("Deposit")}
               isSelected={isDesposit}
               title={props.StringsList._50}
             />
@@ -265,15 +266,15 @@ const DrawerPopUp = props => {
               style={styles.inputField2}
               placeholder={props.StringsList._310}
               keyboardType="number-pad"
-              onChangeText={text => {
-                changeText(text, 'dwCash');
+              onChangeText={(text) => {
+                changeText(text, "dwCash");
               }}
               value={dwCash}
             />
           </View>
           <View>
             <CustomRadioButton
-              onSelect={() => onSelect('Withdraw')}
+              onSelect={() => onSelect("Withdraw")}
               isSelected={!isDesposit}
               title={props.StringsList._51}
             />
@@ -284,27 +285,35 @@ const DrawerPopUp = props => {
             />
           </View>
         </View>
+
+        {/* New button code here  */}
+
         <View style={styles.buttonContainer}>
-          <CustomButton
-            containerStyle={{
-              marginEnd: sizeHelper.calHp(15),
+          <View
+            style={{
+              flexDirection: "row-reverse",
+              // justifyContent: "space-between",
+              flex: 1,
             }}
-            backgroundColor={AppColor.blue2}
-            title={props.StringsList._1}
-            isDisabled={!dwCash || drawerSetupArr.isInitialCashSet !== 'true'}
-            onPressButton={() => {
-              onSave();
-              props.cancel('drawer');
-            }}
-          />
-          <CustomButton
-            containerStyle={{
-              backgroundColor: AppColor.red1,
-            }}
-            backgroundColor={AppColor.red1}
-            onPressButton={() => props.cancel('drawer')}
-            title={props.StringsList._2}
-          />
+          >
+            <CustomButton
+              containerStyle={{
+                backgroundColor: AppColor.red1,
+              }}
+              backgroundColor={AppColor.red1}
+              onPressButton={() => props.cancel("drawer")}
+              title={props.StringsList._2}
+            />
+            <CustomButton
+              containerStyle={{
+                marginEnd: sizeHelper.calHp(15),
+              }}
+              backgroundColor={AppColor.blue2}
+              title={props.StringsList._1}
+              isDisabled={!dwCash}
+              onPressButton={onSave}
+            />
+          </View>
         </View>
       </View>
       {isLoading && (
@@ -318,9 +327,9 @@ const DrawerPopUp = props => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '95%',
+    width: "95%",
     backgroundColor: AppColor.white,
-    borderRadius: sizeHelper.calWp(15),
+    borderRadius: sizeHelper.calWp(10),
     shadowColor: AppColor.black,
     shadowOffset: {
       width: 52,
@@ -336,44 +345,44 @@ const styles = StyleSheet.create({
     // width: '100%',
   },
   titleValueContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: sizeHelper.calHp(10),
   },
   titleValueStyle: {
     marginTop: sizeHelper.calHp(5),
     fontSize: sizeHelper.calHp(18),
     color: AppColor.black,
-    fontFamily: 'Proxima Nova Regular',
+    fontFamily: "ProximaNova-Regular",
   },
   initialAmount: {
     marginTop: sizeHelper.calHp(20),
     fontSize: sizeHelper.calHp(18),
     color: AppColor.black,
-    fontFamily: 'Proxima Nova Bold',
+    fontFamily: "Proxima Nova Bold",
     // backgroundColor: 'green',
   },
   inputField: {
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(1),
-    width: sizeHelper.calWp(500),
+    width: sizeHelper.calWp(495),
     height: sizeHelper.calHp(40),
-    backgroundColor: 'transparent',
-    fontFamily: 'Proxima Nova Bold',
+    backgroundColor: "transparent",
+    fontFamily: "Proxima Nova Bold",
     fontSize: sizeHelper.calHp(20),
     color: AppColor.black,
     borderBottomWidth: 1,
     borderColor: AppColor.gray3,
   },
   inputField2: {
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     padding: 0,
     paddingStart: sizeHelper.calWp(1),
     width: sizeHelper.calWp(330),
     height: sizeHelper.calHp(40),
-    backgroundColor: 'transparent',
-    fontFamily: 'Proxima Nova Regular',
+    backgroundColor: "transparent",
+    fontFamily: "ProximaNova-Regular",
     fontSize: sizeHelper.calHp(18),
     color: AppColor.black,
     borderBottomWidth: 1,
@@ -381,22 +390,33 @@ const styles = StyleSheet.create({
     marginTop: sizeHelper.calHp(40),
   },
   redioButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: sizeHelper.calHp(15),
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: sizeHelper.calHp(60),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: sizeHelper.calHp(50),
   },
   popupContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: AppColor.popUpBackgroundColor,
+  },
+  // button design
+  buttonStyle: {
+    height: sizeHelper.calWp(50),
+
+    // flex: 1,
+  },
+  buttonStyle2: {
+    height: sizeHelper.calWp(50),
+
+    flex: 1,
   },
 });
 

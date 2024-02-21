@@ -1,43 +1,43 @@
-import React from 'react';
-import {Text} from 'react-native';
-import SQLite from 'react-native-sqlite-storage';
+import React from "react";
+import { Text } from "react-native";
+import SQLite from "react-native-sqlite-storage";
 var db = SQLite.openDatabase(
   {
-    name: 'SQLite',
-    location: 'default',
+    name: "RestarurantSQLite",
+    location: "default",
   },
   () => {},
-  error => {
-    console.log('ERROR: ' + error);
-  },
+  (error) => {
+    console.log("ERROR: " + error);
+  }
 );
 
 export const DeleteDatatbase = async () => {
   // console.log('dbdbdb', db);
   SQLite.deleteDatabase(
     {
-      name: 'SQLite',
-      location: 'default',
+      name: "RestarurantSQLite",
+      location: "default",
     },
-    msg => {
+    (msg) => {
       // SQLite.openDatabase({name : "db_name.sqlite", createFromLocation : '~db_name.sqlite'});
       db = SQLite.openDatabase(
         {
-          name: 'SQLite',
-          location: 'default',
+          name: "RestarurantSQLite",
+          location: "default",
         },
         () => {},
-        error => {
-          console.log('ERROR: ' + error);
-        },
+        (error) => {
+          console.log("ERROR: " + error);
+        }
       );
-    },
+    }
   );
 };
 export const ExecuteQuery = (sql, params = [], TableName) =>
   new Promise((resolve, reject) => {
     // console.log('ExecuteQuery');
-    db.transaction(trans => {
+    db.transaction((trans) => {
       trans.executeSql(
         sql,
         params,
@@ -45,13 +45,13 @@ export const ExecuteQuery = (sql, params = [], TableName) =>
           // console.log('resolve results', trans);
           resolve(results);
         },
-        error => {
-          console.log('reject error', error, TableName);
+        (error) => {
+          console.log("reject error", error, TableName);
           reject(error);
         },
-        err => {
-          console.log('ExecuteQuery', err);
-        },
+        (err) => {
+          console.log("ExecuteQuery", err);
+        }
       );
     });
   });
@@ -78,7 +78,7 @@ export const getDataById = async (TableName, CoulumnsName, Id, cb) => {
   // );
   let selectQuery = await ExecuteQuery(
     `SELECT * FROM ${TableName}  WHERE ${CoulumnsName}= "${Id}"`,
-    [],
+    []
   );
 
   var rows = selectQuery.rows;
@@ -92,7 +92,7 @@ export const getDataByMultipaleID = async (
   Id,
   CoulumnNames2,
   Id2,
-  cb,
+  cb
 ) => {
   // console.log('getData');
   // console.log(
@@ -102,11 +102,11 @@ export const getDataByMultipaleID = async (
 
   let selectQuery = await ExecuteQuery(
     `SELECT * FROM ${TableName}  WHERE ${CoulumnsName}= "${Id}" AND ${CoulumnNames2}="${Id2}"`,
-    [],
+    []
   );
 
   var rows = selectQuery.rows;
-  console.log('select query', selectQuery, 'rows', rows);
+  console.log("select query", selectQuery, "rows", rows);
 
   cb(rows.raw());
 };
@@ -116,7 +116,7 @@ export const getDataJoinById = async (
   TableName2,
   CoulumnsName,
   Id,
-  cb,
+  cb
 ) => {
   // console.log('getData');
   // console.log(
@@ -126,7 +126,7 @@ export const getDataJoinById = async (
   let selectQuery = await ExecuteQuery(
     `SELECT TN2.UOMFragment ,TN2.UOMType,TN2.ProductCategoryCode, TN1.* FROM ${TableName1} TN1
         LEFT JOIN ${TableName2} TN2 ON TN2.ProductBarCode = TN1.ProductBarCode WHERE TN1.${CoulumnsName}= "${Id}"`,
-    [],
+    []
   );
 
   var rows = selectQuery.rows;
@@ -142,7 +142,7 @@ export const getDataJoinById = async (
 //   console.log(updateQuery);
 // };
 
-export const DeleteTable = async TableName => {
+export const DeleteTable = async (TableName) => {
   await ExecuteQuery(`DROP TABLE IF EXISTS ${TableName} `, []);
   // console.log('DeleteTable');
 };
@@ -157,12 +157,12 @@ export const updateColunm = async (
   CoulumnNames,
   idName,
   id,
-  values,
+  values
 ) => {
   let updateDataQuery = `UPDATE ${TableName} SET`;
-  let Coulumns = '',
-    col = '';
-  let value = '';
+  let Coulumns = "",
+    col = "";
+  let value = "";
   for (let i = 0; i < CoulumnNames.length; ++i) {
     if (i != CoulumnNames.length - 1) {
       col = `${CoulumnNames[i]} = "${values[i]}",`;
@@ -175,5 +175,5 @@ export const updateColunm = async (
 
   // console.log('update Data Query ......', updateDataQuery);
   let updateColunm = await ExecuteQuery(updateDataQuery);
-  // console.log('update Colunm ===== > ', updateColunm);
+  // console.log('update Colunm...', updateColunm);
 };

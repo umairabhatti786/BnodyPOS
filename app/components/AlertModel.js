@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Modal,
@@ -6,8 +6,11 @@ import {
   TextInput,
   TouchableOpacity,
   I18nManager,
+  Image,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/AntDesign';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import {TerminalConfigurationTable} from '../sqliteTables/TerminalConfiguration';
+import {getData} from '../sqliteHelper';
 import {reach} from 'yup';
 import AppColor from '../constant/AppColor';
 import sizeHelper from '../helpers/sizeHelper';
@@ -25,8 +28,10 @@ const AlertModel = ({
   reacallFunc,
   placeholderText,
   type,
+  props,
 }) => {
-  // console.log('value alert', value, isPromptAlert, value === 'undefined');
+  // console.log('value', value, 'message', message);
+
   return (
     <Modal visible={displayAlert} transparent={true} animationType={'fade'}>
       <View
@@ -34,7 +39,7 @@ const AlertModel = ({
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: 25,
+          // borderRadius: 25,
           backgroundColor: AppColor.popUpBackgroundColor,
         }}>
         <View
@@ -61,11 +66,19 @@ const AlertModel = ({
               onAlertShow(false);
               setisPromptAlert(false);
             }}>
-            <Icon
+            <Image
+              style={{
+                width: sizeHelper.calHp(35),
+                height: sizeHelper.calHp(35),
+                resizeMode: 'contain',
+              }}
+              source={require('../assets/images/cross.png')}
+            />
+            {/* <Icon
               name={'close'}
               size={sizeHelper.calWp(35)}
               color={AppColor.white}
-            />
+            /> */}
           </TouchableOpacity>
         </View>
         <View
@@ -125,8 +138,14 @@ const AlertModel = ({
             titleColor={AppColor.white}
             onPressButton={() => {
               if (isPromptAlert || isConfirmation) {
+                if (type === 'reprint' || type === 'returnInvoice') {
+                  reacallFunc(type, value);
+                } else {
+                  reacallFunc(type, undefined);
+                }
                 console.log('on confirmation');
-                reacallFunc(type);
+              } else if (type === 'rebootTerminal') {
+                reacallFunc(type, undefined);
               }
               onAlertShow(false);
               setisPromptAlert(false);

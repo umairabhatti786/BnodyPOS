@@ -1,4 +1,4 @@
-import { combineReducers } from 'redux';
+import {combineReducers} from 'redux';
 const initialState = {
   UserLogin: '',
   TerminalConfiguration: '',
@@ -20,21 +20,6 @@ const initialState = {
   stringsListEnglish: '',
   stringsListArabic: '',
 };
-// import {updateUser} from '../actions/synchronousAction';
-
-// const initialState = {
-//   loggedInUser: null,
-//   name: 'khuram',
-// };
-
-// export default handleActions(
-//   {
-//     [updateUser]: (state, action) => {
-//       return {...state, ...action.payload};
-//     },
-//   },
-//   initialState,
-// );
 const ServerCall = (state = {}, action) => {
   // console.log('actionsss', action);
   switch (action.type) {
@@ -96,6 +81,7 @@ const SaveAllData = (state = initialState, action) => {
             CardSetupParent: action.payload?.data?.CardSetupParent,
             stringsListEnglish: action.payload?.data?.stringsListEnglish,
             stringsListArabic: action.payload?.data?.stringsListArabic,
+            orderTackerList: action.payload?.data?.OrderTackers,
           };
           break;
         case 'ChangeStringsList':

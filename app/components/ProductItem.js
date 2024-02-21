@@ -15,12 +15,11 @@ import FastImage from "react-native-fast-image";
 const ProductItem = ({ item, onSelectProduct, TerminalConfiguration }) => {
   return (
     <TouchableOpacity
-      // disabled={item.isSelected}
       onPress={() => onSelectProduct(item)}
       style={[
         styles.mainContainer,
         {
-          borderColor: item.isSelected ? AppColor.yellowColor : AppColor.gray2,
+          borderColor: item?.isSelected ? AppColor.blue5 : AppColor.gray2,
         },
       ]}
     >
@@ -28,6 +27,7 @@ const ProductItem = ({ item, onSelectProduct, TerminalConfiguration }) => {
         <FastImage
           source={{ uri: item.MediaContentType + "," + item.MediaContents }}
           style={styles.categoryImage}
+          resizeMode={FastImage.resizeMode.contain}
         />
       ) : (
         <View style={styles.categoryImage}>
@@ -39,20 +39,23 @@ const ProductItem = ({ item, onSelectProduct, TerminalConfiguration }) => {
         </View>
       )}
       <Text adjustsFontSizeToFit numberOfLines={2} style={styles.title}>
-        {I18nManager.isRTL ? item.ProductName2 : item.ProductName}
+        {I18nManager.isRTL ? item?.ProductName2 : item?.ProductName}
+      </Text>
+      <Text numberOfLines={1} style={styles.dummy}>
+        1x
       </Text>
       <Text numberOfLines={1} style={styles.price}>
-        {item?.PriceOriginal.toFixed(TerminalConfiguration.DecimalsInAmount)}
+        SR {item?.PriceOriginal.toFixed(TerminalConfiguration.DecimalsInAmount)}
       </Text>
-      {item.isSelected === true && (
-        <FastImage
-          source={require("../assets/images/selectedItemIcon.png")}
+      {/* {item?.isSelected && (
+        <Image
+          source={require('../assets/images/selectedItemIcon.png')}
           style={[
             styles.selectedItemIcon,
-            I18nManager.isRTL ? { left: -1 } : { right: -1 },
+            I18nManager.isRTL ? {left: -1} : {right: -1},
           ]}
         />
-      )}
+      )} */}
     </TouchableOpacity>
   );
 };
@@ -62,8 +65,8 @@ const styles = StyleSheet.create({
     height: sizeHelper.calHp(200),
     width:
       sizeHelper.screenWidth > 450
-        ? sizeHelper.screenWidth / 4 - sizeHelper.calWp(29)
-        : sizeHelper.screenWidth / 3 - sizeHelper.calWp(29),
+        ? sizeHelper.screenWidth / 4 - sizeHelper.calWp(21.5)
+        : sizeHelper.screenWidth / 3 - sizeHelper.calWp(24),
     paddingTop: sizeHelper.calHp(20),
     paddingBottom: sizeHelper.calHp(12),
     borderRadius: sizeHelper.calWp(5),
@@ -75,34 +78,35 @@ const styles = StyleSheet.create({
     borderRadius: sizeHelper.calWp(5),
     //elevation: sizeHelper.calWp(5),
     backgroundColor: AppColor.white,
-    // shadowColor: AppColor.black,
-    // shadowOffset: {
-    //   width: 0,
-    //   height: 1,
-    // },
-    // shadowOpacity: 0.22,
-    // shadowRadius: 2.22,
-    // elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.14,
+    shadowRadius: 3.32,
+    elevation: 6,
   },
   categoryImage: {
     height: sizeHelper.calHp(80),
-    width: sizeHelper.calWp(155),
+    width: sizeHelper.calWp(170),
     resizeMode: "contain",
     justifyContent: "center",
     alignItems: "center",
-    // backgroundColor: 'white',
+    // backgroundColor: 'blue',
   },
   title: {
-    marginTop: sizeHelper.calHp(8),
-    fontSize: sizeHelper.calHp(15),
+    marginTop: sizeHelper.calHp(-5),
+    fontSize: sizeHelper.calHp(18),
     color: AppColor.black,
     textAlign: "center",
     fontFamily: "ProximaNova-Semibold",
+    // fontWeight: "600",
   },
   price: {
-    marginTop: sizeHelper.calHp(8),
+    // marginTop: sizeHelper.calHp(8),
     fontSize: sizeHelper.calHp(16),
-    color: AppColor.black,
+    color: AppColor.blue,
     fontFamily: "Proxima Nova Bold",
     fontWeight: "bold",
   },
@@ -117,6 +121,13 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
 
     //transform: [I18nManager.isRTL ? {rotateY: '180deg'} : {rotate: '0deg'}],
+  },
+  dummy: {
+    marginTop: sizeHelper.calHp(-4),
+    fontSize: sizeHelper.calHp(16),
+    color: AppColor.gray1,
+    fontFamily: "ProximaNova-Regular",
+    // fontWeight: "bold",
   },
 });
 

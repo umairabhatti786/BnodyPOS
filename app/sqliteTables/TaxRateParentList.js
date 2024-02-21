@@ -1,4 +1,4 @@
-import {ExecuteQuery} from '../sqliteHelper';
+import { ExecuteQuery } from '../sqliteHelper';
 
 export const TaxRateParentListTable = 'TaxRateParentList';
 
@@ -88,5 +88,5 @@ export const InsertTaxRateParentList = async values => {
   InsertDataQuery = InsertDataQuery + ';';
 
   let InsertTaxRateParentList = await ExecuteQuery(InsertDataQuery, []);
-  // console.log('Insert Product Details..', InsertTaxRateParentList);
+  //   console.log('Insert Product Details..', InsertTaxRateParentList);
 };

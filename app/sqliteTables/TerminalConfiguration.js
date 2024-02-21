@@ -7,8 +7,10 @@ export const TerminalConfigurationCoulumnskey = {
   FiscalSpanID: 'FiscalSpanID',
   CompanyCode: 'CompanyCode',
   GoDownCode: 'GoDownCode',
-  GoDownCode: 'GoDownCode',
+  GoDownAddress: 'GoDownAddress',
+  GoDownName: 'GoDownName',
   BillPrefix: 'BillPrefix',
+  OrderPrefix: 'OrderPrefix',
   BillReturnPrefix: 'BillReturnPrefix',
   ProductsWithPicture: 'ProductsWithPicture',
   ProductsPriceType: 'ProductsPriceType',
@@ -24,6 +26,7 @@ export const TerminalConfigurationCoulumnskey = {
   SalesAgentName: 'SalesAgentName',
   IsUserLoggedIn: 'IsUserLoggedIn',
   IsTerminalLoggedIn: 'IsTerminalLoggedIn',
+  LastOrderNumber: 'LastOrderNumber',
   LastBillNumber: 'LastBillNumber',
   LastReturnBillNumber: 'LastReturnBillNumber',
   DecimalsInQuantity: 'DecimalsInQuantity',
@@ -52,9 +55,6 @@ export const TerminalConfigurationCoulumnskey = {
   Footer2: 'Footer2',
   Footer3: 'Footer3',
   Footer4: 'Footer4',
-  Footer5: 'Footer5',
-  Footer6: 'Footer6',
-  Footer7: 'Footer7',
   PostingMode: 'PostingMode',
   PostingInterval: 'PostingInterval',
   CompanyLogo: 'CompanyLogo',
@@ -76,27 +76,13 @@ export const TerminalConfigurationCoulumnskey = {
   AllowLoyaltyInvoiceToReturn: 'AllowLoyaltyInvoiceToReturn',
   Strings: 'Strings',
   CompanyAddress: 'CompanyAddress',
-  GoDownName: 'GoDownName',
-  GoDownLogo: 'GoDownLogo',
-  GoDownLogoType: 'GoDownLogoType',
-  GoDownStamp: 'GoDownStamp',
-  GoDownStampType: 'GoDownStampType',
-  GoDownSlogan: 'GoDownSlogan',
-  GoDownAddress: 'GoDownAddress',
-  IsGodownInfo: 'IsGodownInfo',
-  DefaultPrintStyle: 'DefaultPrintStyle',
-  GodownCCRNumber: 'GodownCCRNumber',
-  CompanyStampType: 'CompanyStampType',
-  CompanyStamp: 'CompanyStamp',
-  CompanyBankDetail: 'CompanyBankDetail',
-  CompanyPhone: 'CompanyPhone',
 };
 export const TerminalConfigurationCreateTableCoulumns =
-  `UserCode TEXT  PRIMARY KEY NOT NULL, FiscalSpanID  INTEGER, CompanyCode  TEXT, GoDownCode  TEXT, BillPrefix TEXT, ` +
+  `UserCode TEXT  PRIMARY KEY NOT NULL, FiscalSpanID  INTEGER, CompanyCode  TEXT, GoDownCode  TEXT, GoDownName  TEXT,GoDownAddress TEXT,  BillPrefix TEXT,   OrderPrefix TEXT, ` +
   `BillReturnPrefix TEXT, ProductsWithPicture INTEGER, ProductsPriceType INTEGER, LanguageCode TEXT, ` +
   `IsSecondLanguageRequired INTEGER, SecondLanguageCode TEXT, LanguageIsRightToLeft INTEGER, LanguageCharacterSet TEXT, AllowCreditSale INTEGER, ` +
   `DiscountLimit FLOAT, TerminalCode TEXT, SalesAgentCode TEXT, SalesAgentName TEXT, IsUserLoggedIn INTEGER, ` +
-  `IsTerminalLoggedIn INTEGER, LastBillNumber TEXT, LastReturnBillNumber  TEXT, DecimalsInQuantity  INTEGER, ` +
+  `IsTerminalLoggedIn INTEGER,LastOrderNumber TEXT, LastBillNumber TEXT, LastReturnBillNumber  TEXT, DecimalsInQuantity  INTEGER, ` +
   `DecimalsInPrice  INTEGER, DecimalsInAmount  INTEGER, IsProductTaxEnabled  INTEGER,ValueAddedTaxNumber TEXT, ` +
   `IsItemProductTaxEnabled INTEGER, IsDiscountOnSalesInvoice  INTEGER, IsDiscountOnSalesProduct  INTEGER, ` +
   `IsTaxOnSalesInvoice  INTEGER, IsTaxOnSalesProduct  INTEGER, StopSMS  INTEGER, IsGlobalProductTaxEnabled INTEGER, ` +
@@ -104,27 +90,24 @@ export const TerminalConfigurationCreateTableCoulumns =
   `FiscalYearEndDate  TEXT, FiscalYearPostedUpToDate  TEXT, IsCompanyClosed  INTEGER, ` +
   `Heading1 TEXT, Heading2 TEXT, Heading3  TEXT, Heading4  TEXT, ` +
   `Footer1  TEXT, Footer2  TEXT, Footer3  TEXT, ` +
-  `Footer4 TEXT, Footer5 TEXT, Footer6 TEXT, Footer7 TEXT, PostingMode FLOAT, PostingInterval  FLOAT, CompanyLogo  TEXT, ` +
+  `Footer4 TEXT, PostingMode FLOAT, PostingInterval  FLOAT, CompanyLogo  TEXT, ` +
   `CompanyLogoType  TEXT, DefaultGlobalProductTaxGroupSalesBill  TEXT, OfflineLoginIsAllowed  INTEGER, ` +
   `A4PrintingIsAllowed INTEGER, ItemGroupIsLinkedWithPrinter INTEGER, CardChargesIsEnabled  INTEGER, IgnoreBatchAndSerial  INTEGER, ` +
   `CompanyName  TEXT, CalendarCode  TEXT, AmountFormat  TEXT, ` +
   `CCRNumber TEXT, CompanyEmail TEXT, CompanyURL  TEXT, IsLoyaltyCardAuto  INTEGER, ` +
-  `AllowLoyaltyInvoiceToReturn  INTEGER, Strings  TEXT, CompanyAddress TEXT, GoDownName TEXT, GoDownLogo TEXT,  ` +
-  `GoDownLogoType TEXT, GoDownStamp TEXT, GoDownStampType TEXT, GoDownSlogan TEXT, GoDownAddress TEXT, IsGodownInfo TEXT, ` +
-  `DefaultPrintStyle TEXT, GodownCCRNumber TEXT, CompanyStampType TEXT, CompanyStamp TEXT, CompanyBankDetail TEXT, CompanyPhone TEXT`;
+  `AllowLoyaltyInvoiceToReturn  INTEGER, Strings  TEXT, CompanyAddress TEXT`;
 
 export const TerminalConfigurationInsertCoulumns =
-  `UserCode, FiscalSpanID, CompanyCode, GoDownCode, BillPrefix, BillReturnPrefix, ProductsWithPicture, ProductsPriceType, ` +
+  `UserCode, FiscalSpanID, CompanyCode, GoDownCode,GoDownName,GoDownAddress, BillPrefix, OrderPrefix, BillReturnPrefix, ProductsWithPicture, ProductsPriceType, ` +
   `LanguageCode, IsSecondLanguageRequired, SecondLanguageCode, LanguageIsRightToLeft, LanguageCharacterSet, AllowCreditSale, DiscountLimit, TerminalCode, ` +
-  `SalesAgentCode, SalesAgentName, IsUserLoggedIn, IsTerminalLoggedIn, LastBillNumber, ` +
+  `SalesAgentCode, SalesAgentName, IsUserLoggedIn, IsTerminalLoggedIn, LastOrderNumber, LastBillNumber, ` +
   `LastReturnBillNumber, DecimalsInQuantity, DecimalsInPrice, DecimalsInAmount, IsProductTaxEnabled, ` +
   `ValueAddedTaxNumber, IsItemProductTaxEnabled, IsDiscountOnSalesInvoice, IsDiscountOnSalesProduct, IsTaxOnSalesInvoice, IsTaxOnSalesProduct, StopSMS, ` +
   `IsGlobalProductTaxEnabled, IsAccountLinked, IsUserAdmin, FiscalYearStartDate, FiscalYearEndDate, FiscalYearPostedUpToDate, IsCompanyClosed, ` +
   `Heading1, Heading2, Heading3, Heading4, Footer1, Footer2, Footer3, ` +
-  `Footer4, Footer5 , Footer6 , Footer7, PostingMode, PostingInterval, CompanyLogo, CompanyLogoType, DefaultGlobalProductTaxGroupSalesBill, OfflineLoginIsAllowed, ` +
+  `Footer4, PostingMode, PostingInterval, CompanyLogo, CompanyLogoType, DefaultGlobalProductTaxGroupSalesBill, OfflineLoginIsAllowed, ` +
   `A4PrintingIsAllowed, ItemGroupIsLinkedWithPrinter, CardChargesIsEnabled, IgnoreBatchAndSerial, CompanyName, CalendarCode, AmountFormat, ` +
-  `CCRNumber, CompanyEmail, CompanyURL, IsLoyaltyCardAuto, AllowLoyaltyInvoiceToReturn, Strings, CompanyAddress, GoDownName, GoDownLogo, ` +
-  `GoDownLogoType, GoDownStamp, GoDownStampType, GoDownSlogan, GoDownAddress, IsGodownInfo, DefaultPrintStyle, GodownCCRNumber, CompanyStampType, CompanyStamp, CompanyBankDetail, CompanyPhone`;
+  `CCRNumber, CompanyEmail, CompanyURL, IsLoyaltyCardAuto, AllowLoyaltyInvoiceToReturn, Strings, CompanyAddress`;
 
 export const InsertTerminalConfiguration = async values => {
   let InsertDataQuery = `INSERT INTO ${TerminalConfigurationTable} (${TerminalConfigurationInsertCoulumns}) VALUES`;
@@ -143,7 +126,13 @@ export const InsertTerminalConfiguration = async values => {
     "','" +
     values.GoDownCode +
     "','" +
+    values.GoDownName +
+    "','" +
+    values.GoDownAddress +
+    "','" +
     values.BillPrefix +
+    "','" +
+    values.OrderPrefix +
     "','" +
     values.BillReturnPrefix +
     "','" +
@@ -174,6 +163,8 @@ export const InsertTerminalConfiguration = async values => {
     values.IsUserLoggedIn +
     "','" +
     values.IsTerminalLoggedIn +
+    "','" +
+    values.LastOrderNumber +
     "','" +
     values.LastBillNumber +
     "','" +
@@ -231,12 +222,6 @@ export const InsertTerminalConfiguration = async values => {
     "','" +
     values.Footer4 +
     "','" +
-    values.Footer5 +
-    "','" +
-    values.Footer6 +
-    "','" +
-    values.Footer7 +
-    "','" +
     values.PostingMode +
     "','" +
     values.PostingInterval +
@@ -276,34 +261,6 @@ export const InsertTerminalConfiguration = async values => {
     values.Strings +
     "','" +
     values.CompanyAddress +
-    "','" +
-    values.GoDownName +
-    "','" +
-    values.GoDownLogo +
-    "','" +
-    values.GoDownLogoType +
-    "','" +
-    values.GoDownStamp +
-    "','" +
-    values.GoDownStampType +
-    "','" +
-    values.GoDownSlogan +
-    "','" +
-    values.GoDownAddress +
-    "','" +
-    values.IsGodownInfo +
-    "','" +
-    values.DefaultPrintStyle +
-    "','" +
-    values.GodownCCRNumber +
-    "','" +
-    values.CompanyStampType +
-    "','" +
-    values.CompanyStamp +
-    "','" +
-    values.CompanyBankDetail +
-    "','" +
-    values.CompanyPhone +
     "')";
 
   InsertDataQuery = InsertDataQuery + ';';

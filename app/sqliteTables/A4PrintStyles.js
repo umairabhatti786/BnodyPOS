@@ -1,4 +1,4 @@
-import {ExecuteQuery} from '../sqliteHelper';
+import { ExecuteQuery } from '../sqliteHelper';
 
 export const A4PrintStylesTable = 'A4PrintStylesTable';
 
@@ -30,9 +30,6 @@ export const A4PrintStylesCoulumnskey = {
   DetailTitleBgColor: 'DetailTitleBgColor',
   DetailTitleFontColor: 'DetailTitleFontColor',
   DetailBorderType: 'DetailBorderType',
-  IsFooterOnEveryPage: 'IsFooterOnEveryPage',
-  IsHeaderOnEveryPage: 'IsHeaderOnEveryPage',
-  PageHeight: 'PageHeight',
 };
 export const A4PrintStylesCreateTableCoulumns =
   `ReportFormatID INTEGER  PRIMARY KEY NOT NULL, PageID  INTEGER, ReportHeader  TEXT, ` +
@@ -40,113 +37,88 @@ export const A4PrintStylesCreateTableCoulumns =
   `IsPageFooterActive BOOLEAN, PageFooterBody TEXT, QSParameters TEXT, UseDefault BOOLEAN, SerialNo FLOAT, ` +
   `CultureCode TEXT, IsActive BOOLEAN, CreatedDate TEXT, UpdatedDate TEXT, HeaderSettings TEXT, ` +
   `BodySettings TEXT, FooterSettings TEXT, ShowDetailBorder  BOOLEAN, IsInstructionPageActive  BOOLEAN, ` +
-  `InstructionPageBody  TEXT, DetailTitleBgColor  TEXT, DetailTitleFontColor  TEXT, DetailBorderType INTEGER , IsFooterOnEveryPage TEXT , IsHeaderOnEveryPage TEXT, PageHeight TEXT`;
+  `InstructionPageBody  TEXT, DetailTitleBgColor  TEXT, DetailTitleFontColor  TEXT, DetailBorderType INTEGER`;
 
 export const A4PrintStylesInsertCoulumns =
   `ReportFormatID, PageID, ReportHeader, IsPageHeaderActive, PageHeaderBody, PrintType, ReportEditorType, ReportBody,` +
   ` ReportFooter, IsPageFooterActive, PageFooterBody, QSParameters, UseDefault, SerialNo, CultureCode, IsActive,` +
   `CreatedDate, UpdatedDate, HeaderSettings, BodySettings, FooterSettings, ` +
-  `ShowDetailBorder, IsInstructionPageActive, InstructionPageBody, DetailTitleBgColor, DetailTitleFontColor, DetailBorderType, IsFooterOnEveryPage, IsHeaderOnEveryPage, PageHeight`;
+  `ShowDetailBorder, IsInstructionPageActive, InstructionPageBody, DetailTitleBgColor, DetailTitleFontColor, DetailBorderType`;
 
 export const InsertA4PrintStyles = async values => {
   let InsertDataQuery = `INSERT INTO ${A4PrintStylesTable} (${A4PrintStylesInsertCoulumns}) VALUES`;
-  // let no = 0;
-  let array = values.filter(
-    x => x.PageID === 403006 || x.PageID === 403007 || x.PageID === 4030061,
-  );
 
-  for (let i = 0; i < array?.length; ++i) {
-    // console.log("InsertA4PrintStyles....", values[i])
-    // if (
-    //   values[i].PageID === 403006 ||
-    //   values[i].PageID === 403007 ||
-    //   values[i].PageID === 4030061
-    // ) {
-    // no++;
-    let ReportFooter = array[i].ReportFooter.replace("'", '');
-    let ReportBody = array[i].ReportBody.replace("'", '');
-    let ReportHeader = array[i].ReportHeader.replace("'", '');
-    // ReportHeader = array[i].ReportHeader.replace(/'/g, "''");
-    // ReportHeader = ""
-    // console.log('InsertA4PrintStyles....', ReportHeader);
+  for (let i = 0; i < values?.length; ++i) {
+    let ReportFooter = values[i].ReportFooter.replace("'", '');
+    let ReportBody = values[i].ReportBody.replace("'", '');
+    let ReportHeader = values[i].ReportHeader.replace("'", '');
 
     InsertDataQuery =
       InsertDataQuery +
       "('" +
-      array[i].ReportFormatID +
+      values[i].ReportFormatID +
       "','" +
-      array[i].PageID +
+      values[i].PageID +
       "','" +
       ReportHeader +
       "','" +
-      array[i].IsPageHeaderActive +
+      values[i].IsPageHeaderActive +
       "','" +
-      array[i].PageHeaderBody +
+      values[i].PageHeaderBody +
       "','" +
-      array[i].PrintType +
+      values[i].PrintType +
       "','" +
-      array[i].ReportEditorType +
+      values[i].ReportEditorType +
       "','" +
       ReportBody +
       "','" +
       ReportFooter +
       "','" +
-      array[i].IsPageFooterActive +
+      values[i].IsPageFooterActive +
       "','" +
-      array[i].PageFooterBody +
+      values[i].PageFooterBody +
       "','" +
-      array[i].QSParameters +
+      values[i].QSParameters +
       "','" +
-      array[i].UseDefault +
+      values[i].UseDefault +
       "','" +
-      array[i].SerialNo +
+      values[i].SerialNo +
       "','" +
-      array[i].CultureCode +
+      values[i].CultureCode +
       "','" +
-      array[i].IsActive +
+      values[i].IsActive +
       "','" +
-      array[i].CreatedDate +
+      values[i].CreatedDate +
       "','" +
-      array[i].UpdatedDate +
+      values[i].UpdatedDate +
       "','" +
-      array[i].HeaderSettings +
+      values[i].HeaderSettings +
       "','" +
-      array[i].BodySettings +
+      values[i].BodySettings +
       "','" +
-      array[i].FooterSettings +
+      values[i].FooterSettings +
       "','" +
-      array[i].ShowDetailBorder +
+      values[i].ShowDetailBorder +
       "','" +
-      array[i].IsInstructionPageActive +
+      values[i].IsInstructionPageActive +
       "','" +
-      array[i].InstructionPageBody +
+      values[i].InstructionPageBody +
       "','" +
-      array[i].DetailTitleBgColor +
+      values[i].DetailTitleBgColor +
       "','" +
-      array[i].DetailTitleFontColor +
+      values[i].DetailTitleFontColor +
       "','" +
-      array[i].DetailBorderType +
-      "','" +
-      array[i].IsFooterOnEveryPage +
-      "','" +
-      array[i].IsHeaderOnEveryPage +
-      "','" +
-      array[i].PageHeight +
+      values[i].DetailBorderType +
       "')";
 
-    if (i + 1 !== array.length) {
+    if (i != values.length - 1) {
       InsertDataQuery = InsertDataQuery + ',';
     }
     // console.log('Insert Product Details InsertDataQuery..', name, name2);
-    // }
   }
 
   InsertDataQuery = InsertDataQuery + ';';
-  // console.log('Insert Product Details..', InsertDataQuery);
-  try {
-    let InsertA4PrintStyles = await ExecuteQuery(InsertDataQuery, []);
-    // console.log('Insert A4 stylesss..', InsertA4PrintStyles);
-  } catch (error) {
-    // console.log('Insert A4 stylesss..', error);
-  }
+
+  let InsertA4PrintStyles = await ExecuteQuery(InsertDataQuery, []);
+  //   console.log('Insert Product Details..', InsertA4PrintStyles);
 };

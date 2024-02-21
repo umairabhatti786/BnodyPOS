@@ -1,7 +1,7 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import AppColor from '../constant/AppColor';
-import sizeHelper from '../helpers/sizeHelper';
+import React from "react";
+import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import AppColor from "../constant/AppColor";
+import sizeHelper from "../helpers/sizeHelper";
 
 const CustomRadioButton = ({ isSelected, title, onSelect }) => {
   return (
@@ -9,23 +9,25 @@ const CustomRadioButton = ({ isSelected, title, onSelect }) => {
       onPress={onSelect}
       style={{
         //justifyContent: 'center',
-        alignItems: 'center',
-        flexDirection: 'row',
+        alignItems: "center",
+        flexDirection: "row",
         height: sizeHelper.calWp(25),
         // backgroundColor: "green",
         width: sizeHelper.calWp(100),
-      }}>
+      }}
+    >
       <TouchableOpacity
         onPress={onSelect}
         style={{
           height: sizeHelper.calWp(18),
           width: sizeHelper.calWp(18),
           borderRadius: sizeHelper.calWp(18) / 2,
-          justifyContent: 'center',
-          alignItems: 'center',
+          justifyContent: "center",
+          alignItems: "center",
           borderWidth: 0.5,
           borderColor: AppColor.gray1,
-        }}>
+        }}
+      >
         {isSelected && (
           <View
             style={{
@@ -42,8 +44,9 @@ const CustomRadioButton = ({ isSelected, title, onSelect }) => {
           marginStart: sizeHelper.calHp(15),
           fontSize: sizeHelper.calHp(18),
           color: AppColor.black,
-          fontFamily: 'Proxima Nova Regular',
-        }}>
+          fontFamily: "ProximaNova-Regular",
+        }}
+      >
         {title}
       </Text>
     </TouchableOpacity>
